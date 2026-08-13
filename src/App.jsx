@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
-import Header from './components/Header';
-import Step1Upload from './components/Step1Upload';
+import FileUpload from './components/FileUpload';
 import Step2ExtractedData from './components/Step2ExtractedData';
-import Step3Export from './components/Step3Export';
 import Toast from './components/Toast';
 
 import { parsePdfText } from './utils/pdfParser';
@@ -94,22 +92,21 @@ export default function App() {
   const activeData = activeDocType === 'paycheck' ? paycheckData : cardData;
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] py-12 px-4 sm:px-6 w-full flex flex-col items-center justify-start">
-      {/* Center Layout Container */}
+    <div className={`min-h-screen bg-[#faf9f6] text-[#0f172a] px-4 sm:px-6 w-full flex flex-col items-center transition-all duration-300 ${
+      isStep2Complete ? 'justify-start py-10' : 'justify-center'
+    }`}>
+      {/* Centered App Container */}
       <div className="app-container space-y-6">
         
-        {/* Simple Header */}
-        <Header />
-
-        {/* Upload Zone */}
-        <Step1Upload
+        {/* Centered Upload Icon Button */}
+        <FileUpload
           onFileUpload={handleFileUpload}
           isProcessing={isProcessing}
           fileName={fileName}
           onClear={handleClearFile}
         />
 
-        {/* Extracted Data Rows (only show after upload) */}
+        {/* Extracted Values Cards (only show after upload) */}
         {isStep2Complete && (
           <div className="step-reveal">
             <Step2ExtractedData
@@ -118,18 +115,6 @@ export default function App() {
               isCompleted={isStep2Complete}
               onCopyField={handleCopyNotification}
               onCopyAll={handleCopyAll}
-            />
-          </div>
-        )}
-
-        {/* Export Options (only show after upload) */}
-        {isStep2Complete && (
-          <div className="step-reveal">
-            <Step3Export
-              data={activeData}
-              docType={activeDocType}
-              isCompleted={isStep2Complete}
-              onNotification={handleCopyNotification}
             />
           </div>
         )}
