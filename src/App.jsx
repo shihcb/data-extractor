@@ -93,12 +93,12 @@ export default function App() {
 
   return (
     <div className={`min-h-screen bg-[#faf9f6] text-[#0f172a] px-4 sm:px-6 w-full flex flex-col items-center transition-all duration-300 ${
-      isStep2Complete ? 'justify-start py-10' : 'justify-center'
+      isStep2Complete ? 'justify-start py-12' : 'justify-center'
     }`}>
       {/* Centered App Container */}
-      <div className="app-container space-y-6">
+      <div className="app-container">
         
-        {/* Centered Upload Icon Button */}
+        {/* Upload Button Component */}
         <FileUpload
           onFileUpload={handleFileUpload}
           isProcessing={isProcessing}
@@ -106,7 +106,7 @@ export default function App() {
           onClear={handleClearFile}
         />
 
-        {/* Extracted Values Cards (only show after upload) */}
+        {/* Extracted Value Cards */}
         {isStep2Complete && (
           <div className="step-reveal">
             <Step2ExtractedData

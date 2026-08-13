@@ -7,8 +7,7 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
   const isPaycheck = docType === 'paycheck';
 
   return (
-    <div className="space-y-5 animate-fade-in pt-4">
-      {/* List of independent floating cards with larger vertical spacing */}
+    <div className="animate-fade-in">
       {isPaycheck ? (
         <>
           <CopyableRow

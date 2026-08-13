@@ -1,27 +1,70 @@
 import React, { useRef } from 'react';
-import { Upload, Loader2, Check } from 'lucide-react';
+import { Upload, Loader2, FileText, RefreshCw } from 'lucide-react';
 
 export default function FileUpload({ onFileUpload, isProcessing, fileName, onClear }) {
   const fileInputRef = useRef(null);
 
   const handleClick = () => {
-    if (fileName) {
-      onClear();
-    }
     fileInputRef.current?.click();
   };
 
+  // If a file is uploaded, render the file card EXACTLY like the other boxes for consistent styling!
+  if (fileName && !isProcessing) {
+    return (
+      <div
+        onClick={handleClick}
+        className="independent-row-card cursor-pointer"
+        title="Click to upload another statement"
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.csv"
+          onChange={(e) => {
+            if (e.target.files && e.target.files[0]) {
+              onFileUpload(e.target.files[0]);
+            }
+          }}
+          className="hidden"
+        />
+
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-1">
+            Uploaded Statement
+          </div>
+          <div className="font-bold text-lg sm:text-xl text-slate-900 truncate flex items-center gap-2">
+            <FileText size={20} className="text-indigo-600 shrink-0" />
+            <span className="truncate">{fileName}</span>
+          </div>
+        </div>
+
+        {/* Action Button: triggers replace */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleClick();
+          }}
+          className="icon-copy-btn shrink-0"
+          title="Replace statement file"
+        >
+          <RefreshCw size={18} />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center justify-center py-4">
-      {/* Sleek Centered Upload Icon Button */}
+      {/* Empty State Centered Upload Icon Button */}
       <button
         onClick={handleClick}
         disabled={isProcessing}
         type="button"
         className={`w-28 h-28 sm:w-32 sm:h-32 rounded-[28px] bg-white border border-slate-200 shadow-md hover:shadow-lg flex items-center justify-center transition-all hover:-translate-y-1.5 focus:outline-hidden ${
-          isProcessing ? 'border-indigo-400 bg-indigo-50/20' : fileName ? 'border-emerald-300 bg-emerald-50/25 ring-4 ring-emerald-500/10' : 'hover:border-indigo-500'
+          isProcessing ? 'border-indigo-400 bg-indigo-50/20' : 'hover:border-indigo-500'
         }`}
-        title={fileName ? `File loaded: ${fileName}. Click to upload another.` : 'Upload Statement'}
+        title="Upload Statement"
       >
         <input
           ref={fileInputRef}
@@ -37,19 +80,10 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
 
         {isProcessing ? (
           <Loader2 size={36} className="text-indigo-600 animate-spin" />
-        ) : fileName ? (
-          <Check size={36} className="text-emerald-600 animate-bounce" />
         ) : (
           <Upload size={36} className="text-slate-800" />
         )}
       </button>
-
-      {/* Very clean file name indicator below, only if loaded */}
-      {fileName && !isProcessing && (
-        <span className="text-[11px] font-bold text-slate-400 mt-3 truncate max-w-xs animate-fade-in">
-          {fileName}
-        </span>
-      )}
     </div>
   );
 }
