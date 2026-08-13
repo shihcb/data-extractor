@@ -3,31 +3,31 @@ import { Copy } from 'lucide-react';
 import CopyableRow from './CopyableRow';
 
 export default function Step2ExtractedData({ data, docType, isCompleted, onCopyField, onCopyAll }) {
-  if (!isCompleted || !data) return null; // Unclutter page by rendering nothing before upload!
+  if (!isCompleted || !data) return null;
 
   const isPaycheck = docType === 'paycheck';
 
   return (
-    <div className="premium-card p-6 sm:p-8 animate-fade-in space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+    <div className="space-y-4 animate-fade-in">
+      {/* Top Header Card */}
+      <div className="premium-card p-5 sm:p-6 flex items-center justify-between">
         <div>
-          <h2 className="text-base font-extrabold text-slate-800 tracking-tight">
+          <h2 className="text-base sm:text-lg font-extrabold text-slate-800 tracking-tight">
             Extracted Values
           </h2>
         </div>
 
         <button
           onClick={onCopyAll}
-          className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100/50 transition-colors"
+          className="text-xs sm:text-sm font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 bg-indigo-50 px-3.5 py-2 rounded-xl border border-indigo-100/50 transition-colors"
         >
-          <Copy size={13} />
+          <Copy size={14} />
           <span>Copy All</span>
         </button>
       </div>
 
-      {/* Rows */}
-      <div className="space-y-2">
+      {/* Spaced Independent Floating Rows */}
+      <div className="space-y-3.5 pt-1">
         {isPaycheck ? (
           <>
             <CopyableRow
@@ -42,7 +42,7 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
               onCopy={onCopyField}
             />
             <CopyableRow
-              label="Pay Period"
+              label="Pay Period (Dates Covered)"
               value={data.payPeriod}
               onCopy={onCopyField}
             />

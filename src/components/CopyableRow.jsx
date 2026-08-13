@@ -27,16 +27,16 @@ export default function CopyableRow({ label, value, highlight = false, onCopy })
   return (
     <div
       onClick={handleCopy}
-      className={`group cursor-pointer flex items-center justify-between gap-4 py-3 px-4 rounded-xl border border-slate-100 hover:border-slate-200 bg-white transition-all ${
-        highlight ? 'ring-2 ring-emerald-500/20 bg-emerald-50/10 border-emerald-100' : ''
+      className={`group cursor-pointer independent-row-card ${
+        highlight ? 'highlighted' : ''
       }`}
     >
       <div className="min-w-0 flex-1">
-        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
+        <div className="text-xs sm:text-sm font-extrabold text-slate-400 uppercase tracking-wider mb-1">
           {label}
         </div>
-        <div className={`font-mono text-sm sm:text-base font-bold truncate ${
-          highlight ? 'text-emerald-700' : 'text-slate-800'
+        <div className={`font-mono text-xl sm:text-2xl font-extrabold tracking-tight truncate ${
+          highlight ? 'text-emerald-700' : 'text-slate-900'
         }`}>
           {value}
         </div>
@@ -48,7 +48,7 @@ export default function CopyableRow({ label, value, highlight = false, onCopy })
         className={`icon-copy-btn shrink-0 ${copied ? 'copied' : ''}`}
         title={`Copy ${label}`}
       >
-        {copied ? <Check size={15} /> : <Copy size={15} />}
+        {copied ? <Check size={18} /> : <Copy size={18} />}
       </button>
     </div>
   );
