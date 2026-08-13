@@ -5,20 +5,24 @@ export default function PaycheckResults({ paycheckData, onCopyField }) {
   if (!paycheckData) return null;
 
   return (
-    <div className="outer-shape p-5 space-y-3 animate-fade-in">
-      <div className="flex items-center justify-between px-1 pb-1">
-        <div className="flex items-center gap-2">
-          <span className="w-5 h-5 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-bold">
+    <div className="outer-shape p-6 sm:p-8 animate-fade-in space-y-4">
+      {/* Clean Header Row */}
+      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+        <div className="flex items-center gap-2.5">
+          <span className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-bold shadow-sm">
             2
           </span>
-          <span className="font-bold text-sm text-slate-900">extracted values</span>
+          <span className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight">
+            Extracted Values
+          </span>
         </div>
-        <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-          ready to copy
+        <span className="bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-extrabold px-3 py-1 rounded-full">
+          Ready to Copy
         </span>
       </div>
 
-      <div className="space-y-2.5">
+      {/* Field Cards spaced cleanly */}
+      <div className="space-y-4 pt-2">
         <CopyableRow
           label="Net Take-Home Pay"
           value={paycheckData.netPay}
@@ -47,24 +51,6 @@ export default function PaycheckResults({ paycheckData, onCopyField }) {
         <CopyableRow
           label="Paycheck / Check Number"
           value={paycheckData.paycheckNumber}
-          onCopy={onCopyField}
-        />
-
-        <CopyableRow
-          label="Order Number"
-          value={paycheckData.orderNumber}
-          onCopy={onCopyField}
-        />
-
-        <CopyableRow
-          label="Batch Number"
-          value={paycheckData.batchNumber}
-          onCopy={onCopyField}
-        />
-
-        <CopyableRow
-          label="Receipt / Advice Number"
-          value={paycheckData.receiptNumber}
           onCopy={onCopyField}
         />
 

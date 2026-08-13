@@ -5,12 +5,12 @@
   --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
-  --bg-main: #f7f6f2;
+  --bg-main: #f8fafc;
   --bg-card: #ffffff;
-  --bg-inset: #fafafd;
+  --bg-inset: #f1f5f9;
   
-  --border-card: #e6e5e0;
-  --border-inset: #eaeae5;
+  --border-card: #e2e8f0;
+  --border-inset: #cbd5e1;
 
   --text-dark: #0f172a;
   --text-muted: #64748b;
@@ -27,7 +27,7 @@ body {
   color: var(--text-dark);
   font-family: var(--font-body);
   min-height: 100vh;
-  line-height: 1.5;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -38,39 +38,49 @@ button {
   background: none;
 }
 
-/* Beautiful Rounded Outer Card */
+/* Roomy Outer Card */
 .outer-shape {
   background: #ffffff;
   border: 1px solid var(--border-card);
-  border-radius: 24px;
-  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.03);
+  border-radius: 28px;
+  box-shadow: 0 10px 30px -4px rgba(15, 23, 42, 0.05), 0 4px 12px -2px rgba(15, 23, 42, 0.02);
 }
 
-/* Inset Container Box (like screenshot input containers) */
+/* Inset Container Box for Individual Field Cards */
 .inset-shape {
-  background: #fafafa;
-  border: 1px solid var(--border-inset);
-  border-radius: 16px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Copy Button Pill */
+.inset-shape:hover {
+  border-color: #94a3b8;
+  box-shadow: 0 6px 20px -2px rgba(15, 23, 42, 0.08);
+  transform: translateY(-2px);
+}
+
+/* Large Comfortable Copy Button Pill */
 .copy-pill-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   background: #0f172a;
   color: #ffffff;
-  padding: 6px 16px;
+  padding: 10px 22px;
   border-radius: 9999px;
-  font-size: 0.78rem;
+  font-size: 0.85rem;
   font-weight: 700;
+  letter-spacing: 0.01em;
   transition: all 0.15s ease;
   white-space: nowrap;
 }
 
 .copy-pill-btn:hover {
-  background: #334155;
-  transform: translateY(-1px);
+  background: #1e293b;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.25);
+  transform: scale(1.03);
 }
 
 .copy-pill-btn:active {
@@ -80,14 +90,15 @@ button {
 .copy-pill-btn.copied {
   background: #059669;
   color: #ffffff;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3);
 }
 
 /* Animation */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.25s ease-out forwards;
+  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

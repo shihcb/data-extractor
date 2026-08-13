@@ -18,20 +18,22 @@ export default function CardStatementResults({ cardData, onCopyField }) {
   };
 
   return (
-    <div className="outer-shape p-5 space-y-3 animate-fade-in">
-      <div className="flex items-center justify-between px-1 pb-1">
-        <div className="flex items-center gap-2">
-          <span className="w-5 h-5 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-bold">
+    <div className="outer-shape p-6 sm:p-8 animate-fade-in space-y-4">
+      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+        <div className="flex items-center gap-2.5">
+          <span className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-bold shadow-sm">
             2
           </span>
-          <span className="font-bold text-sm text-slate-900">extracted values</span>
+          <span className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight">
+            Extracted Values
+          </span>
         </div>
-        <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-          ready to copy
+        <span className="bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-extrabold px-3 py-1 rounded-full">
+          Ready to Copy
         </span>
       </div>
 
-      <div className="space-y-2.5">
+      <div className="space-y-4 pt-2">
         <CopyableRow
           label="Total Balance Due"
           value={cardData.statementBalance}
@@ -71,26 +73,26 @@ export default function CardStatementResults({ cardData, onCopyField }) {
 
         {/* Itemized Transactions */}
         {cardData.transactions && cardData.transactions.length > 0 && (
-          <div className="pt-2 space-y-2">
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-400 px-1">
+          <div className="pt-4 space-y-3">
+            <div className="text-xs font-extrabold uppercase tracking-wider text-slate-400 px-1">
               Itemized Transactions
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               {cardData.transactions.map((tx) => {
                 const isCopied = copiedTxId === tx.id;
                 return (
                   <div
                     key={tx.id}
                     onClick={() => handleCopyTx(tx)}
-                    className="cursor-pointer inset-shape p-3.5 flex items-center justify-between gap-3 text-xs hover:border-slate-400 transition-all"
+                    className="cursor-pointer inset-shape p-5 flex items-center justify-between gap-4 text-sm hover:border-slate-400 transition-all"
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="font-bold text-slate-900 truncate">
+                      <div className="font-extrabold text-slate-900 text-base truncate">
                         <span className="font-mono text-slate-400 mr-2">{tx.date}</span>
                         {tx.description}
                       </div>
-                      <div className="font-mono text-slate-600 font-bold mt-0.5">{tx.amount}</div>
+                      <div className="font-mono text-slate-700 font-bold text-base mt-0.5">{tx.amount}</div>
                     </div>
 
                     <button
@@ -98,8 +100,8 @@ export default function CardStatementResults({ cardData, onCopyField }) {
                       onClick={() => handleCopyTx(tx)}
                       className={`copy-pill-btn shrink-0 ${isCopied ? 'copied' : ''}`}
                     >
-                      {isCopied ? <Check size={12} /> : <Copy size={12} />}
-                      <span>{isCopied ? 'copied' : 'copy'}</span>
+                      {isCopied ? <Check size={14} /> : <Copy size={14} />}
+                      <span>{isCopied ? 'Copied' : 'Copy'}</span>
                     </button>
                   </div>
                 );

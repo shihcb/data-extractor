@@ -15,7 +15,6 @@ export default function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [fileName, setFileName] = useState('');
   
-  // Set initial state to null so NO sample information appears before upload!
   const [paycheckData, setPaycheckData] = useState(null);
   const [cardData, setCardData] = useState(null);
 
@@ -76,8 +75,8 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col items-center justify-start py-10 px-4 sm:px-6">
-      <div className="w-full max-w-xl mx-auto space-y-6">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col items-center justify-start py-12 px-4 sm:px-8">
+      <div className="w-full max-w-2xl sm:max-w-3xl mx-auto space-y-8">
         
         {/* Simple Header */}
         <Header />
@@ -90,7 +89,7 @@ export default function App() {
           onClear={handleClearFile}
         />
 
-        {/* Independent Floating Button Rows (only shown after upload) */}
+        {/* Extracted Values Cards */}
         {activeDocType === 'paycheck' ? (
           <PaycheckResults
             paycheckData={paycheckData}

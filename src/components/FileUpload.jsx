@@ -30,30 +30,34 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
   };
 
   return (
-    <div className="outer-shape p-5">
-      <div className="flex items-center justify-between mb-3 px-1">
-        <div className="flex items-center gap-2">
-          <span className="w-5 h-5 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-bold">
+    <div className="outer-shape p-6 sm:p-8">
+      {/* Section Header with badge placed cleanly inside without overlap */}
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-2.5">
+          <span className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-bold shadow-sm">
             1
           </span>
-          <span className="font-bold text-sm text-slate-900">upload statement</span>
+          <span className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight">
+            Upload Statement
+          </span>
         </div>
-        <span className="bg-slate-900 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-          pdf / image
+        <span className="bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold px-3 py-1 rounded-full">
+          PDF / Image
         </span>
       </div>
 
+      {/* Spacious Drag and Drop Area */}
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
-        className={`inset-shape p-8 text-center cursor-pointer transition-all ${
+        className={`border-2 border-dashed rounded-2xl p-8 sm:p-12 text-center cursor-pointer transition-all duration-200 ${
           isDragOver
-            ? 'border-slate-800 bg-slate-100/80 scale-[1.005]'
+            ? 'border-indigo-600 bg-indigo-50/60 scale-[1.005]'
             : fileName
-            ? 'border-emerald-300 bg-emerald-50/40'
-            : 'hover:border-slate-300 hover:bg-slate-100/50'
+            ? 'border-emerald-400 bg-emerald-50/30'
+            : 'border-slate-300 hover:border-slate-400 bg-slate-50/60 hover:bg-slate-100/50'
         }`}
       >
         <input
@@ -65,37 +69,43 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
         />
 
         {isProcessing ? (
-          <div className="flex flex-col items-center py-4 gap-2">
-            <Loader2 size={24} className="text-slate-900 animate-spin" />
-            <p className="font-bold text-xs text-slate-800">extracting statement data...</p>
+          <div className="flex flex-col items-center py-6 gap-3">
+            <Loader2 size={32} className="text-slate-900 animate-spin" />
+            <p className="font-bold text-sm text-slate-900">Extracting statement data...</p>
           </div>
         ) : fileName ? (
-          <div className="flex items-center justify-center gap-3 py-2">
-            <CheckCircle size={22} className="text-emerald-600 shrink-0" />
+          <div className="flex items-center justify-center gap-4 py-4">
+            <CheckCircle size={28} className="text-emerald-600 shrink-0" />
             <div className="text-left min-w-0">
-              <p className="font-bold text-sm text-slate-900 truncate">{fileName}</p>
-              <p className="text-xs text-slate-500">click to replace file</p>
+              <p className="font-extrabold text-base sm:text-lg text-slate-900 truncate max-w-xs sm:max-w-md">
+                {fileName}
+              </p>
+              <p className="text-xs font-semibold text-slate-500 mt-0.5">Click to replace file</p>
             </div>
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onClear();
               }}
-              className="text-xs text-slate-400 hover:text-rose-600 p-1.5 ml-2"
+              className="p-2 text-slate-400 hover:text-rose-600 rounded-full hover:bg-rose-50 transition-colors ml-2"
               title="Clear file"
             >
-              <RefreshCw size={14} />
+              <RefreshCw size={16} />
             </button>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-2 py-4">
-            <div className="w-10 h-10 rounded-full bg-slate-200/80 border border-slate-300/80 flex items-center justify-center text-slate-800 mb-1">
-              <Upload size={18} />
+          <div className="flex flex-col items-center gap-3 py-4">
+            <div className="w-14 h-14 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-900 mb-1">
+              <Upload size={24} />
             </div>
-            <p className="text-sm font-bold text-slate-800">
-              drag & drop statement file here, or <span className="underline">browse</span>
-            </p>
-            <p className="text-xs text-slate-400">PDF, PNG, JPG, WebP, Text, or CSV</p>
+            <div>
+              <p className="text-base sm:text-lg font-extrabold text-slate-900">
+                Drag & drop paycheck statement here, or <span className="text-indigo-600 underline">browse</span>
+              </p>
+              <p className="text-xs font-medium text-slate-500 mt-1">
+                Supports PDF, PNG, JPG, WebP, Text, or CSV files
+              </p>
+            </div>
           </div>
         )}
       </div>
