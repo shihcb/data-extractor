@@ -13,7 +13,7 @@ import { extractCardStatementData } from './utils/cardStatementExtractor';
 import { SAMPLE_PAYCHECK, SAMPLE_CREDIT_CARD } from './utils/sampleData';
 
 export default function App() {
-  const [activeDocType, setActiveDocType] = useState('paycheck'); // 'paycheck' | 'card'
+  const [activeDocType, setActiveDocType] = useState('paycheck');
   const [isProcessing, setIsProcessing] = useState(false);
   const [fileName, setFileName] = useState('');
   
@@ -140,26 +140,21 @@ Due Date: ${cardData.dueDate}`;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col items-center justify-start py-8 px-4 sm:px-6">
-      {/* Centered Main Column */}
-      <div className="w-full max-w-2xl mx-auto space-y-5">
+      <div className="w-full max-w-xl mx-auto space-y-4">
         
-        {/* Header */}
-        <Header
-          activeDocType={activeDocType}
-          setActiveDocType={setActiveDocType}
-          onLoadSample={handleLoadSample}
-        />
+        {/* Simple Header */}
+        <Header />
 
-        {/* Upload Zone */}
+        {/* Minimal File Upload */}
         <FileUpload
           onFileUpload={handleFileUpload}
           isProcessing={isProcessing}
-          activeDocType={activeDocType}
           fileName={fileName}
           onClear={handleClearFile}
+          onLoadSample={handleLoadSample}
         />
 
-        {/* Results List */}
+        {/* Extracted Line-by-Line Results */}
         {activeDocType === 'paycheck' ? (
           <PaycheckResults
             paycheckData={paycheckData}
@@ -174,11 +169,10 @@ Due Date: ${cardData.dueDate}`;
           />
         )}
 
-        {/* Minimal Raw Text Accordion */}
+        {/* Collapsible Raw Text */}
         <DocumentViewer rawText={rawText} />
       </div>
 
-      {/* Floating Toast */}
       <Toast toast={toast} />
     </div>
   );

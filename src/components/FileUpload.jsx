@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { Upload, CheckCircle, RefreshCw, Loader2 } from 'lucide-react';
+import { Upload, CheckCircle, RefreshCw, Loader2, Sparkles } from 'lucide-react';
 
-export default function FileUpload({ onFileUpload, isProcessing, activeDocType, fileName, onClear }) {
+export default function FileUpload({ onFileUpload, isProcessing, fileName, onClear, onLoadSample }) {
   const fileInputRef = useRef(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -55,7 +55,7 @@ export default function FileUpload({ onFileUpload, isProcessing, activeDocType, 
         {isProcessing ? (
           <div className="flex flex-col items-center py-2 gap-2">
             <Loader2 size={24} className="text-indigo-600 animate-spin" />
-            <p className="font-semibold text-xs text-indigo-900">Extracting Text Details...</p>
+            <p className="font-semibold text-xs text-slate-700">Extracting Text Details...</p>
           </div>
         ) : fileName ? (
           <div className="flex items-center justify-center gap-3">
@@ -80,10 +80,33 @@ export default function FileUpload({ onFileUpload, isProcessing, activeDocType, 
             <div className="w-10 h-10 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
               <Upload size={18} />
             </div>
-            <p className="text-xs font-bold text-slate-700">
-              Drop {activeDocType === 'paycheck' ? 'paycheck' : 'statement'} PDF or image here, or <span className="text-indigo-600 underline">browse</span>
+            <p className="text-xs font-bold text-slate-800">
+              Drop paycheck or statement PDF / image here, or <span className="text-indigo-600 underline">browse</span>
             </p>
-            <p className="text-[11px] text-slate-400">PDF, PNG, JPG, WebP, Text, or CSV</p>
+            
+            {/* Quick Sample Links */}
+            <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-200/80">
+              <span className="text-[11px] text-slate-400">Or try demo:</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onLoadSample('paycheck');
+                }}
+                className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 underline"
+              >
+                Sample Paystub
+              </button>
+              <span className="text-slate-300">•</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onLoadSample('card');
+                }}
+                className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 underline"
+              >
+                Sample Card Statement
+              </button>
+            </div>
           </div>
         )}
       </div>
