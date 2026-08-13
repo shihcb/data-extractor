@@ -13,7 +13,7 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
     return (
       <div
         onClick={handleClick}
-        className="independent-row-card cursor-pointer"
+        className="independent-row-card cursor-pointer uploader-card"
         title="Click to upload another statement"
       >
         <input
