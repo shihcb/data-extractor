@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import FileUpload from './components/FileUpload';
 import Step2ExtractedData from './components/Step2ExtractedData';
 import Toast from './components/Toast';
@@ -9,16 +9,54 @@ import { extractPaycheckData } from './utils/paycheckExtractor';
 import { extractCardStatementData } from './utils/cardStatementExtractor';
 
 export default function App() {
-  const [activeDocType, setActiveDocType] = useState('paycheck');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [fileName, setFileName] = useState('');
+  // Load initial states from localStorage if available
+  const [activeDocType, setActiveDocType] = useState(() => {
+    return localStorage.getItem('extrkt_doc_type') || 'paycheck';
+  });
   
-  const [paycheckData, setPaycheckData] = useState(null);
-  const [cardData, setCardData] = useState(null);
+  const [fileName, setFileName] = useState(() => {
+    return localStorage.getItem('extrkt_file_name') || '';
+  });
 
+  const [paycheckData, setPaycheckData] = useState(() => {
+    const saved = localStorage.getItem('extrkt_paycheck_data');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const [cardData, setCardData] = useState(() => {
+    const saved = localStorage.getItem('extrkt_card_data');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const [isProcessing, setIsProcessing] = useState(false);
   const [toast, setToast] = useState(null);
 
   const isStep2Complete = Boolean(paycheckData || cardData);
+
+  // Sync state changes with localStorage
+  useEffect(() => {
+    localStorage.setItem('extrkt_doc_type', activeDocType);
+  }, [activeDocType]);
+
+  useEffect(() => {
+    localStorage.setItem('extrkt_file_name', fileName);
+  }, [fileName]);
+
+  useEffect(() => {
+    if (paycheckData) {
+      localStorage.setItem('extrkt_paycheck_data', JSON.stringify(paycheckData));
+    } else {
+      localStorage.removeItem('extrkt_paycheck_data');
+    }
+  }, [paycheckData]);
+
+  useEffect(() => {
+    if (cardData) {
+      localStorage.setItem('extrkt_card_data', JSON.stringify(cardData));
+    } else {
+      localStorage.removeItem('extrkt_card_data');
+    }
+  }, [cardData]);
 
   const handleCopyNotification = (label, value) => {
     setToast({ label, value });
@@ -31,6 +69,9 @@ export default function App() {
     setFileName('');
     setPaycheckData(null);
     setCardData(null);
+    localStorage.removeItem('extrkt_file_name');
+    localStorage.removeItem('extrkt_paycheck_data');
+    localStorage.removeItem('extrkt_card_data');
   };
 
   const handleFileUpload = async (file) => {
@@ -80,7 +121,7 @@ export default function App() {
 
     let summary = '';
     if (activeDocType === 'paycheck') {
-      summary = `PAYCHECK STATEMENT SUMMARY:\nNet Take-Home Pay: ${data.netPay}\nGross Income: ${data.grossIncome}\nPay Period: ${data.payPeriod}\nHours Worked: ${data.hoursWorked}\nCheck No: ${data.paycheckNumber}\nPay Date: ${data.payDate}\nEmployer: ${data.employer}`;
+      summary = `PAYCHECK STATEMENT SUMMARY:\nNET PAY: ${data.netPay}\nGROSS PAY: ${data.grossIncome}\nPAY PERIOD: ${data.payPeriod}\nHours Worked: ${data.hoursWorked}\nCHECK NUMBER: ${data.paycheckNumber}\nPay Date: ${data.payDate}`;
     } else {
       summary = `CARD STATEMENT SUMMARY:\nTotal Balance: ${data.statementBalance}\nCard Last 4: ${data.cardLast4}\nPeriod: ${data.statementPeriod}\nMin Payment: ${data.minimumPayment}\nDue Date: ${data.dueDate}\nBank: ${data.bankName}`;
     }

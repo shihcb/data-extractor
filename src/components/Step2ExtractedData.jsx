@@ -11,18 +11,18 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
       {isPaycheck ? (
         <>
           <CopyableRow
-            label="Net Take-Home Pay"
+            label="NET PAY"
             value={data.netPay}
             highlight={true}
             onCopy={onCopyField}
           />
           <CopyableRow
-            label="Gross Income"
+            label="GROSS PAY"
             value={data.grossIncome}
             onCopy={onCopyField}
           />
           <CopyableRow
-            label="Pay Period (Dates Covered)"
+            label="PAY PERIOD"
             value={data.payPeriod}
             onCopy={onCopyField}
           />
@@ -32,7 +32,7 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
             onCopy={onCopyField}
           />
           <CopyableRow
-            label="Paycheck / Check Number"
+            label="CHECK NUMBER"
             value={data.paycheckNumber}
             onCopy={onCopyField}
           />
@@ -41,11 +41,7 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
             value={data.payDate}
             onCopy={onCopyField}
           />
-          <CopyableRow
-            label="Employer Name"
-            value={data.employer}
-            onCopy={onCopyField}
-          />
+          {/* Employer Name Box has been removed */}
         </>
       ) : (
         <>
