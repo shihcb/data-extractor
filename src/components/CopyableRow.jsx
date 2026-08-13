@@ -32,11 +32,11 @@ export default function CopyableRow({ label, value, highlight = false, onCopy })
       }`}
     >
       <div className="min-w-0 flex-1">
-        <div className="text-xs sm:text-sm font-extrabold text-slate-400 uppercase tracking-wider mb-1">
+        <div className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
           {label}
         </div>
-        <div className={`font-mono text-xl sm:text-2xl font-extrabold tracking-tight truncate ${
-          highlight ? 'text-emerald-700' : 'text-slate-900'
+        <div className={`font-mono text-lg sm:text-xl font-bold truncate ${
+          highlight ? 'text-emerald-700' : 'text-slate-800'
         }`}>
           {value}
         </div>
@@ -48,7 +48,7 @@ export default function CopyableRow({ label, value, highlight = false, onCopy })
         className={`icon-copy-btn shrink-0 ${copied ? 'copied' : ''}`}
         title={`Copy ${label}`}
       >
-        {copied ? <Check size={18} /> : <Copy size={18} />}
+        {copied ? <Check size={16} /> : <Copy size={16} />}
       </button>
     </div>
   );
