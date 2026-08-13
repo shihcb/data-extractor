@@ -95,9 +95,9 @@ export default function App() {
   const activeData = activeDocType === 'paycheck' ? paycheckData : cardData;
 
   return (
-    <div className="min-h-screen bg-[#f7f8fa] text-[#0f172a] py-10 sm:py-14 px-4 sm:px-8">
-      {/* Centered SaaS Container */}
-      <div className="w-full max-w-[960px] mx-auto space-y-6">
+    <div className="min-h-screen bg-[#faf9f6] text-[#0f172a] py-12 px-4 sm:px-8 w-full flex flex-col items-center justify-start">
+      {/* Centered App Container */}
+      <div className="app-container space-y-6">
         
         {/* Header */}
         <Header currentStep={currentStep} totalSteps={3} />
@@ -110,22 +110,26 @@ export default function App() {
           onClear={handleClearFile}
         />
 
-        {/* Step 2: Extracted Data */}
-        <Step2ExtractedData
-          data={activeData}
-          docType={activeDocType}
-          isCompleted={isStep2Complete}
-          onCopyField={handleCopyNotification}
-          onCopyAll={handleCopyAll}
-        />
+        {/* Step 2: Extracted Data (with smooth step-reveal animations) */}
+        <div className={isStep2Complete ? "step-reveal" : ""}>
+          <Step2ExtractedData
+            data={activeData}
+            docType={activeDocType}
+            isCompleted={isStep2Complete}
+            onCopyField={handleCopyNotification}
+            onCopyAll={handleCopyAll}
+          />
+        </div>
 
-        {/* Step 3: Export & Share */}
-        <Step3Export
-          data={activeData}
-          docType={activeDocType}
-          isCompleted={isStep2Complete}
-          onNotification={handleCopyNotification}
-        />
+        {/* Step 3: Export & Share (with smooth step-reveal animations) */}
+        <div className={isStep2Complete ? "step-reveal" : ""}>
+          <Step3Export
+            data={activeData}
+            docType={activeDocType}
+            isCompleted={isStep2Complete}
+            onNotification={handleCopyNotification}
+          />
+        </div>
       </div>
 
       {/* Toast Notification */}
