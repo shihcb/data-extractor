@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import Header from './components/Header';
-import FileUpload from './components/FileUpload';
-import PaycheckResults from './components/PaycheckResults';
-import CardStatementResults from './components/CardStatementResults';
+import Step1Upload from './components/Step1Upload';
+import Step2ExtractedData from './components/Step2ExtractedData';
+import Step3Export from './components/Step3Export';
 import Toast from './components/Toast';
 
 import { parsePdfText } from './utils/pdfParser';
@@ -19,6 +19,9 @@ export default function App() {
   const [cardData, setCardData] = useState(null);
 
   const [toast, setToast] = useState(null);
+
+  const isStep2Complete = Boolean(paycheckData || cardData);
+  const currentStep = isProcessing ? 1 : isStep2Complete ? 3 : 1;
 
   const handleCopyNotification = (label, value) => {
     setToast({ label, value });
@@ -65,7 +68,7 @@ export default function App() {
         setActiveDocType('card');
       }
 
-      handleCopyNotification('File Upload', `Extracted ${file.name}`);
+      handleCopyNotification('File Processed', `Extracted values from ${file.name}`);
     } catch (err) {
       console.error('File parsing error:', err);
       alert('Error parsing file: ' + err.message);
@@ -74,39 +77,58 @@ export default function App() {
     }
   };
 
+  const handleCopyAll = () => {
+    const data = activeDocType === 'paycheck' ? paycheckData : cardData;
+    if (!data) return;
+
+    let summary = '';
+    if (activeDocType === 'paycheck') {
+      summary = `PAYCHECK STATEMENT SUMMARY:\nNet Take-Home Pay: ${data.netPay}\nGross Income: ${data.grossIncome}\nPay Period: ${data.payPeriod}\nHours Worked: ${data.hoursWorked}\nCheck No: ${data.paycheckNumber}\nPay Date: ${data.payDate}\nEmployer: ${data.employer}`;
+    } else {
+      summary = `CARD STATEMENT SUMMARY:\nTotal Balance: ${data.statementBalance}\nCard Last 4: ${data.cardLast4}\nPeriod: ${data.statementPeriod}\nMin Payment: ${data.minimumPayment}\nDue Date: ${data.dueDate}\nBank: ${data.bankName}`;
+    }
+
+    navigator.clipboard.writeText(summary);
+    handleCopyNotification('Full Summary', 'Copied all values to clipboard');
+  };
+
+  const activeData = activeDocType === 'paycheck' ? paycheckData : cardData;
+
   return (
-    <div className="min-h-screen bg-[#f7f6f2] text-slate-900 py-6 px-4 sm:px-8">
-      <div className="w-full max-w-6xl mx-auto space-y-4">
+    <div className="min-h-screen bg-[#f7f8fa] text-[#0f172a] py-10 sm:py-14 px-4 sm:px-8">
+      {/* Centered SaaS Container */}
+      <div className="w-full max-w-[960px] mx-auto space-y-6">
         
-        {/* Top Header & Alert Banner (matching top bar in reference screenshot) */}
-        <Header />
+        {/* Header */}
+        <Header currentStep={currentStep} totalSteps={3} />
 
-        {/* 2-Column Side-by-Side Panel Grid (matching multi-panel layout in reference screenshot) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-          {/* Column 1: Upload Statement Panel */}
-          <FileUpload
-            onFileUpload={handleFileUpload}
-            isProcessing={isProcessing}
-            fileName={fileName}
-            onClear={handleClearFile}
-          />
+        {/* Step 1: Upload Statement */}
+        <Step1Upload
+          onFileUpload={handleFileUpload}
+          isProcessing={isProcessing}
+          fileName={fileName}
+          onClear={handleClearFile}
+        />
 
-          {/* Column 2: Extracted Values Panel */}
-          {activeDocType === 'paycheck' ? (
-            <PaycheckResults
-              paycheckData={paycheckData}
-              onCopyField={handleCopyNotification}
-            />
-          ) : (
-            <CardStatementResults
-              cardData={cardData}
-              onCopyField={handleCopyNotification}
-            />
-          )}
-        </div>
+        {/* Step 2: Extracted Data */}
+        <Step2ExtractedData
+          data={activeData}
+          docType={activeDocType}
+          isCompleted={isStep2Complete}
+          onCopyField={handleCopyNotification}
+          onCopyAll={handleCopyAll}
+        />
+
+        {/* Step 3: Export & Share */}
+        <Step3Export
+          data={activeData}
+          docType={activeDocType}
+          isCompleted={isStep2Complete}
+          onNotification={handleCopyNotification}
+        />
       </div>
 
-      {/* Floating Toast Notification */}
+      {/* Toast Notification */}
       <Toast toast={toast} />
     </div>
   );

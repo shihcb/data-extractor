@@ -27,16 +27,16 @@ export default function CopyableRow({ label, value, highlight = false, onCopy })
   return (
     <div
       onClick={handleCopy}
-      className={`group cursor-pointer reference-inset p-4 transition-all duration-150 hover:border-slate-400 flex items-center justify-between gap-4 ${
-        highlight ? 'ring-2 ring-emerald-500/30 bg-emerald-50/20' : ''
+      className={`group cursor-pointer saas-field-row ${
+        highlight ? 'highlighted' : ''
       }`}
     >
       <div className="min-w-0 flex-1">
-        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
+        <div className="text-xs font-bold text-[#64748b] uppercase tracking-wider mb-1">
           {label}
         </div>
-        <div className={`font-mono text-base font-bold truncate ${
-          highlight ? 'text-emerald-700' : 'text-slate-900'
+        <div className={`font-mono text-lg sm:text-xl font-bold tracking-tight truncate ${
+          highlight ? 'text-emerald-700' : 'text-[#0f172a]'
         }`}>
           {value}
         </div>
@@ -45,17 +45,17 @@ export default function CopyableRow({ label, value, highlight = false, onCopy })
       <button
         type="button"
         onClick={handleCopy}
-        className={`copy-pill-btn shrink-0 ${copied ? 'copied' : ''}`}
+        className={`btn-indigo-copy ${copied ? 'copied' : ''}`}
       >
         {copied ? (
           <>
-            <Check size={13} />
-            <span>copied</span>
+            <Check size={14} />
+            <span>Copied</span>
           </>
         ) : (
           <>
-            <Copy size={13} />
-            <span>copy</span>
+            <Copy size={14} />
+            <span>Copy</span>
           </>
         )}
       </button>

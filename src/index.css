@@ -1,21 +1,21 @@
 @import "tailwindcss";
 
 :root {
-  --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-heading: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
-  --bg-main: #f7f6f2;
+  --bg-page: #f7f8fa;
   --bg-card: #ffffff;
-  --bg-inset: #fafafd;
-  --bg-banner: #fef9e7;
   
-  --border-card: #e6e5e0;
-  --border-inset: #eaeae5;
-  --border-banner: #fde68a;
+  --color-navy: #0f172a;
+  --color-slate: #64748b;
+  --color-indigo: #6366f1;
+  --color-indigo-dark: #4f46e5;
+  --color-indigo-light: #eef2ff;
+  --color-emerald: #059669;
 
-  --text-dark: #0f172a;
-  --text-muted: #64748b;
+  --border-subtle: #e2e8f0;
 }
 
 * {
@@ -25,11 +25,11 @@
 }
 
 body {
-  background-color: var(--bg-main);
-  color: var(--text-dark);
+  background-color: var(--bg-page);
+  color: var(--color-navy);
   font-family: var(--font-body);
   min-height: 100vh;
-  line-height: 1.5;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -40,66 +40,106 @@ button {
   background: none;
 }
 
-/* Reference Screenshot Outer Panel Card */
-.reference-panel {
+/* SaaS 3-Step Card Container */
+.saas-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.04), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.saas-card:hover {
+  box-shadow: 0 10px 30px -4px rgba(15, 23, 42, 0.07), 0 4px 12px -2px rgba(15, 23, 42, 0.03);
+}
+
+/* Inset Field Row */
+.saas-field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
   background: #ffffff;
-  border: 1px solid var(--border-card);
-  border-radius: 24px;
-  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.03);
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  transition: all 0.15s ease;
 }
 
-/* Inset Container Box (matching the tall enter usernames boxes in reference image) */
-.reference-inset {
-  background: #fafafa;
-  border: 1px solid var(--border-inset);
-  border-radius: 16px;
+.saas-field-row:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
 }
 
-/* Black Pill Badge */
-.black-pill-badge {
-  background: #0f172a;
-  color: #ffffff;
-  font-size: 0.72rem;
-  font-weight: 700;
-  padding: 4px 12px;
-  border-radius: 9999px;
+.saas-field-row.highlighted {
+  border-color: #a7f3d0;
+  background: #ecfdf5;
 }
 
-/* Copy Button Pill */
-.copy-pill-btn {
+/* Indigo Copy Button */
+.btn-indigo-copy {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: #0f172a;
-  color: #ffffff;
-  padding: 6px 16px;
+  background: var(--color-indigo-light);
+  border: 1px solid #c7d2fe;
+  color: var(--color-indigo-dark);
+  padding: 7px 16px;
   border-radius: 9999px;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   font-weight: 700;
   transition: all 0.15s ease;
   white-space: nowrap;
 }
 
-.copy-pill-btn:hover {
-  background: #334155;
+.btn-indigo-copy:hover {
+  background: var(--color-indigo-dark);
+  border-color: var(--color-indigo-dark);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
   transform: translateY(-1px);
 }
 
-.copy-pill-btn:active {
+.btn-indigo-copy:active {
   transform: scale(0.96);
 }
 
-.copy-pill-btn.copied {
-  background: #059669;
+.btn-indigo-copy.copied {
+  background: var(--color-emerald);
+  border-color: var(--color-emerald);
   color: #ffffff;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
 }
 
-/* Animation */
+/* Outlined Pill Buttons for Export */
+.btn-outline-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  color: #334155;
+  padding: 10px 20px;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  transition: all 0.15s ease;
+}
+
+.btn-outline-pill:hover {
+  border-color: var(--color-indigo);
+  color: var(--color-indigo-dark);
+  background: var(--color-indigo-light);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+}
+
+/* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.25s ease-out forwards;
+  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
