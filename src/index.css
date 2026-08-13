@@ -63,7 +63,7 @@ button {
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
               box-shadow 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
               border-color 0.2s ease;
-  margin-bottom: 12px; /* Slightly reduced spacing between values */
+  margin-bottom: 8px; /* Spacing between extracted value boxes decreased slightly */
 }
 
 .independent-row-card:hover {
@@ -83,7 +83,7 @@ button {
 
 /* Specific uploader card styling: clearly separates uploader from values */
 .uploader-card {
-  margin-bottom: 36px !important; /* Larger gap separating the uploader box */
+  margin-bottom: 30px !important; /* Kept spacious to separate the upload box */
 }
 
 /* Sleek Icon Only Copy Button */
