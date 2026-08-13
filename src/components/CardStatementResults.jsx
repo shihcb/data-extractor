@@ -5,7 +5,29 @@ import { Copy, Check } from 'lucide-react';
 export default function CardStatementResults({ cardData, onCopyField }) {
   const [copiedTxId, setCopiedTxId] = useState(null);
 
-  if (!cardData) return null;
+  if (!cardData) {
+    return (
+      <div className="reference-panel p-5 flex flex-col h-full">
+        <div className="flex items-center justify-between mb-4 px-1">
+          <div className="flex items-center gap-2">
+            <span className="w-5 h-5 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-bold">
+              2
+            </span>
+            <span className="font-extrabold text-sm text-slate-900">
+              extracted values
+            </span>
+          </div>
+          <span className="black-pill-badge">
+            0 loaded
+          </span>
+        </div>
+
+        <div className="reference-inset p-8 text-center flex-1 min-h-[380px] sm:min-h-[460px] flex flex-col items-center justify-center text-slate-400 font-medium text-xs">
+          no values extracted yet. upload a statement on the left.
+        </div>
+      </div>
+    );
+  }
 
   const handleCopyTx = (tx) => {
     const textToCopy = `${tx.date} - ${tx.description}: ${tx.amount}`;
@@ -18,22 +40,22 @@ export default function CardStatementResults({ cardData, onCopyField }) {
   };
 
   return (
-    <div className="outer-shape p-6 sm:p-8 animate-fade-in space-y-4">
-      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-        <div className="flex items-center gap-2.5">
-          <span className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-bold shadow-sm">
+    <div className="reference-panel p-5 flex flex-col h-full animate-fade-in">
+      <div className="flex items-center justify-between mb-4 px-1">
+        <div className="flex items-center gap-2">
+          <span className="w-5 h-5 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-bold">
             2
           </span>
-          <span className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight">
-            Extracted Values
+          <span className="font-extrabold text-sm text-slate-900">
+            extracted values
           </span>
         </div>
-        <span className="bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-extrabold px-3 py-1 rounded-full">
-          Ready to Copy
+        <span className="black-pill-badge">
+          ready to copy
         </span>
       </div>
 
-      <div className="space-y-4 pt-2">
+      <div className="space-y-3 overflow-y-auto flex-1 pr-0.5">
         <CopyableRow
           label="Total Balance Due"
           value={cardData.statementBalance}
@@ -73,26 +95,26 @@ export default function CardStatementResults({ cardData, onCopyField }) {
 
         {/* Itemized Transactions */}
         {cardData.transactions && cardData.transactions.length > 0 && (
-          <div className="pt-4 space-y-3">
-            <div className="text-xs font-extrabold uppercase tracking-wider text-slate-400 px-1">
+          <div className="pt-2 space-y-2">
+            <div className="text-xs font-bold uppercase tracking-wider text-slate-400 px-1">
               Itemized Transactions
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2">
               {cardData.transactions.map((tx) => {
                 const isCopied = copiedTxId === tx.id;
                 return (
                   <div
                     key={tx.id}
                     onClick={() => handleCopyTx(tx)}
-                    className="cursor-pointer inset-shape p-5 flex items-center justify-between gap-4 text-sm hover:border-slate-400 transition-all"
+                    className="cursor-pointer reference-inset p-3.5 flex items-center justify-between gap-3 text-xs hover:border-slate-400 transition-all"
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="font-extrabold text-slate-900 text-base truncate">
+                      <div className="font-bold text-slate-900 truncate">
                         <span className="font-mono text-slate-400 mr-2">{tx.date}</span>
                         {tx.description}
                       </div>
-                      <div className="font-mono text-slate-700 font-bold text-base mt-0.5">{tx.amount}</div>
+                      <div className="font-mono text-slate-600 font-bold mt-0.5">{tx.amount}</div>
                     </div>
 
                     <button
@@ -100,8 +122,8 @@ export default function CardStatementResults({ cardData, onCopyField }) {
                       onClick={() => handleCopyTx(tx)}
                       className={`copy-pill-btn shrink-0 ${isCopied ? 'copied' : ''}`}
                     >
-                      {isCopied ? <Check size={14} /> : <Copy size={14} />}
-                      <span>{isCopied ? 'Copied' : 'Copy'}</span>
+                      {isCopied ? <Check size={12} /> : <Copy size={12} />}
+                      <span>{isCopied ? 'copied' : 'copy'}</span>
                     </button>
                   </div>
                 );

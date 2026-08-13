@@ -2,27 +2,47 @@ import React from 'react';
 import CopyableRow from './CopyableRow';
 
 export default function PaycheckResults({ paycheckData, onCopyField }) {
-  if (!paycheckData) return null;
-
-  return (
-    <div className="outer-shape p-6 sm:p-8 animate-fade-in space-y-4">
-      {/* Clean Header Row */}
-      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-        <div className="flex items-center gap-2.5">
-          <span className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-bold shadow-sm">
-            2
-          </span>
-          <span className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight">
-            Extracted Values
+  if (!paycheckData) {
+    return (
+      <div className="reference-panel p-5 flex flex-col h-full">
+        <div className="flex items-center justify-between mb-4 px-1">
+          <div className="flex items-center gap-2">
+            <span className="w-5 h-5 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-bold">
+              2
+            </span>
+            <span className="font-extrabold text-sm text-slate-900">
+              extracted values
+            </span>
+          </div>
+          <span className="black-pill-badge">
+            0 loaded
           </span>
         </div>
-        <span className="bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-extrabold px-3 py-1 rounded-full">
-          Ready to Copy
+
+        <div className="reference-inset p-8 text-center flex-1 min-h-[380px] sm:min-h-[460px] flex flex-col items-center justify-center text-slate-400 font-medium text-xs">
+          no values extracted yet. upload a statement on the left.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="reference-panel p-5 flex flex-col h-full animate-fade-in">
+      <div className="flex items-center justify-between mb-4 px-1">
+        <div className="flex items-center gap-2">
+          <span className="w-5 h-5 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-bold">
+            2
+          </span>
+          <span className="font-extrabold text-sm text-slate-900">
+            extracted values
+          </span>
+        </div>
+        <span className="black-pill-badge">
+          ready to copy
         </span>
       </div>
 
-      {/* Field Cards spaced cleanly */}
-      <div className="space-y-4 pt-2">
+      <div className="space-y-3 overflow-y-auto flex-1 pr-0.5">
         <CopyableRow
           label="Net Take-Home Pay"
           value={paycheckData.netPay}

@@ -75,32 +75,35 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col items-center justify-start py-12 px-4 sm:px-8">
-      <div className="w-full max-w-2xl sm:max-w-3xl mx-auto space-y-8">
+    <div className="min-h-screen bg-[#f7f6f2] text-slate-900 py-6 px-4 sm:px-8">
+      <div className="w-full max-w-6xl mx-auto space-y-4">
         
-        {/* Simple Header */}
+        {/* Top Header & Alert Banner (matching top bar in reference screenshot) */}
         <Header />
 
-        {/* Drag & Drop File Upload */}
-        <FileUpload
-          onFileUpload={handleFileUpload}
-          isProcessing={isProcessing}
-          fileName={fileName}
-          onClear={handleClearFile}
-        />
+        {/* 2-Column Side-by-Side Panel Grid (matching multi-panel layout in reference screenshot) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+          {/* Column 1: Upload Statement Panel */}
+          <FileUpload
+            onFileUpload={handleFileUpload}
+            isProcessing={isProcessing}
+            fileName={fileName}
+            onClear={handleClearFile}
+          />
 
-        {/* Extracted Values Cards */}
-        {activeDocType === 'paycheck' ? (
-          <PaycheckResults
-            paycheckData={paycheckData}
-            onCopyField={handleCopyNotification}
-          />
-        ) : (
-          <CardStatementResults
-            cardData={cardData}
-            onCopyField={handleCopyNotification}
-          />
-        )}
+          {/* Column 2: Extracted Values Panel */}
+          {activeDocType === 'paycheck' ? (
+            <PaycheckResults
+              paycheckData={paycheckData}
+              onCopyField={handleCopyNotification}
+            />
+          ) : (
+            <CardStatementResults
+              cardData={cardData}
+              onCopyField={handleCopyNotification}
+            />
+          )}
+        </div>
       </div>
 
       {/* Floating Toast Notification */}
