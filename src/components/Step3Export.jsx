@@ -1,32 +1,11 @@
 import React, { useState } from 'react';
-import { Download, Copy, Code, FileSpreadsheet, Lock, Check } from 'lucide-react';
+import { Download, Copy, Code, FileSpreadsheet, Check } from 'lucide-react';
 
 export default function Step3Export({ data, docType, isCompleted, onNotification }) {
   const [copiedCsv, setCopiedCsv] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
 
-  if (!isCompleted || !data) {
-    return (
-      <div className="saas-card locked p-6 sm:p-9">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <span className="w-8 h-8 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-xs font-black">
-              3
-            </span>
-            <h2 className="text-xl font-bold text-slate-400 tracking-tight">
-              Export & Share
-            </h2>
-          </div>
-          <span className="flex items-center gap-1.5 text-xs font-bold text-slate-400 bg-slate-100 px-3.5 py-1.5 rounded-full border border-slate-200">
-            <Lock size={12} /> Waiting for Upload
-          </span>
-        </div>
-        <div className="p-8 text-center border border-slate-200 rounded-2xl text-slate-400 text-xs font-medium bg-slate-50/50">
-          Export options will be enabled once your statement is parsed.
-        </div>
-      </div>
-    );
-  }
+  if (!isCompleted || !data) return null; // Unclutter page by rendering nothing before upload!
 
   const isPaycheck = docType === 'paycheck';
 
@@ -57,7 +36,7 @@ export default function Step3Export({ data, docType, isCompleted, onNotification
     const csvStr = getCsvString();
     navigator.clipboard.writeText(csvStr);
     setCopiedCsv(true);
-    if (onNotification) onNotification('CSV Data', 'Copied CSV format to clipboard');
+    if (onNotification) onNotification('CSV Data', 'Copied CSV format');
     setTimeout(() => setCopiedCsv(false), 2000);
   };
 
@@ -96,46 +75,34 @@ export default function Step3Export({ data, docType, isCompleted, onNotification
     }
     navigator.clipboard.writeText(textStr);
     setCopiedText(true);
-    if (onNotification) onNotification('Plain Text', 'Copied plain text summary');
+    if (onNotification) onNotification('Plain Text', 'Copied text summary');
     setTimeout(() => setCopiedText(false), 2000);
   };
 
   return (
-    <div className="saas-card active p-6 sm:p-9 animate-fade-in">
+    <div className="premium-card p-6 sm:p-8 animate-fade-in space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
-        <div className="flex items-center gap-3">
-          <span className="w-8 h-8 rounded-full bg-[#0f172a] text-white flex items-center justify-center text-xs font-black shadow-sm">
-            3
-          </span>
-          <div>
-            <h2 className="text-xl font-bold text-[#0f172a] tracking-tight">
-              Export & Share
-            </h2>
-            <p className="text-xs text-[#64748b] mt-0.5">Download structured files or copy directly</p>
-          </div>
-        </div>
-
-        <span className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-extrabold px-3.5 py-1.5 rounded-full">
-          Ready
-        </span>
+      <div className="pb-3 border-b border-slate-100">
+        <h2 className="text-base font-extrabold text-slate-800 tracking-tight">
+          Export options
+        </h2>
       </div>
 
-      {/* Outlined Pill Buttons Grid */}
-      <div className="flex flex-wrap items-center gap-3.5">
+      {/* Buttons */}
+      <div className="flex flex-wrap items-center gap-2">
         <button
           onClick={handleCopyCSV}
           className="btn-outline-pill"
         >
-          {copiedCsv ? <Check size={16} className="text-emerald-600 animate-bounce" /> : <FileSpreadsheet size={16} className="text-indigo-600" />}
-          <span>{copiedCsv ? 'Copied CSV!' : 'Copy CSV Format'}</span>
+          {copiedCsv ? <Check size={14} className="text-emerald-600" /> : <FileSpreadsheet size={14} className="text-indigo-600" />}
+          <span>{copiedCsv ? 'Copied CSV' : 'Copy CSV'}</span>
         </button>
 
         <button
           onClick={handleDownloadCSV}
           className="btn-outline-pill"
         >
-          <Download size={16} className="text-[#4f46e5]" />
+          <Download size={14} className="text-indigo-600" />
           <span>Download CSV</span>
         </button>
 
@@ -143,7 +110,7 @@ export default function Step3Export({ data, docType, isCompleted, onNotification
           onClick={handleDownloadJSON}
           className="btn-outline-pill"
         >
-          <Code size={16} className="text-[#4f46e5]" />
+          <Code size={14} className="text-indigo-600" />
           <span>Download JSON</span>
         </button>
 
@@ -151,8 +118,8 @@ export default function Step3Export({ data, docType, isCompleted, onNotification
           onClick={handleCopyText}
           className="btn-outline-pill"
         >
-          {copiedText ? <Check size={16} className="text-emerald-600 animate-bounce" /> : <Copy size={16} className="text-indigo-600" />}
-          <span>{copiedText ? 'Copied Text!' : 'Copy Plain Text'}</span>
+          {copiedText ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} className="text-indigo-600" />}
+          <span>{copiedText ? 'Copied Text' : 'Copy Text'}</span>
         </button>
       </div>
     </div>

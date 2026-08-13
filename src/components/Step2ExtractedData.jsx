@@ -1,60 +1,33 @@
 import React from 'react';
-import { Copy, Lock } from 'lucide-react';
+import { Copy } from 'lucide-react';
 import CopyableRow from './CopyableRow';
 
 export default function Step2ExtractedData({ data, docType, isCompleted, onCopyField, onCopyAll }) {
-  if (!isCompleted || !data) {
-    return (
-      <div className="saas-card locked p-6 sm:p-9">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <span className="w-8 h-8 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-xs font-black">
-              2
-            </span>
-            <h2 className="text-xl font-bold text-slate-400 tracking-tight">
-              Extracted Data
-            </h2>
-          </div>
-          <span className="flex items-center gap-1.5 text-xs font-bold text-slate-400 bg-slate-100 px-3.5 py-1.5 rounded-full border border-slate-200">
-            <Lock size={12} /> Waiting for Upload
-          </span>
-        </div>
-        <div className="p-8 text-center border border-slate-200 rounded-2xl text-slate-400 text-xs font-medium bg-slate-50/50">
-          Upload a statement in Step 1 to automatically extract parsed fields line-by-line.
-        </div>
-      </div>
-    );
-  }
+  if (!isCompleted || !data) return null; // Unclutter page by rendering nothing before upload!
 
   const isPaycheck = docType === 'paycheck';
 
   return (
-    <div className="saas-card active p-6 sm:p-9 animate-fade-in">
+    <div className="premium-card p-6 sm:p-8 animate-fade-in space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
-        <div className="flex items-center gap-3">
-          <span className="w-8 h-8 rounded-full bg-[#0f172a] text-white flex items-center justify-center text-xs font-black shadow-sm">
-            2
-          </span>
-          <div>
-            <h2 className="text-xl font-bold text-[#0f172a] tracking-tight">
-              Extracted Data
-            </h2>
-            <p className="text-xs text-[#64748b] mt-0.5">Click any row or button to copy individual fields</p>
-          </div>
+      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div>
+          <h2 className="text-base font-extrabold text-slate-800 tracking-tight">
+            Extracted Values
+          </h2>
         </div>
 
         <button
           onClick={onCopyAll}
-          className="btn-indigo-copy"
+          className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100/50 transition-colors"
         >
-          <Copy size={14} />
+          <Copy size={13} />
           <span>Copy All</span>
         </button>
       </div>
 
-      {/* Field Grid Rows */}
-      <div className="space-y-3.5">
+      {/* Rows */}
+      <div className="space-y-2">
         {isPaycheck ? (
           <>
             <CopyableRow
@@ -69,7 +42,7 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
               onCopy={onCopyField}
             />
             <CopyableRow
-              label="Pay Period (Dates Covered)"
+              label="Pay Period"
               value={data.payPeriod}
               onCopy={onCopyField}
             />

@@ -1,24 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  --font-heading: 'Outfit', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-body: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-heading: 'Outfit', 'Inter', sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
-  /* Premium Warm minimal palette */
-  --bg-page: #faf9f6;
+  --bg-page: #f8fafc;
   --bg-card: #ffffff;
-  --bg-inset: #fafafd;
   
-  --color-navy: #0f172a;
-  --color-slate-gray: #64748b;
+  --text-main: #0f172a;
+  --text-slate: #64748b;
+  
   --color-indigo: #4f46e5;
-  --color-indigo-hover: #4338ca;
   --color-indigo-light: #f5f3ff;
-  --color-emerald: #059669;
-  --color-emerald-light: #ecfdf5;
-
-  --border-subtle: #e6e5e0;
+  --border-color: #f1f5f9;
+  --border-hover: #e2e8f0;
 }
 
 * {
@@ -29,119 +25,59 @@
 
 body {
   background-color: var(--bg-page);
-  color: var(--color-navy);
+  color: var(--text-main);
   font-family: var(--font-body);
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
   -webkit-font-smoothing: antialiased;
 }
 
-button {
-  cursor: pointer;
-  font-family: inherit;
-  border: none;
-  background: none;
-}
-
-/* Perfect Centering Wrapper */
+/* Centered Layout Wrapper */
 .app-container {
   width: 100%;
-  max-w: 780px;
+  max-width: 680px;
   margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+  padding: 0 16px;
 }
 
-/* Floating Card appearance with soft deep shadow */
-.saas-card {
+/* Modern Card Container */
+.premium-card {
   background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: 24px;
-  box-shadow: 
-    0 10px 30px -10px rgba(9, 13, 22, 0.05),
-    0 1px 3px rgba(9, 13, 22, 0.02);
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), 
-              box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
-              border-color 0.2s ease,
-              opacity 0.3s ease;
-}
-
-.saas-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 
-    0 20px 40px -15px rgba(9, 13, 22, 0.1),
-    0 4px 10px -2px rgba(9, 13, 22, 0.02);
-}
-
-.saas-card.locked {
-  opacity: 0.4;
-  pointer-events: none;
-  transform: scale(0.985);
-  box-shadow: none;
-  background: rgba(255, 255, 255, 0.5);
-}
-
-/* Floating Field Row */
-.saas-field-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 18px 24px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-color);
   border-radius: 20px;
-  box-shadow: 
-    0 4px 12px -2px rgba(9, 13, 22, 0.02),
-    0 1px 2px rgba(9, 13, 22, 0.01);
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
-              box-shadow 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
-              border-color 0.2s ease;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.02);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.saas-field-row:hover {
-  border-color: #cbd5e1;
-  transform: translateY(-2px);
-  box-shadow: 
-    0 10px 20px -8px rgba(9, 13, 22, 0.06),
-    0 2px 4px -1px rgba(9, 13, 22, 0.02);
+.premium-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 20px 25px -5px rgba(0, 0, 0, 0.05);
 }
 
-.saas-field-row.highlighted {
-  border-color: #a7f3d0;
-  background: var(--color-emerald-light);
-}
-
-.saas-field-row.highlighted:hover {
-  border-color: #34d399;
-}
-
-/* Copy Pill button */
-.copy-pill-btn {
+/* Sleek Icon Only Copy Button */
+.icon-copy-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  background: #0f172a;
-  color: #ffffff;
-  padding: 8px 18px;
-  border-radius: 9999px;
-  font-size: 0.8rem;
-  font-weight: 700;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
   transition: all 0.2s ease;
-  white-space: nowrap;
 }
 
-.copy-pill-btn:hover {
-  background: #334155;
-  transform: scale(1.04);
+.icon-copy-btn:hover {
+  background: var(--color-indigo-light);
+  border-color: #c7d2fe;
+  color: var(--color-indigo);
+  transform: scale(1.05);
 }
 
-.copy-pill-btn.copied {
-  background: #059669;
+.icon-copy-btn.copied {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #059669;
 }
 
 /* Outlined Pill Buttons */
@@ -150,34 +86,28 @@ button {
   align-items: center;
   gap: 8px;
   background: #ffffff;
-  border: 1.5px solid #d1d5db;
-  color: #1f2937;
-  padding: 10px 22px;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  padding: 8px 18px;
   border-radius: 9999px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  box-shadow: 0 2px 4px rgba(9, 13, 22, 0.02);
-  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-outline-pill:hover {
   border-color: var(--color-indigo);
   color: var(--color-indigo);
   background: var(--color-indigo-light);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 16px -4px rgba(79, 70, 229, 0.2);
+  transform: translateY(-1px);
 }
 
-/* Animated Stepper Progress Transition */
-.step-reveal {
-  opacity: 0;
-  transform: translateY(12px);
-  animation: stepRevealAnim 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+/* Fade In Animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes stepRevealAnim {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.animate-fade-in {
+  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

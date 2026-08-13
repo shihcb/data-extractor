@@ -21,7 +21,6 @@ export default function App() {
   const [toast, setToast] = useState(null);
 
   const isStep2Complete = Boolean(paycheckData || cardData);
-  const currentStep = isProcessing ? 1 : isStep2Complete ? 3 : 1;
 
   const handleCopyNotification = (label, value) => {
     setToast({ label, value });
@@ -95,14 +94,14 @@ export default function App() {
   const activeData = activeDocType === 'paycheck' ? paycheckData : cardData;
 
   return (
-    <div className="min-h-screen bg-[#faf9f6] text-[#0f172a] py-12 px-4 sm:px-8 w-full flex flex-col items-center justify-start">
-      {/* Centered App Container */}
+    <div className="min-h-screen bg-[#f8fafc] py-12 px-4 sm:px-6 w-full flex flex-col items-center justify-start">
+      {/* Center Layout Container */}
       <div className="app-container space-y-6">
         
-        {/* Header */}
-        <Header currentStep={currentStep} totalSteps={3} />
+        {/* Simple Header */}
+        <Header />
 
-        {/* Step 1: Upload Statement */}
+        {/* Upload Zone */}
         <Step1Upload
           onFileUpload={handleFileUpload}
           isProcessing={isProcessing}
@@ -110,26 +109,30 @@ export default function App() {
           onClear={handleClearFile}
         />
 
-        {/* Step 2: Extracted Data (with smooth step-reveal animations) */}
-        <div className={isStep2Complete ? "step-reveal" : ""}>
-          <Step2ExtractedData
-            data={activeData}
-            docType={activeDocType}
-            isCompleted={isStep2Complete}
-            onCopyField={handleCopyNotification}
-            onCopyAll={handleCopyAll}
-          />
-        </div>
+        {/* Extracted Data Rows (only show after upload) */}
+        {isStep2Complete && (
+          <div className="step-reveal">
+            <Step2ExtractedData
+              data={activeData}
+              docType={activeDocType}
+              isCompleted={isStep2Complete}
+              onCopyField={handleCopyNotification}
+              onCopyAll={handleCopyAll}
+            />
+          </div>
+        )}
 
-        {/* Step 3: Export & Share (with smooth step-reveal animations) */}
-        <div className={isStep2Complete ? "step-reveal" : ""}>
-          <Step3Export
-            data={activeData}
-            docType={activeDocType}
-            isCompleted={isStep2Complete}
-            onNotification={handleCopyNotification}
-          />
-        </div>
+        {/* Export Options (only show after upload) */}
+        {isStep2Complete && (
+          <div className="step-reveal">
+            <Step3Export
+              data={activeData}
+              docType={activeDocType}
+              isCompleted={isStep2Complete}
+              onNotification={handleCopyNotification}
+            />
+          </div>
+        )}
       </div>
 
       {/* Toast Notification */}
