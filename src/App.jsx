@@ -9,7 +9,6 @@ import { extractPaycheckData } from './utils/paycheckExtractor';
 import { extractCardStatementData } from './utils/cardStatementExtractor';
 
 export default function App() {
-  // Load initial states from localStorage if available
   const [activeDocType, setActiveDocType] = useState(() => {
     return localStorage.getItem('extrkt_doc_type') || 'paycheck';
   });
@@ -33,7 +32,6 @@ export default function App() {
 
   const isStep2Complete = Boolean(paycheckData || cardData);
 
-  // Sync state changes with localStorage
   useEffect(() => {
     localStorage.setItem('extrkt_doc_type', activeDocType);
   }, [activeDocType]);
@@ -133,11 +131,9 @@ export default function App() {
   const activeData = activeDocType === 'paycheck' ? paycheckData : cardData;
 
   return (
-    <div className={`min-h-screen bg-[#faf9f6] text-[#0f172a] px-4 sm:px-6 w-full flex flex-col items-center transition-all duration-300 ${
-      isStep2Complete ? 'justify-start py-12' : 'justify-center'
-    }`}>
+    <div className="min-h-screen bg-[#faf9f6] text-[#0f172a] px-4 sm:px-6 w-full flex flex-col items-center justify-center py-20 sm:py-24">
       {/* Centered App Container */}
-      <div className="app-container">
+      <div className="app-container my-auto">
         
         {/* Upload Button Component */}
         <FileUpload
