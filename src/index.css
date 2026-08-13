@@ -1,21 +1,25 @@
 @import "tailwindcss";
 
 :root {
-  --font-heading: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-heading: 'Outfit', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-body: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
-  --bg-page: #f7f8fa;
+  /* Premium Warm Gray Palette */
+  --bg-page: #faf9f5;
   --bg-card: #ffffff;
+  --bg-inset: #fcfcfb;
   
-  --color-navy: #0f172a;
-  --color-slate: #64748b;
-  --color-indigo: #6366f1;
-  --color-indigo-dark: #4f46e5;
-  --color-indigo-light: #eef2ff;
+  --color-navy: #090d16;
+  --color-slate-gray: #5e6b7e;
+  --color-indigo: #4f46e5;
+  --color-indigo-hover: #3730a3;
+  --color-indigo-light: #f5f3ff;
   --color-emerald: #059669;
+  --color-emerald-light: #ecfdf5;
 
-  --border-subtle: #e2e8f0;
+  --border-subtle: #eae8e1;
+  --border-focus: #c7d2fe;
 }
 
 * {
@@ -31,6 +35,9 @@ body {
   min-height: 100vh;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.03) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.02) 0px, transparent 50%);
 }
 
 button {
@@ -40,64 +47,83 @@ button {
   background: none;
 }
 
-/* SaaS 3-Step Card Container */
+/* Premium Card Design with Custom Depth Shadow */
 .saas-card {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: 20px;
-  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.04), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 24px;
+  box-shadow: 
+    0 1px 2px rgba(9, 13, 22, 0.02),
+    0 8px 24px rgba(9, 13, 22, 0.04);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.saas-card:hover {
-  box-shadow: 0 10px 30px -4px rgba(15, 23, 42, 0.07), 0 4px 12px -2px rgba(15, 23, 42, 0.03);
+.saas-card.active {
+  border-color: #cbd5e1;
+  box-shadow: 
+    0 1px 2px rgba(9, 13, 22, 0.02),
+    0 12px 32px rgba(9, 13, 22, 0.06);
 }
 
-/* Inset Field Row */
+.saas-card.locked {
+  opacity: 0.45;
+  background: rgba(255, 255, 255, 0.6);
+  border-color: #f1f0eb;
+  pointer-events: none;
+}
+
+/* Clean Row Design */
 .saas-field-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 16px 20px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  transition: all 0.15s ease;
+  padding: 18px 24px;
+  background: var(--bg-inset);
+  border: 1.5px solid var(--border-subtle);
+  border-radius: 18px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .saas-field-row:hover {
-  border-color: #cbd5e1;
-  background: #f8fafc;
+  border-color: #94a3b8;
+  background: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(9, 13, 22, 0.03);
 }
 
 .saas-field-row.highlighted {
   border-color: #a7f3d0;
-  background: #ecfdf5;
+  background: var(--color-emerald-light);
 }
 
-/* Indigo Copy Button */
+.saas-field-row.highlighted:hover {
+  border-color: #34d399;
+}
+
+/* Elegant Pill Buttons */
 .btn-indigo-copy {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   background: var(--color-indigo-light);
-  border: 1px solid #c7d2fe;
-  color: var(--color-indigo-dark);
-  padding: 7px 16px;
+  border: 1px solid #ddd6fe;
+  color: var(--color-indigo);
+  padding: 8px 18px;
   border-radius: 9999px;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  transition: all 0.15s ease;
+  letter-spacing: 0.01em;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
 }
 
 .btn-indigo-copy:hover {
-  background: var(--color-indigo-dark);
-  border-color: var(--color-indigo-dark);
+  background: var(--color-indigo);
+  border-color: var(--color-indigo);
   color: #ffffff;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
   transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.25);
 }
 
 .btn-indigo-copy:active {
@@ -108,30 +134,34 @@ button {
   background: var(--color-emerald);
   border-color: var(--color-emerald);
   color: #ffffff;
-  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
 }
 
-/* Outlined Pill Buttons for Export */
+/* Outlined Pill Buttons for Export options */
 .btn-outline-pill {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   background: #ffffff;
-  border: 1.5px solid #cbd5e1;
-  color: #334155;
-  padding: 10px 20px;
+  border: 1.5px solid #d1d5db;
+  color: #1f2937;
+  padding: 10px 22px;
   border-radius: 9999px;
   font-size: 0.85rem;
   font-weight: 700;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-outline-pill:hover {
   border-color: var(--color-indigo);
-  color: var(--color-indigo-dark);
+  color: var(--color-indigo);
   background: var(--color-indigo-light);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.15);
+}
+
+.btn-outline-pill:active {
+  transform: scale(0.97);
 }
 
 /* Animations */

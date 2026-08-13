@@ -1,25 +1,25 @@
 import React from 'react';
-import { Copy, Lock, Sparkles } from 'lucide-react';
+import { Copy, Lock } from 'lucide-react';
 import CopyableRow from './CopyableRow';
 
 export default function Step2ExtractedData({ data, docType, isCompleted, onCopyField, onCopyAll }) {
   if (!isCompleted || !data) {
     return (
-      <div className="saas-card p-6 sm:p-9 opacity-50 transition-opacity">
+      <div className="saas-card locked p-6 sm:p-9">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <span className="w-8 h-8 rounded-full bg-slate-300 text-slate-600 flex items-center justify-center text-xs font-black">
+            <span className="w-8 h-8 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-xs font-black">
               2
             </span>
             <h2 className="text-xl font-bold text-slate-400 tracking-tight">
               Extracted Data
             </h2>
           </div>
-          <span className="flex items-center gap-1 text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full">
+          <span className="flex items-center gap-1.5 text-xs font-bold text-slate-400 bg-slate-100 px-3.5 py-1.5 rounded-full border border-slate-200">
             <Lock size={12} /> Waiting for Upload
           </span>
         </div>
-        <div className="p-8 text-center border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 text-xs font-medium">
+        <div className="p-8 text-center border border-slate-200 rounded-2xl text-slate-400 text-xs font-medium bg-slate-50/50">
           Upload a statement in Step 1 to automatically extract parsed fields line-by-line.
         </div>
       </div>
@@ -29,7 +29,7 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
   const isPaycheck = docType === 'paycheck';
 
   return (
-    <div className="saas-card p-6 sm:p-9 animate-fade-in">
+    <div className="saas-card active p-6 sm:p-9 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
         <div className="flex items-center gap-3">
@@ -54,7 +54,7 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
       </div>
 
       {/* Field Grid Rows */}
-      <div className="space-y-3">
+      <div className="space-y-3.5">
         {isPaycheck ? (
           <>
             <CopyableRow

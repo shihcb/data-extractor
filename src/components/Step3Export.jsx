@@ -7,21 +7,21 @@ export default function Step3Export({ data, docType, isCompleted, onNotification
 
   if (!isCompleted || !data) {
     return (
-      <div className="saas-card p-6 sm:p-9 opacity-50 transition-opacity">
+      <div className="saas-card locked p-6 sm:p-9">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <span className="w-8 h-8 rounded-full bg-slate-300 text-slate-600 flex items-center justify-center text-xs font-black">
+            <span className="w-8 h-8 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-xs font-black">
               3
             </span>
             <h2 className="text-xl font-bold text-slate-400 tracking-tight">
               Export & Share
             </h2>
           </div>
-          <span className="flex items-center gap-1 text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full">
+          <span className="flex items-center gap-1.5 text-xs font-bold text-slate-400 bg-slate-100 px-3.5 py-1.5 rounded-full border border-slate-200">
             <Lock size={12} /> Waiting for Upload
           </span>
         </div>
-        <div className="p-8 text-center border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 text-xs font-medium">
+        <div className="p-8 text-center border border-slate-200 rounded-2xl text-slate-400 text-xs font-medium bg-slate-50/50">
           Export options will be enabled once your statement is parsed.
         </div>
       </div>
@@ -101,7 +101,7 @@ export default function Step3Export({ data, docType, isCompleted, onNotification
   };
 
   return (
-    <div className="saas-card p-6 sm:p-9 animate-fade-in">
+    <div className="saas-card active p-6 sm:p-9 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
         <div className="flex items-center gap-3">
@@ -122,12 +122,12 @@ export default function Step3Export({ data, docType, isCompleted, onNotification
       </div>
 
       {/* Outlined Pill Buttons Grid */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3.5">
         <button
           onClick={handleCopyCSV}
           className="btn-outline-pill"
         >
-          {copiedCsv ? <Check size={16} className="text-emerald-600" /> : <FileSpreadsheet size={16} className="text-indigo-600" />}
+          {copiedCsv ? <Check size={16} className="text-emerald-600 animate-bounce" /> : <FileSpreadsheet size={16} className="text-indigo-600" />}
           <span>{copiedCsv ? 'Copied CSV!' : 'Copy CSV Format'}</span>
         </button>
 
@@ -135,7 +135,7 @@ export default function Step3Export({ data, docType, isCompleted, onNotification
           onClick={handleDownloadCSV}
           className="btn-outline-pill"
         >
-          <Download size={16} className="text-indigo-600" />
+          <Download size={16} className="text-[#4f46e5]" />
           <span>Download CSV</span>
         </button>
 
@@ -143,7 +143,7 @@ export default function Step3Export({ data, docType, isCompleted, onNotification
           onClick={handleDownloadJSON}
           className="btn-outline-pill"
         >
-          <Code size={16} className="text-indigo-600" />
+          <Code size={16} className="text-[#4f46e5]" />
           <span>Download JSON</span>
         </button>
 
@@ -151,7 +151,7 @@ export default function Step3Export({ data, docType, isCompleted, onNotification
           onClick={handleCopyText}
           className="btn-outline-pill"
         >
-          {copiedText ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} className="text-indigo-600" />}
+          {copiedText ? <Check size={16} className="text-emerald-600 animate-bounce" /> : <Copy size={16} className="text-indigo-600" />}
           <span>{copiedText ? 'Copied Text!' : 'Copy Plain Text'}</span>
         </button>
       </div>
