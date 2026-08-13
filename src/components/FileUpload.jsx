@@ -30,18 +30,30 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
   };
 
   return (
-    <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
+    <div className="outer-shape p-5">
+      <div className="flex items-center justify-between mb-3 px-1">
+        <div className="flex items-center gap-2">
+          <span className="w-5 h-5 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-bold">
+            1
+          </span>
+          <span className="font-bold text-sm text-slate-900">upload statement</span>
+        </div>
+        <span className="bg-slate-900 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+          pdf / image
+        </span>
+      </div>
+
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
-        className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
+        className={`inset-shape p-8 text-center cursor-pointer transition-all ${
           isDragOver
-            ? 'border-indigo-500 bg-indigo-50/50'
+            ? 'border-slate-800 bg-slate-100/80 scale-[1.005]'
             : fileName
-            ? 'border-emerald-300 bg-emerald-50/30'
-            : 'border-slate-200 hover:border-slate-300 bg-slate-50/50'
+            ? 'border-emerald-300 bg-emerald-50/40'
+            : 'hover:border-slate-300 hover:bg-slate-100/50'
         }`}
       >
         <input
@@ -53,35 +65,35 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
         />
 
         {isProcessing ? (
-          <div className="flex flex-col items-center py-2 gap-2">
-            <Loader2 size={24} className="text-indigo-600 animate-spin" />
-            <p className="font-semibold text-xs text-slate-700">Extracting Text Details...</p>
+          <div className="flex flex-col items-center py-4 gap-2">
+            <Loader2 size={24} className="text-slate-900 animate-spin" />
+            <p className="font-bold text-xs text-slate-800">extracting statement data...</p>
           </div>
         ) : fileName ? (
-          <div className="flex items-center justify-center gap-3">
+          <div className="flex items-center justify-center gap-3 py-2">
             <CheckCircle size={22} className="text-emerald-600 shrink-0" />
             <div className="text-left min-w-0">
-              <p className="font-bold text-sm text-slate-800 truncate">{fileName}</p>
-              <p className="text-xs text-slate-500">Click to replace file</p>
+              <p className="font-bold text-sm text-slate-900 truncate">{fileName}</p>
+              <p className="text-xs text-slate-500">click to replace file</p>
             </div>
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onClear();
               }}
-              className="text-xs text-slate-400 hover:text-rose-600 p-1 ml-2"
+              className="text-xs text-slate-400 hover:text-rose-600 p-1.5 ml-2"
               title="Clear file"
             >
               <RefreshCw size={14} />
             </button>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-2">
-            <div className="w-11 h-11 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 mb-1">
-              <Upload size={20} />
+          <div className="flex flex-col items-center gap-2 py-4">
+            <div className="w-10 h-10 rounded-full bg-slate-200/80 border border-slate-300/80 flex items-center justify-center text-slate-800 mb-1">
+              <Upload size={18} />
             </div>
             <p className="text-sm font-bold text-slate-800">
-              Drop paycheck or statement PDF / image here, or <span className="text-indigo-600 underline">browse</span>
+              drag & drop statement file here, or <span className="underline">browse</span>
             </p>
             <p className="text-xs text-slate-400">PDF, PNG, JPG, WebP, Text, or CSV</p>
           </div>
