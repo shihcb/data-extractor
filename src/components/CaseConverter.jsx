@@ -51,7 +51,6 @@ export default function CaseConverter() {
       <textarea
         ref={textareaRef}
         className="case-converter-textarea"
-        placeholder="Paste or type text here..."
         value={text}
         onChange={(e) => setText(e.target.value)}
         spellCheck={false}
