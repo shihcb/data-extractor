@@ -126,11 +126,12 @@ export default function App() {
   const handleFileUpload = async (file) => {
     if (!file) return;
 
-    // Reject files that do NOT contain "statement" or "purchase" or "approved" (case-insensitive) - SILENTLY
-    const fileLower = file.name.toLowerCase();
-    const isValidName = fileLower.includes('statement') || fileLower.includes('purchase') || fileLower.includes('approved') || fileLower.includes('email');
-    if (!isValidName) {
-      return;
+    // Enforce file name validation ONLY in paycheck and bank statement views
+    if (activeDocType !== 'transaction') {
+      const fileLower = file.name.toLowerCase();
+      if (!fileLower.includes('statement')) {
+        return;
+      }
     }
 
     setIsProcessing(true);
@@ -283,8 +284,8 @@ export default function App() {
 
   const sliderTransform = 
     activeDocType === 'paycheck' ? 0 : 
-    activeDocType === 'card' ? 94 : // Paycheck button width
-    220; // Paycheck button (94) + Bank Statement button (126) = 220
+    activeDocType === 'card' ? 94 : 
+    220;
 
   return (
     <div className={`min-h-screen bg-[#faf9f6] text-[#0f172a] px-4 sm:px-6 w-full flex flex-col items-center justify-center py-20 sm:py-24 relative`}>
