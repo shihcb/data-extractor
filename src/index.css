@@ -134,7 +134,7 @@ button {
 .modern-tab-switch {
   position: relative;
   display: flex;
-  background: #000000; /* Pure black container background */
+  background: #000000;
   padding: 3px;
   border-radius: 9999px;
   border: 1px solid #27272a;
@@ -148,18 +148,17 @@ button {
   padding: 6px 0;
   font-size: 0.75rem;
   font-weight: 700;
-  color: #ffffff !important; /* Inactive text color is clean white */
+  color: #ffffff !important;
   border-radius: 9999px;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
   white-space: nowrap;
-  /* Removed transitions to prevent text casing flash/flicker glitches */
 }
 
 .modern-tab-btn.active {
-  color: #000000 !important; /* Active text color is black, sitting on top of white slider */
+  color: #000000 !important;
 }
 
 .modern-tab-slider {
@@ -167,9 +166,11 @@ button {
   top: 3px;
   bottom: 3px;
   left: 3px;
-  background: #ffffff; /* Solid White highlight slider pill */
+  background: #ffffff;
   border-radius: 9999px;
-  transition: transform 0.22s cubic-bezier(0.25, 1, 0.5, 1), width 0.2s ease;
+  /* Synchronized transform and width easing & duration parameters perfectly to prevent boundary jitter or choppiness */
+  transition: transform 0.24s cubic-bezier(0.25, 1, 0.5, 1),
+              width 0.24s cubic-bezier(0.25, 1, 0.5, 1);
   z-index: 1;
 }
 
