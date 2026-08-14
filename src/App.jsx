@@ -402,13 +402,19 @@ export default function App() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleConfirmOverride}
-                      className="px-3.5 py-1.5 rounded-lg bg-black text-white text-[10px] font-extrabold uppercase tracking-wider hover:bg-zinc-850 transition-colors cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-colors cursor-pointer"
+                      style={{ backgroundColor: '#000000', color: '#ffffff' }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#27272a'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#000000'}
                     >
                       yes
                     </button>
                     <button
                       onClick={handleCancelOverride}
-                      className="px-3.5 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-700 text-[10px] font-extrabold uppercase tracking-wider hover:bg-slate-50 transition-colors cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-lg border text-slate-700 text-[10px] font-extrabold uppercase tracking-wider transition-colors cursor-pointer"
+                      style={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1' }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
                     >
                       no
                     </button>
