@@ -166,16 +166,16 @@ button {
   animation: popScale 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-/* Modern Tab Switcher */
+/* Modern Tab Switcher — matches page warm off-white theme */
 .modern-tab-switch {
   position: relative;
   display: flex;
-  background: #000000;
+  background: #f1f0ec; /* Slightly deeper than page bg so the pill reads as a surface */
   padding: 3px;
   border-radius: 9999px;
-  border: 1px solid #27272a;
+  border: 1px solid #e6e5e0;
   align-items: center;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
 }
 
 .modern-tab-btn {
@@ -184,7 +184,7 @@ button {
   padding: 6px 0;
   font-size: 0.75rem;
   font-weight: 700;
-  color: #ffffff !important;
+  color: #94a3b8 !important; /* Muted slate for inactive tabs on light bg */
   border-radius: 9999px;
   display: flex;
   align-items: center;
@@ -194,7 +194,7 @@ button {
 }
 
 .modern-tab-btn.active {
-  color: #000000 !important;
+  color: #ffffff !important; /* White text on the dark slider pill */
 }
 
 .modern-tab-slider {
@@ -202,7 +202,7 @@ button {
   top: 3px;
   bottom: 3px;
   left: 3px;
-  background: #ffffff;
+  background: #0f172a; /* Dark navy slider pill — high contrast on warm light bg */
   border-radius: 9999px;
   /* Both transform and width use identical duration + easing to prevent boundary jitter */
   transition: transform 0.16s cubic-bezier(0.25, 1, 0.5, 1),
