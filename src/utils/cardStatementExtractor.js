@@ -10,7 +10,14 @@ export function extractCardStatementData(text) {
   const cleanText = text.replace(/\r/g, '');
   const lines = cleanText.split('\n').map(l => l.trim()).filter(Boolean);
 
-  // Discover American Express statement parsing first
+  // Discover Bank of America statement parsing first
+  const isBoA = cleanText.toLowerCase().includes('bank of america') || cleanText.toLowerCase().includes('bankofamerica');
+  if (isBoA) {
+    const boaData = parseBoAStatement(cleanText, lines);
+    if (boaData) return boaData;
+  }
+
+  // Discover American Express statement parsing
   const isAmex = cleanText.toLowerCase().includes('american express') || cleanText.toLowerCase().includes('amex');
   if (isAmex) {
     const amexData = parseAmexStatement(cleanText, lines);
@@ -69,22 +76,75 @@ export function extractCardStatementData(text) {
   };
 }
 
+function parseBoAStatement(text, lines) {
+  let statementBalance = null;
+  // Match BoA statement balance (e.g. New Balance Total $11.39)
+  const matchTotal = text.match(/New\s*Balance\s*Total\s*[:.-]?\s*\$?([0-9,]+\.[0-9]{2})/i);
+  if (matchTotal) {
+    statementBalance = parseFloat(matchTotal[1].replace(/,/g, ''));
+  } else {
+    // Lookahead line search
+    for (let i = 0; i < lines.length; i++) {
+      if (/New\s*Balance\s*Total/i.test(lines[i])) {
+        const lineMatch = lines[i].match(/\$?([0-9,]+\.[0-9]{2})/);
+        if (lineMatch) {
+          statementBalance = parseFloat(lineMatch[1].replace(/,/g, ''));
+          break;
+        }
+        // Check next lines
+        for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+          const nextMatch = lines[j].match(/\$?([0-9,]+\.[0-9]{2})/);
+          if (nextMatch) {
+            statementBalance = parseFloat(nextMatch[1].replace(/,/g, ''));
+            break;
+          }
+        }
+        if (statementBalance !== null) break;
+      }
+    }
+  }
+
+  const statementPeriod = extractStatementPeriod(text);
+  let startDate = 'N/A';
+  let endDate = 'N/A';
+  if (statementPeriod) {
+    const dates = statementPeriod.split(/\s*(?:-|to|through|–)\s*/);
+    if (dates.length >= 2) {
+      startDate = dates[0].trim();
+      endDate = dates[1].trim();
+      startDate = normalizeDateWithYear(startDate, endDate);
+    }
+  }
+
+  const cardLast4 = extractPatternValue(text, [
+    /(?:account|card|credit\s*card)\s*(?:number|ending|#)?\s*[:.-]?\s*(?:\d{4}[\s-]){3}(\d{4})/i,
+    /ending\s*in\s*(\d{4})/i
+  ]);
+
+  return {
+    bankName: 'Bank of America',
+    cardLast4: cardLast4 ? `•••• ${cardLast4}` : 'N/A',
+    statementPeriod: statementPeriod || 'N/A',
+    startDate: startDate,
+    endDate: endDate,
+    statementBalance: statementBalance ? formatCurrency(statementBalance) : 'N/A',
+    rawText: text
+  };
+}
+
 function parseAmexStatement(text, lines) {
   let statementBalance = null;
-  // Match Amex balance (e.g. New Balance ... $118.55)
   const balanceMatch = text.match(/New\s*Balance\s*(?:\n[^$]*)?\s*\$?([0-9,]+\.[0-9]{2})/i);
   if (balanceMatch) {
     statementBalance = parseFloat(balanceMatch[1].replace(/,/g, ''));
   }
 
-  // Match Amex Closing Date: "Closing Date 07/23/26"
   let endDate = 'N/A';
   const endMatch = text.match(/Closing\s*Date\s*[:.-]?\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
   if (endMatch) {
     endDate = endMatch[1].trim();
   }
 
-  // Calculate start date (30 days before end date) strictly for Amex
   let startDate = 'N/A';
   let statementPeriod = 'N/A';
   if (endDate !== 'N/A') {
@@ -109,7 +169,6 @@ function parseAmexStatement(text, lines) {
     }
   }
 
-  // Account Ending 7-31006
   const last5Match = text.match(/Account\s*Ending\s*[:.-]?\s*([\d-]+)/i);
   const cardLast5 = last5Match ? last5Match[1].replace('-', '').slice(-5) : 'N/A';
 
