@@ -39,9 +39,12 @@ export default function CopyableRow({ label, value, highlight = false, onCopy, f
         <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-0.5">
           {label}
         </div>
-        <div className={`font-mono text-sm sm:text-base font-bold truncate ${
-          highlight && !isPlaceholder ? 'text-emerald-700' : 'text-slate-800'
-        }`}>
+        <div 
+          key={displayValue}
+          className={`font-mono text-sm sm:text-base font-bold truncate animate-value-change ${
+            highlight && !isPlaceholder ? 'text-emerald-700' : 'text-slate-800'
+          }`}
+        >
           {displayValue}
         </div>
       </div>
@@ -51,7 +54,7 @@ export default function CopyableRow({ label, value, highlight = false, onCopy, f
         <button
           type="button"
           onClick={handleCopy}
-          className={`icon-copy-btn shrink-0 ${copied ? 'copied' : ''}`}
+          className={`icon-copy-btn shrink-0 animate-value-change ${copied ? 'copied' : ''}`}
           title={`Copy ${label}`}
         >
           {copied ? <Check size={14} /> : <Copy size={14} />}
