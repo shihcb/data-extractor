@@ -344,7 +344,7 @@ function extractStatementPeriod(text) {
 function extractAmountByKeywords(text, regexes) {
   // First attempt: match on the same line / nearby space
   for (const regex of regexes) {
-    const match = text.match(new RegExp(regex.source + `(?:\\s+as\\s+of\\s+[^\\n$]+)?\\s*[:.-]?\\s*\\$?([0-9,]+\\.[0-9]{2})`, 'i'));
+    const match = text.match(new RegExp(regex.source + `(?:\\s+as\\s+of\\s+[^\\n$]{1,40})?\\s*[:.-]?\\s*\\$?([0-9,]+\\.[0-9]{2})`, 'i'));
     if (match && match[1]) {
       const val = parseFloat(match[1].replace(/,/g, ''));
       if (!isNaN(val)) return val;
