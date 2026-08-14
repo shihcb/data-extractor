@@ -242,7 +242,7 @@ export default function FileUpload({
               <button
                 type="button"
                 onClick={handleClearWithFade}
-                className="text-[10px] font-extrabold text-red-500 hover:text-red-700 transition-colors uppercase tracking-wider cursor-pointer whitespace-nowrap"
+                className="text-[10px] font-extrabold text-red-500 uppercase tracking-wider cursor-pointer whitespace-nowrap"
               >
                 Clear
               </button>

@@ -520,12 +520,36 @@ button {
 .archive-panel .icon-clear-btn {
   border: none !important;
   background: transparent !important;
-  transition: opacity 0.2s ease;
+  outline: none !important;
+  box-shadow: none !important;
 }
 .archive-panel .icon-copy-btn:hover,
-.archive-panel .icon-clear-btn:hover {
-  opacity: 0.6;
+.archive-panel .icon-clear-btn:hover,
+.archive-panel .icon-copy-btn:focus,
+.archive-panel .icon-clear-btn:focus,
+.archive-panel .icon-copy-btn:active,
+.archive-panel .icon-clear-btn:active,
+.archive-panel .icon-copy-btn:focus-visible,
+.archive-panel .icon-clear-btn:focus-visible {
   background: transparent !important;
   border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
   color: inherit !important;
+}
+
+/* Remove highlight from the Clear button in archive header */
+.archive-panel button {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.archive-panel button:hover,
+.archive-panel button:focus,
+.archive-panel button:active,
+.archive-panel button:focus-visible {
+  background: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
