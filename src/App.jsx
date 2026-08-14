@@ -263,7 +263,7 @@ export default function App() {
     }
   };
 
-  // Global paste listener (skip for case converter — its textarea handles its own input)
+  // Global paste and drag-drop listener (skip for case converter)
   useEffect(() => {
     const handleGlobalPaste = (e) => {
       if (isProcessing || activeDocType === 'case') return;
@@ -277,9 +277,30 @@ export default function App() {
         }
       }
     };
+
+    const handleGlobalDragOver = (e) => {
+      e.preventDefault();
+    };
+
+    const handleGlobalDrop = (e) => {
+      e.preventDefault();
+      if (isProcessing || activeDocType === 'case') return;
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0) {
+        handleFileUpload(files[0]);
+      }
+    };
+
     window.addEventListener('paste', handleGlobalPaste);
-    return () => window.removeEventListener('paste', handleGlobalPaste);
-  }, [activeDocType, isProcessing, paycheckFileName, cardFileName, transactionFileName]);
+    window.addEventListener('dragover', handleGlobalDragOver);
+    window.addEventListener('drop', handleGlobalDrop);
+
+    return () => {
+      window.removeEventListener('paste', handleGlobalPaste);
+      window.removeEventListener('dragover', handleGlobalDragOver);
+      window.removeEventListener('drop', handleGlobalDrop);
+    };
+  }, [activeDocType, isProcessing, paycheckFileName, cardFileName, transactionFileName, handleFileUpload, handlePasteText]);
 
   // Determine active view states
   const activeFileName = 
