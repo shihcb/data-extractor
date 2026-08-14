@@ -200,7 +200,7 @@ export default function FileUpload({
             Archived Documents ({archiveItems.length})
           </span>
           {archiveItems.length > 0 && (
-            <div className="w-[64px] flex justify-center shrink-0 mr-1">
+            <div className="w-[54px] flex justify-center shrink-0 mr-1">
               <button
                 type="button"
                 onClick={onClearAllArchives}
@@ -212,7 +212,7 @@ export default function FileUpload({
           )}
         </div>
 
-        <div className="archive-list pr-1 flex flex-col gap-0.5">
+        <div className="archive-list pr-1 flex flex-col gap-0">
           {archiveItems.length === 0 ? (
             <div className="text-slate-400 text-xs py-4 text-center font-medium italic">
               No archived documents yet.
@@ -221,7 +221,7 @@ export default function FileUpload({
             archiveItems.map((item) => (
               <div 
                 key={item.id} 
-                className="flex items-center justify-between py-1"
+                className="flex items-center justify-between py-0.5"
               >
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
                   <FileText size={14} className="text-slate-400 shrink-0" />
@@ -230,23 +230,23 @@ export default function FileUpload({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0 ml-3">
+                <div className="flex items-center gap-1.5 shrink-0 ml-3">
                   <button
                     type="button"
                     onClick={() => onLoadArchive(item)}
-                    className="icon-copy-btn cursor-pointer w-7 h-7"
+                    className="icon-copy-btn cursor-pointer w-6 h-6"
                     title="Load document"
                   >
-                    <Upload size={12} />
+                    <Upload size={10} />
                   </button>
 
                   <button
                     type="button"
                     onClick={() => onDeleteArchive(item.id)}
-                    className="icon-clear-btn cursor-pointer w-7 h-7"
+                    className="icon-clear-btn cursor-pointer w-6 h-6"
                     title="Delete from archive"
                   >
-                    <Trash2 size={12} />
+                    <Trash2 size={10} />
                   </button>
                 </div>
               </div>
