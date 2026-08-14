@@ -174,13 +174,18 @@ export default function App() {
     }
   };
 
-  // Add global window paste listener to catch files copied in Finder/Explorer (Cmd+V / Ctrl+V)
+  // Add global window paste listener to catch files or text copied from clipboard (Cmd+V)
   useEffect(() => {
     const handleGlobalPaste = (e) => {
       if (isProcessing) return;
       const files = e.clipboardData?.files;
       if (files && files.length > 0) {
         handleFileUpload(files[0]);
+      } else {
+        const text = e.clipboardData?.getData('text');
+        if (text) {
+          handlePasteText(text);
+        }
       }
     };
     window.addEventListener('paste', handleGlobalPaste);
@@ -233,7 +238,6 @@ export default function App() {
         {/* Upload Card Box Component */}
         <FileUpload
           onFileUpload={handleFileUpload}
-          onPasteText={handlePasteText}
           isProcessing={isProcessing}
           fileName={activeFileName}
           onClear={handleClearFile}

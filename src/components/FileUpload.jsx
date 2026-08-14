@@ -1,62 +1,11 @@
 import React, { useRef } from 'react';
-import { Upload, Loader2, FileText, RefreshCw, Clipboard } from 'lucide-react';
+import { Upload, Loader2, FileText, RefreshCw } from 'lucide-react';
 
-export default function FileUpload({ onFileUpload, onPasteText, isProcessing, fileName, onClear }) {
+export default function FileUpload({ onFileUpload, isProcessing, fileName, onClear }) {
   const fileInputRef = useRef(null);
 
   const handleClick = () => {
     fileInputRef.current?.click();
-  };
-
-  const handlePasteClick = async (e) => {
-    e.stopPropagation();
-    try {
-      const clipboardItems = await navigator.clipboard.read();
-      
-      for (const item of clipboardItems) {
-        // Detect if it contains file paths copied from OS Finder (text/uri-list)
-        if (item.types.includes('text/uri-list')) {
-          alert("To paste a file copied from Finder/Explorer, please press Cmd+V (or Ctrl+V) directly on the page.");
-          return;
-        }
-
-        // Look for PDF file in clipboard
-        const pdfType = item.types.find(t => t === 'application/pdf');
-        if (pdfType) {
-          const blob = await item.getType('application/pdf');
-          const file = new File([blob], "Pasted statement.pdf", { type: 'application/pdf' });
-          onFileUpload(file);
-          return;
-        }
-
-        // Look for Image file in clipboard
-        const imgType = item.types.find(t => t.startsWith('image/'));
-        if (imgType) {
-          const blob = await item.getType(imgType);
-          const ext = imgType.split('/')[1] || 'png';
-          const file = new File([blob], `Pasted statement.${ext}`, { type: imgType });
-          onFileUpload(file);
-          return;
-        }
-      }
-
-      // Fallback to text copy-paste
-      const text = await navigator.clipboard.readText();
-      if (text && onPasteText) {
-        onPasteText(text);
-      }
-    } catch (err) {
-      console.warn('Could not read clipboard items:', err);
-      // Fallback direct readText
-      try {
-        const text = await navigator.clipboard.readText();
-        if (text && onPasteText) {
-          onPasteText(text);
-        }
-      } catch (textErr) {
-        console.warn('Text fallback failed:', textErr);
-      }
-    }
   };
 
   // If processing, show loading indicator inside a horizontal card matching value box style
@@ -103,6 +52,7 @@ export default function FileUpload({ onFileUpload, onPasteText, isProcessing, fi
   }
 
   // When no file is uploaded, keep the SAME horizontal card appearance:
+  // "UPLOAD STATEMENT" with the plus symbol next to it
   return (
     <div
       onClick={handleClick}
@@ -128,17 +78,8 @@ export default function FileUpload({ onFileUpload, onPasteText, isProcessing, fi
         </span>
       </div>
 
-      {/* Action buttons: paste & plus symbol with identical box outline stylings */}
+      {/* Action buttons: plus symbol box only (Paste button removed) */}
       <div className="flex items-center gap-1.5 shrink-0">
-        <button
-          type="button"
-          onClick={handlePasteClick}
-          className="w-[34px] h-[34px] rounded-lg bg-slate-50 border border-slate-300 flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-indigo-50/40 hover:border-indigo-200 transition-colors focus:outline-hidden"
-          title="Paste statement file from clipboard"
-        >
-          <Clipboard size={15} />
-        </button>
-
         <div className="w-[34px] h-[34px] rounded-lg bg-slate-50 border border-slate-300 flex items-center justify-center text-slate-400 text-lg font-bold leading-none select-none">
           +
         </div>
