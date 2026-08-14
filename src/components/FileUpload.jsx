@@ -61,6 +61,12 @@ export default function FileUpload({
     if (e.target.files && e.target.files[0]) {
       onFileUpload(e.target.files[0]);
       e.target.value = '';
+      
+      // Blur input and active element to release focused states and clear stuck hover styles
+      e.target.blur();
+      if (document.activeElement) {
+        document.activeElement.blur();
+      }
     }
   };
 
