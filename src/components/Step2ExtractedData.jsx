@@ -17,6 +17,12 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
 
   const isPaycheck = docType === 'paycheck';
 
+  // Format date range separator hyphens (-) to em-dashes (—)
+  const formatRangeSeparator = (str) => {
+    if (!str) return '';
+    return str.replace(/\s*(?:-|to|through|–)\s*/g, ' — ');
+  };
+
   return (
     <div className="animate-fade-in">
       {isPaycheck ? (
@@ -34,7 +40,7 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
           />
           <CopyableRow
             label="PAY PERIOD"
-            value={displayData.payPeriod}
+            value={formatRangeSeparator(displayData.payPeriod)}
             onCopy={onCopyField}
           />
           <CopyableRow
@@ -73,10 +79,9 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
           />
           <CopyableRow
             label="STATEMENT PERIOD"
-            value={displayData.statementPeriod}
+            value={formatRangeSeparator(displayData.statementPeriod)}
             onCopy={onCopyField}
           />
-          {/* Check Number box has been removed from Bank Statements view */}
           <CopyableRow
             label="Pay Date"
             value="Not Found"
