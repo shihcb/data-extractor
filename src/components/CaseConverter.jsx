@@ -1,5 +1,4 @@
 import React, { useState, useRef } from 'react';
-import { Copy, Check } from 'lucide-react';
 
 export default function CaseConverter() {
   const [text, setText] = useState('');
@@ -47,7 +46,6 @@ export default function CaseConverter() {
           onClick={() => handleConvert('lower')}
           disabled={!text.trim()}
         >
-          {copiedLower ? <Check size={13} /> : null}
           lowercase
         </button>
         <button
@@ -55,7 +53,6 @@ export default function CaseConverter() {
           onClick={() => handleConvert('upper')}
           disabled={!text.trim()}
         >
-          {copiedUpper ? <Check size={13} /> : null}
           UPPERCASE
         </button>
       </div>

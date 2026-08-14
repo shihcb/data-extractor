@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* Scale the entire tab switcher pill down on mobile so it fits without clipping */
+@media (max-width: 640px) {
+  .modern-tab-switch {
+    transform: scale(0.78);
+    transform-origin: center bottom;
+  }
+}
+
 :root {
   --font-heading: 'Outfit', 'Inter', sans-serif;
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -230,7 +238,6 @@ button {
 .case-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
   padding: 9px 22px;
   border-radius: 9999px;
   font-size: 0.78rem;
