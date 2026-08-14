@@ -15,19 +15,22 @@ export default function FileUpload({
     fileInputRef.current?.click();
   };
 
-  // If processing, show loading indicator
+  // If processing, show loading indicator left-aligned with "extracting data.."
   if (isProcessing) {
     return (
-      <div className="independent-row-card justify-center py-5">
-        <Loader2 size={18} className="text-indigo-600 animate-spin" />
-        <span className="font-bold text-xs text-slate-700 ml-2">Extracting statement data...</span>
+      <div className="independent-row-card uploader-card justify-start py-[15px]">
+        <div className="flex items-center gap-2.5">
+          <Loader2 size={16} className="text-indigo-600 animate-spin shrink-0" />
+          <span className="font-extrabold text-xs text-slate-800 tracking-wider">
+            extracting data..
+          </span>
+        </div>
       </div>
     );
   }
 
   // If a file is uploaded, show the horizontal card style with file name
   // The entire box is clickable to select a new file and override the current one directly!
-  // Removed animate-fade-in class to completely stop text flickering on clicks/interactions
   if (fileName) {
     return (
       <div
@@ -73,7 +76,7 @@ export default function FileUpload({
     );
   }
 
-  // When no file is uploaded, show empty state (removed animate-fade-in to prevent flickering)
+  // When no file is uploaded, show empty state
   return (
     <div
       onClick={handleClick}

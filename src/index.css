@@ -180,30 +180,13 @@ button {
   z-index: 1;
 }
 
-/* Flat collapsing entry/exit wrapper with custom cross-fade timings */
+/* Flat collapsing entry/exit wrapper (opacity fade transitions removed completely) */
 .results-wrapper {
-  opacity: 0;
   max-height: 0;
   overflow: hidden;
-  transition: opacity 0.18s ease-out,
-              max-height 0.18s ease-out;
+  transition: max-height 0.2s ease-out;
 }
 
 .results-wrapper.visible {
-  opacity: 1;
   max-height: 800px;
-}
-
-/* Simple fade-in without translation shift */
-@keyframes fadeInSimple {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.animate-fade-in {
-  animation: fadeInSimple 0.18s ease-out forwards;
 }

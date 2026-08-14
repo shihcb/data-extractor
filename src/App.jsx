@@ -59,7 +59,6 @@ export default function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isInitialAppLoad, setIsInitialAppLoad] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
 
   // Sync state changes with localStorage
   useEffect(() => {
@@ -264,18 +263,6 @@ export default function App() {
     }
   };
 
-  // Delayed tab switcher function to trigger seamless fade-out / fade-in transitions
-  const handleTabSwitch = (newType) => {
-    if (newType === activeDocType || isTransitioning) return;
-    setIsTransitioning(true);
-    
-    // 180ms delay matches CSS results-wrapper fade out duration exactly
-    setTimeout(() => {
-      setActiveDocType(newType);
-      setIsTransitioning(false);
-    }, 180);
-  };
-
   // Add global window paste listener to catch files or text copied from clipboard (Cmd+V)
   useEffect(() => {
     const handleGlobalPaste = (e) => {
@@ -306,7 +293,6 @@ export default function App() {
     transactionData;
 
   const isStep2Complete = Boolean(activeData);
-  const isResultsVisible = isStep2Complete && !isTransitioning;
 
   // Calculate sliding dimensions for switcher animation
   const sliderWidth = 
@@ -333,21 +319,21 @@ export default function App() {
             }}
           />
           <button
-            onClick={() => handleTabSwitch('paycheck')}
+            onClick={() => setActiveDocType('paycheck')}
             className={`modern-tab-btn ${activeDocType === 'paycheck' ? 'active' : ''}`}
             style={{ width: '94px' }}
           >
             paychecks
           </button>
           <button
-            onClick={() => handleTabSwitch('card')}
+            onClick={() => setActiveDocType('card')}
             className={`modern-tab-btn ${activeDocType === 'card' ? 'active' : ''}`}
             style={{ width: '126px' }}
           >
             bank statements
           </button>
           <button
-            onClick={() => handleTabSwitch('transaction')}
+            onClick={() => setActiveDocType('transaction')}
             className={`modern-tab-btn ${activeDocType === 'transaction' ? 'active' : ''}`}
             style={{ width: '100px' }}
           >
@@ -372,7 +358,7 @@ export default function App() {
         {/* Extracted Value Cards with Dynamic Fade Out/In Key */}
         <div 
           key={`results-${activeDocType}`} 
-          className={`results-wrapper ${isResultsVisible ? 'visible' : ''}`}
+          className={`results-wrapper ${isStep2Complete ? 'visible' : ''}`}
         >
           <Step2ExtractedData
             data={activeData}
