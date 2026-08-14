@@ -30,23 +30,39 @@ export default function FileUpload({
   });
   const [isClearingAll, setIsClearingAll] = React.useState(false);
   const [deletingId, setDeletingId] = React.useState(null);
-  const [newItemId, setNewItemId] = React.useState(null);
-  const prevArchiveIdsRef = React.useRef(archiveItems.map(i => i.id));
+  // pendingIds: IDs rendered at opacity-0 awaiting fade-in transition
+  const [pendingIds, setPendingIds] = React.useState(() => new Set());
+  const prevIdsRef = React.useRef(new Set(archiveItems.map(i => i.id)));
 
   React.useEffect(() => {
     localStorage.setItem('extrkt_archive_open', isArchiveOpen);
   }, [isArchiveOpen]);
 
-  // Detect newly added archive item and trigger fade-in
+  // Fade-in: detect new items, hold them at opacity-0 for one paint,
+  // then release so the CSS transition animates them in naturally.
   React.useEffect(() => {
-    const prevIds = prevArchiveIdsRef.current;
     const currentIds = archiveItems.map(i => i.id);
-    const added = currentIds.find(id => !prevIds.includes(id));
-    if (added) {
-      setNewItemId(added);
-      setTimeout(() => setNewItemId(null), 400);
-    }
-    prevArchiveIdsRef.current = currentIds;
+    const newIds = currentIds.filter(id => !prevIdsRef.current.has(id));
+    prevIdsRef.current = new Set(currentIds);
+    if (newIds.length === 0) return;
+
+    // Add to pending immediately (renders at opacity-0 / translateY)
+    setPendingIds(prev => {
+      const next = new Set(prev);
+      newIds.forEach(id => next.add(id));
+      return next;
+    });
+    // Double-rAF ensures the browser paints the opacity-0 frame
+    // before the transition starts
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setPendingIds(prev => {
+          const next = new Set(prev);
+          newIds.forEach(id => next.delete(id));
+          return next;
+        });
+      });
+    });
   }, [archiveItems]);
 
   const handleDeleteWithFade = (id) => {
@@ -54,7 +70,7 @@ export default function FileUpload({
     setTimeout(() => {
       onDeleteArchive(id);
       setDeletingId(null);
-    }, 300);
+    }, 480);
   };
 
   const handleClearWithFade = () => {
@@ -62,7 +78,7 @@ export default function FileUpload({
     setTimeout(() => {
       onClearAllArchives();
       setIsClearingAll(false);
-    }, 350);
+    }, 480);
   };
 
   // Sync state changes
@@ -252,19 +268,22 @@ export default function FileUpload({
 
         <div
           className="archive-list pr-1 flex flex-col gap-0"
-          style={{ opacity: isClearingAll ? 0 : 1, transition: 'opacity 0.3s ease' }}
+          style={{ opacity: isClearingAll ? 0 : 1, transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1)' }}
         >
           {archiveItems.length > 0 && (
-            archiveItems.map((item) => (
+            archiveItems.map((item) => {
+              const isPending = pendingIds.has(item.id);
+              const isDeleting = deletingId === item.id;
+              return (
               <div
                 key={item.id}
                 className="flex items-center justify-between py-0.5"
                 style={{
-                  opacity: deletingId === item.id ? 0 : newItemId === item.id ? 0 : 1,
-                  transform: newItemId === item.id ? 'translateY(-4px)' : 'translateY(0)',
-                  transition: deletingId === item.id
-                    ? 'opacity 0.25s ease'
-                    : 'opacity 0.35s ease, transform 0.35s ease',
+                  opacity: isDeleting || isPending ? 0 : 1,
+                  transform: isPending ? 'translateY(8px)' : 'translateY(0)',
+                  transition: isDeleting
+                    ? 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1)'
+                    : 'opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
                 }}
               >
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -294,7 +313,8 @@ export default function FileUpload({
                   </button>
                 </div>
               </div>
-            ))
+            );
+            })
           )}
         </div>
       </div>
