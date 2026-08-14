@@ -148,13 +148,6 @@ export default function App() {
   const handleFileUpload = async (file) => {
     if (!file) return;
 
-    if (activeDocType !== 'transaction') {
-      const fileLower = file.name.toLowerCase();
-      if (!fileLower.includes('statement')) {
-        console.log(`[Validation] File rejected in ${activeDocType} view:`, file.name);
-        return;
-      }
-    }
 
     setIsProcessing(true);
     localStorage.setItem('extrkt_timestamp', Date.now().toString());
