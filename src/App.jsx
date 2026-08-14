@@ -399,22 +399,22 @@ export default function App() {
                   <span className="text-[11px] font-extrabold text-slate-800 uppercase tracking-wider text-center sm:text-left">
                     override document upload?
                   </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-6 pr-2">
                     <button
                       onClick={handleConfirmOverride}
-                      className="px-3.5 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-colors cursor-pointer"
-                      style={{ backgroundColor: '#000000', color: '#ffffff' }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#27272a'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#000000'}
+                      className="text-[10px] font-extrabold uppercase tracking-wider transition-colors cursor-pointer"
+                      style={{ background: 'none', border: 'none', color: '#0f172a', padding: '4px 8px' }}
+                      onMouseEnter={(e) => e.currentTarget.style.color = '#64748b'}
+                      onMouseLeave={(e) => e.currentTarget.style.color = '#0f172a'}
                     >
                       yes
                     </button>
                     <button
                       onClick={handleCancelOverride}
-                      className="px-3.5 py-1.5 rounded-lg border text-slate-700 text-[10px] font-extrabold uppercase tracking-wider transition-colors cursor-pointer"
-                      style={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1' }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
+                      className="text-[10px] font-extrabold uppercase tracking-wider transition-colors cursor-pointer"
+                      style={{ background: 'none', border: 'none', color: '#ef4444', padding: '4px 8px' }}
+                      onMouseEnter={(e) => e.currentTarget.style.color = '#f87171'}
+                      onMouseLeave={(e) => e.currentTarget.style.color = '#ef4444'}
                     >
                       no
                     </button>
