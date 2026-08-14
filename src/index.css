@@ -295,12 +295,9 @@ button {
   cursor: default;
 }
 
-/* Paste button — filled black by default, turns green on confirm, always enabled */
+/* Paste button — same default style as lowercase/uppercase buttons */
 .case-btn-paste {
-  gap: 6px;
-  background: #000000;
-  border-color: #000000;
-  color: #ffffff;
+  /* inherits all .case-btn defaults: white bg, black border */
 }
 
 /* Icon-only square variant for the paste button */
@@ -311,7 +308,7 @@ button {
   justify-content: center;
 }
 
-/* Green confirm overrides the black default state */
+/* Green confirm state */
 .case-btn-paste.case-btn-copied {
   background: #ecfdf5 !important;
   border-color: #a7f3d0 !important;
@@ -319,9 +316,10 @@ button {
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .case-btn-paste:hover {
-    background: #27272a;
-    border-color: #27272a;
+  .case-btn-paste:hover:not(:disabled) {
+    background: #000000;
+    border-color: #000000;
+    color: #ffffff;
   }
 }
 
