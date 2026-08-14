@@ -174,6 +174,19 @@ export default function App() {
     }
   };
 
+  // Add global window paste listener to catch files copied in Finder/Explorer (Cmd+V / Ctrl+V)
+  useEffect(() => {
+    const handleGlobalPaste = (e) => {
+      if (isProcessing) return;
+      const files = e.clipboardData?.files;
+      if (files && files.length > 0) {
+        handleFileUpload(files[0]);
+      }
+    };
+    window.addEventListener('paste', handleGlobalPaste);
+    return () => window.removeEventListener('paste', handleGlobalPaste);
+  }, [activeDocType, isProcessing, paycheckFileName, cardFileName]);
+
   // Determine active view states
   const activeFileName = activeDocType === 'paycheck' ? paycheckFileName : cardFileName;
   const activeData = activeDocType === 'paycheck' ? paycheckData : cardData;
