@@ -41,39 +41,38 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
             value={data.payDate}
             onCopy={onCopyField}
           />
-          {/* Employer Name Box has been removed */}
         </>
       ) : (
         <>
           <CopyableRow
-            label="Total Balance Due"
+            label="STATEMENT BALANCE"
             value={data.statementBalance}
             highlight={true}
             onCopy={onCopyField}
           />
           <CopyableRow
-            label="Card / Account Last 4"
-            value={data.cardLast4}
+            label="START DATE"
+            value={data.startDate}
             onCopy={onCopyField}
           />
           <CopyableRow
-            label="Statement Period"
+            label="END DATE"
+            value={data.endDate}
+            onCopy={onCopyField}
+          />
+          <CopyableRow
+            label="STATEMENT PERIOD"
             value={data.statementPeriod}
             onCopy={onCopyField}
           />
           <CopyableRow
-            label="Minimum Payment"
-            value={data.minimumPayment}
+            label="CHECK NUMBER"
+            value={data.cardLast4}
             onCopy={onCopyField}
           />
           <CopyableRow
-            label="Payment Due Date"
-            value={data.dueDate}
-            onCopy={onCopyField}
-          />
-          <CopyableRow
-            label="Issuing Bank Name"
-            value={data.bankName}
+            label="Pay Date"
+            value="Not Found"
             onCopy={onCopyField}
           />
         </>

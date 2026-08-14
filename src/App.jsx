@@ -74,6 +74,17 @@ export default function App() {
 
   const handleFileUpload = async (file) => {
     if (!file) return;
+
+    // Validate PDF filenames
+    const fileLower = file.name.toLowerCase();
+    if (fileLower.endsWith('.pdf')) {
+      const isValidName = fileLower.includes('pay stub for') || fileLower.includes('statement for');
+      if (!isValidName) {
+        alert("Upload rejected: PDF files must contain 'Pay Stub for' or 'Statement for' in their file name.");
+        return;
+      }
+    }
+
     setIsProcessing(true);
     setFileName(file.name);
 
@@ -92,6 +103,7 @@ export default function App() {
       }
 
       const textLower = extractedRawText.toLowerCase();
+      // Auto-detect doc type but respect manual toggle switch
       const isPaycheckText = textLower.includes('pay') || textLower.includes('gross') || textLower.includes('net') || textLower.includes('hours') || textLower.includes('period') || textLower.includes('check');
 
       if (isPaycheckText || activeDocType === 'paycheck') {
@@ -121,7 +133,7 @@ export default function App() {
     if (activeDocType === 'paycheck') {
       summary = `PAYCHECK STATEMENT SUMMARY:\nNET PAY: ${data.netPay}\nGROSS PAY: ${data.grossIncome}\nPAY PERIOD: ${data.payPeriod}\nHours Worked: ${data.hoursWorked}\nCHECK NUMBER: ${data.paycheckNumber}\nPay Date: ${data.payDate}`;
     } else {
-      summary = `CARD STATEMENT SUMMARY:\nTotal Balance: ${data.statementBalance}\nCard Last 4: ${data.cardLast4}\nPeriod: ${data.statementPeriod}\nMin Payment: ${data.minimumPayment}\nDue Date: ${data.dueDate}\nBank: ${data.bankName}`;
+      summary = `CARD STATEMENT SUMMARY:\nSTATEMENT BALANCE: ${data.statementBalance}\nSTART DATE: ${data.startDate}\nEND DATE: ${data.endDate}\nSTATEMENT PERIOD: ${data.statementPeriod}`;
     }
 
     navigator.clipboard.writeText(summary);
@@ -131,7 +143,31 @@ export default function App() {
   const activeData = activeDocType === 'paycheck' ? paycheckData : cardData;
 
   return (
-    <div className="min-h-screen bg-[#faf9f6] text-[#0f172a] px-4 sm:px-6 w-full flex flex-col items-center justify-center py-20 sm:py-24">
+    <div className={`min-h-screen bg-[#faf9f6] text-[#0f172a] px-4 sm:px-6 w-full flex flex-col items-center justify-center py-20 sm:py-24 relative`}>
+      {/* Top Right Stepper/Toggle Switch */}
+      <div className="absolute top-6 right-6 z-10 flex items-center p-1 bg-slate-200/80 rounded-full border border-slate-300/60 shadow-xs">
+        <button
+          onClick={() => setActiveDocType('paycheck')}
+          className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+            activeDocType === 'paycheck'
+              ? 'bg-[#0f172a] text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          paychecks
+        </button>
+        <button
+          onClick={() => setActiveDocType('card')}
+          className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+            activeDocType === 'card'
+              ? 'bg-[#0f172a] text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          bank statements
+        </button>
+      </div>
+
       {/* Centered App Container */}
       <div className="app-container my-auto">
         
@@ -151,7 +187,6 @@ export default function App() {
               docType={activeDocType}
               isCompleted={isStep2Complete}
               onCopyField={handleCopyNotification}
-              onCopyAll={handleCopyAll}
             />
           </div>
         )}
