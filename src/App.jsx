@@ -288,10 +288,10 @@ export default function App() {
   // Tab definitions — order matches DOM order in the switcher
   // Widths: paycheck=94, card=126, transaction=100, case=112
   const tabDefs = [
-    { key: 'paycheck',     label: 'paychecks',      width: 94  },
-    { key: 'card',         label: 'bank statements', width: 126 },
-    { key: 'transaction',  label: 'transactions',    width: 100 },
-    { key: 'case',         label: 'case converter',  width: 112 },
+    { key: 'paycheck',     label: 'paychecks',      width: 112 },
+    { key: 'card',         label: 'bank statements', width: 150 },
+    { key: 'transaction',  label: 'transactions',    width: 120 },
+    { key: 'case',         label: 'case converter',  width: 132 },
   ];
 
   // Compute slider width + translateX from tabDefs
