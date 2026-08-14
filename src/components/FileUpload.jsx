@@ -204,7 +204,7 @@ export default function FileUpload({
               <button
                 type="button"
                 onClick={onClearAllArchives}
-                className="absolute left-[calc(50%-12px)] -translate-x-1/2 top-[-2px] text-[10px] font-extrabold text-red-500 hover:text-red-700 transition-colors uppercase tracking-wider cursor-pointer whitespace-nowrap"
+                className="absolute left-[6px] -translate-x-1/2 top-[-2px] text-[10px] font-extrabold text-red-500 hover:text-red-700 transition-colors uppercase tracking-wider cursor-pointer whitespace-nowrap"
               >
                 Clear
               </button>
