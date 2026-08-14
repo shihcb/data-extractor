@@ -25,6 +25,18 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
     return str.replace(/\s*(?:-|to|through|–)\s*/g, ' — ');
   };
 
+  // Format Date & Time spacing and capitalization on the fly
+  const formatDateTime = (str) => {
+    if (!str) return '';
+    return str
+      .replace(/(\d{1,2}:\d{2})\s*(AM|PM|am|pm)?/i, (match, p1, p2) => {
+        const suffix = p2 ? p2.toUpperCase() : '';
+        return `${p1} ${suffix}`;
+      })
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
   return (
     <div className="animate-fade-in">
       {isPaycheck && (
@@ -105,7 +117,7 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
           />
           <CopyableRow
             label="DATE & TIME"
-            value={displayData.dateTime}
+            value={formatDateTime(displayData.dateTime)}
             onCopy={onCopyField}
             forceLowercaseCopy={false}
           />

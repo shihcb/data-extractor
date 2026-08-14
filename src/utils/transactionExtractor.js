@@ -19,10 +19,15 @@ export function extractTransactionData(text) {
                     cleanText.match(/Date:\s*(.*)/i);
   if (dateMatch) {
     let rawDate = dateMatch[1].trim();
-    // Normalize time to add space before AM/PM if missing
-    dateTime = rawDate.replace(/(\d{2})(PM|AM|pm|am)$/, '$1 $2');
-    // Collapse any sequence of multiple spaces into a single clean space
-    dateTime = dateTime.replace(/\s+/g, ' ');
+    
+    // Normalize spacing and format AM/PM to uppercase
+    dateTime = rawDate
+      .replace(/(\d{1,2}:\d{2})\s*(AM|PM|am|pm)?/i, (match, p1, p2) => {
+        const suffix = p2 ? p2.toUpperCase() : '';
+        return `${p1} ${suffix}`;
+      })
+      .replace(/\s+/g, ' ') // Collapse extra spaces
+      .trim();
   }
 
   // 2. Extract Merchant
