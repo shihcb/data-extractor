@@ -130,7 +130,19 @@ button {
 
 /* Specific uploader card styling */
 .uploader-card {
-  margin-bottom: 24px !important;
+  margin-bottom: 12px !important;
+}
+
+.uploader-card:hover {
+  border-color: var(--border-subtle) !important;
+}
+
+.uploader-card:focus,
+.uploader-card:active,
+.uploader-card *:focus,
+.uploader-card *:active {
+  outline: none !important;
+  box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.03) !important;
 }
 
 /* The "+" upload trigger button — native label, black hover, no purple */
@@ -372,5 +384,5 @@ button {
 .warning-prompt-container.visible {
   max-height: 120px; /* comfortably covers wrapping text on small screens */
   opacity: 1;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
