@@ -102,6 +102,31 @@ button {
   margin-bottom: 24px !important;
 }
 
+/* The "+" upload trigger button — native label, black hover, no purple */
+.upload-plus-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  color: #64748b;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.upload-plus-btn:hover {
+  background: #000000;
+  border-color: #000000;
+  color: #ffffff;
+}
+
+
 /* Black & White themed Copy Button */
 .icon-copy-btn {
   display: inline-flex;

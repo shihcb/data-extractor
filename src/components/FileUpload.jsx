@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useId } from 'react';
 import { Upload, Loader2, FileText, RefreshCw } from 'lucide-react';
 
 export default function FileUpload({ 
@@ -9,14 +9,18 @@ export default function FileUpload({
   uploadText = 'UPLOAD STATEMENT',
   uploadedLabel = 'Uploaded Statement'
 }) {
-  const fileInputRef = useRef(null);
+  // Unique ID per instance so label htmlFor is always correct
+  const inputId = useId();
 
-  const handleClick = (e) => {
-    e.stopPropagation();
-    fileInputRef.current?.click();
+  const handleChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      onFileUpload(e.target.files[0]);
+      // Reset so selecting the same file again fires onChange
+      e.target.value = '';
+    }
   };
 
-  // If processing, show loading indicator left-aligned with "extracting data.."
+  // ── Loading state ─────────────────────────────────────────
   if (isProcessing) {
     return (
       <div className="independent-row-card uploader-card justify-start py-[15px]">
@@ -30,24 +34,16 @@ export default function FileUpload({
     );
   }
 
-  // If a file is uploaded:
-  // - Clicking the outer box does NOT trigger file selector.
-  // - Only clicking the RefreshCw reload/reset button triggers the file picker.
+  // ── Uploaded state ────────────────────────────────────────
+  // RefreshCw is a <label> so iOS activates the input on the first tap
   if (fileName) {
     return (
-      <div
-        className="independent-row-card uploader-card"
-        title="File uploaded"
-      >
+      <div className="independent-row-card uploader-card">
         <input
-          ref={fileInputRef}
+          id={inputId}
           type="file"
           accept="application/pdf,image/png,image/jpeg,image/webp,text/plain,text/csv"
-          onChange={(e) => {
-            if (e.target.files && e.target.files[0]) {
-              onFileUpload(e.target.files[0]);
-            }
-          }}
+          onChange={handleChange}
           className="hidden"
         />
 
@@ -61,36 +57,27 @@ export default function FileUpload({
           </div>
         </div>
 
-        {/* Clicking this button directly triggers file selector to choose a new file and override */}
-        <button
-          type="button"
-          onClick={handleClick}
-          className="icon-copy-btn shrink-0"
+        {/* label htmlFor = native association — single tap on iOS triggers picker */}
+        <label
+          htmlFor={inputId}
+          className="icon-copy-btn shrink-0 cursor-pointer"
           title="Upload a new file to override"
         >
           <RefreshCw size={14} />
-        </button>
+        </label>
       </div>
     );
   }
 
-  // When no file is uploaded:
-  // - Clicking the outer box does NOT trigger file selector.
-  // - Only clicking the "+" button triggers the file picker.
+  // ── Empty state ───────────────────────────────────────────
+  // "+" box is a <label> — single tap on iOS triggers picker directly
   return (
-    <div
-      className="independent-row-card uploader-card"
-      title="Upload Statement"
-    >
+    <div className="independent-row-card uploader-card">
       <input
-        ref={fileInputRef}
+        id={inputId}
         type="file"
         accept="application/pdf,image/png,image/jpeg,image/webp,text/plain,text/csv"
-        onChange={(e) => {
-          if (e.target.files && e.target.files[0]) {
-            onFileUpload(e.target.files[0]);
-          }
-        }}
+        onChange={handleChange}
         className="hidden"
       />
 
@@ -101,16 +88,14 @@ export default function FileUpload({
         </span>
       </div>
 
-      {/* Action buttons: "+" symbol box is the ONLY clickable target to trigger file selection */}
-      <div className="flex items-center gap-1.5 shrink-0">
-        <div 
-          onClick={handleClick}
-          className="w-[34px] h-[34px] rounded-lg bg-slate-50 border border-slate-300 flex items-center justify-center text-slate-400 text-lg font-bold leading-none select-none cursor-pointer hover:border-indigo-500 hover:text-indigo-600 transition-colors"
-          title="Choose file"
-        >
-          +
-        </div>
-      </div>
+      {/* label htmlFor = native association — single tap on iOS triggers picker */}
+      <label
+        htmlFor={inputId}
+        className="upload-plus-btn cursor-pointer"
+        title="Choose file"
+      >
+        +
+      </label>
     </div>
   );
 }
