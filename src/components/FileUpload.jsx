@@ -1,5 +1,5 @@
 import React, { useId } from 'react';
-import { Upload, FileText, RefreshCw, X } from 'lucide-react';
+import { Upload, FileText, RefreshCw, X, Archive, Trash2 } from 'lucide-react';
 
 export default function FileUpload({ 
   onFileUpload, 
@@ -8,7 +8,11 @@ export default function FileUpload({
   onClear, 
   uploadText = 'UPLOAD STATEMENT',
   uploadedLabel = 'Uploaded Statement',
-  docType
+  docType,
+  archiveItems = [],
+  onLoadArchive,
+  onDeleteArchive,
+  onClearAllArchives
 }) {
   const inputId = useId();
 
@@ -21,6 +25,7 @@ export default function FileUpload({
   const [displayUploadedLabel, setDisplayUploadedLabel] = React.useState(uploadedLabel);
   const [isPlaceholder, setIsPlaceholder] = React.useState(!fileName);
   const [isAnimating, setIsAnimating] = React.useState(false);
+  const [isArchiveOpen, setIsArchiveOpen] = React.useState(false);
 
   // Sync state changes
   React.useEffect(() => {
@@ -71,80 +76,170 @@ export default function FileUpload({
   };
 
   return (
-    <div 
-      className={`independent-row-card uploader-card select-none relative overflow-hidden ${isProcessing ? 'processing pointer-events-none cursor-wait' : ''}`}
-    >
-      <input
-        id={inputId}
-        type="file"
-        accept="application/pdf,image/png,image/jpeg,image/webp,text/plain,text/csv"
-        onChange={handleChange}
-        className="hidden"
-        disabled={isProcessing}
-      />
-
-      <div
-        style={{
-          opacity: isAnimating ? 0 : 1,
-          transition: 'opacity 0.3s ease-in-out',
-          width: '100%'
-        }}
+    <div className="w-full flex flex-col gap-2.5">
+      {/* File Upload Main Card Container */}
+      <div 
+        className={`independent-row-card uploader-card select-none relative overflow-hidden ${isProcessing ? 'processing pointer-events-none cursor-wait' : ''}`}
       >
-        {!isPlaceholder ? (
-          // ── Uploaded state content ────────────────────────────────
-          <div className="w-full flex items-center justify-between h-[38px] shrink-0">
-            <div className="min-w-0 flex-1 text-left">
-              <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-0.5">
-                {displayUploadedLabel}
+        <input
+          id={inputId}
+          type="file"
+          accept="application/pdf,image/png,image/jpeg,image/webp,text/plain,text/csv"
+          onChange={handleChange}
+          className="hidden"
+          disabled={isProcessing}
+        />
+
+        <div
+          style={{
+            opacity: isAnimating ? 0 : 1,
+            transition: 'opacity 0.3s ease-in-out',
+            width: '100%'
+          }}
+        >
+          {!isPlaceholder ? (
+            // ── Uploaded state content ────────────────────────────────
+            <div className="w-full flex items-center justify-between h-[38px] shrink-0">
+              <div className="min-w-0 flex-1 text-left">
+                <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-0.5">
+                  {displayUploadedLabel}
+                </div>
+                <div className="font-bold text-sm sm:text-base text-slate-800 truncate flex items-center gap-1.5 justify-start">
+                  <FileText size={16} className="text-emerald-600 shrink-0" />
+                  <span className="truncate">{displayFileName}</span>
+                </div>
               </div>
-              <div className="font-bold text-sm sm:text-base text-slate-800 truncate flex items-center gap-1.5 justify-start">
-                <FileText size={16} className="text-emerald-600 shrink-0" />
-                <span className="truncate">{displayFileName}</span>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClear();
+                  }}
+                  className="icon-clear-btn shrink-0 cursor-pointer"
+                  title="Clear file"
+                >
+                  <X size={14} />
+                </button>
+
+                <label
+                  htmlFor={inputId}
+                  className="icon-copy-btn shrink-0 cursor-pointer"
+                  title="Upload a new file to override"
+                >
+                  <RefreshCw size={14} />
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => setIsArchiveOpen(!isArchiveOpen)}
+                  className={`icon-copy-btn shrink-0 cursor-pointer ${isArchiveOpen ? 'archive-active' : ''}`}
+                  title="Toggle Archive"
+                >
+                  <Archive size={14} />
+                </button>
               </div>
             </div>
+          ) : (
+            // ── Empty state content ───────────────────────────────────
+            <div className="w-full flex items-center justify-between h-[38px] shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0 flex-1 text-left">
+                <Upload size={16} className="text-slate-800 shrink-0" />
+                <span className="font-extrabold text-xs sm:text-sm text-slate-800 tracking-wider">
+                  {displayUploadText}
+                </span>
+              </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 shrink-0">
+                <label
+                  htmlFor={inputId}
+                  className="upload-plus-btn shrink-0 cursor-pointer"
+                  title="Choose file"
+                >
+                  +
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => setIsArchiveOpen(!isArchiveOpen)}
+                  className={`icon-copy-btn shrink-0 cursor-pointer ${isArchiveOpen ? 'archive-active' : ''}`}
+                  title="Toggle Archive"
+                >
+                  <Archive size={14} />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Archive Submenu Drawer */}
+      {isArchiveOpen && (
+        <div className="archive-panel animate-fade-in-up">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-200 mb-2.5">
+            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+              Archived Documents ({archiveItems.length})
+            </span>
+            {archiveItems.length > 0 && (
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onClear();
-                }}
-                className="icon-clear-btn shrink-0 cursor-pointer"
-                title="Clear file"
+                onClick={onClearAllArchives}
+                className="text-[10px] font-extrabold text-red-500 hover:text-red-700 transition-colors uppercase tracking-wider cursor-pointer"
               >
-                <X size={14} />
+                Clear All
               </button>
-
-              <label
-                htmlFor={inputId}
-                className="icon-copy-btn shrink-0 cursor-pointer"
-                title="Upload a new file to override"
-              >
-                <RefreshCw size={14} />
-              </label>
-            </div>
+            )}
           </div>
-        ) : (
-          // ── Empty state content ───────────────────────────────────
-          <div className="w-full flex items-center justify-between h-[38px] shrink-0">
-            <div className="flex items-center gap-2.5 min-w-0 flex-1 text-left">
-              <Upload size={16} className="text-slate-800 shrink-0" />
-              <span className="font-extrabold text-xs sm:text-sm text-slate-800 tracking-wider">
-                {displayUploadText}
-              </span>
-            </div>
 
-            <label
-              htmlFor={inputId}
-              className="upload-plus-btn shrink-0 cursor-pointer"
-              title="Choose file"
-            >
-              +
-            </label>
+          <div className="archive-list max-h-[220px] overflow-y-auto pr-1 flex flex-col gap-2">
+            {archiveItems.length === 0 ? (
+              <div className="text-slate-400 text-xs py-4 text-center font-medium italic">
+                No archived documents yet.
+              </div>
+            ) : (
+              archiveItems.map((item) => (
+                <div 
+                  key={item.id} 
+                  className="flex items-center justify-between py-1.5 border-b border-slate-100 last:border-0"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <FileText size={14} className="text-slate-400 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-xs sm:text-sm text-slate-700 truncate" title={item.name}>
+                        {item.name}
+                      </div>
+                      <div className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mt-0.5">
+                        {item.docType === 'paycheck' ? 'paychecks' : item.docType === 'card' ? 'bank statements' : 'transactions'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 ml-3">
+                    <button
+                      type="button"
+                      onClick={() => onLoadArchive(item)}
+                      className="icon-copy-btn cursor-pointer w-7 h-7"
+                      title="Load document"
+                    >
+                      <Upload size={12} />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => onDeleteArchive(item.id)}
+                      className="icon-clear-btn cursor-pointer w-7 h-7"
+                      title="Delete from archive"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

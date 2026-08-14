@@ -465,3 +465,36 @@ button {
   background-color: #0f172a;
   animation: loadingBar 1.2s infinite ease-in-out;
 }
+
+/* Active background color override for Archive button */
+.icon-copy-btn.archive-active {
+  background: #000000;
+  border-color: #000000;
+  color: #ffffff;
+}
+
+/* Premium Archive Drawer Panel */
+.archive-panel {
+  background: #fcfcfb;
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: 16px 24px;
+  margin-bottom: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Webkit Scrollbar styles for Archive scroll panel */
+.archive-list::-webkit-scrollbar {
+  width: 4px;
+}
+.archive-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.archive-list::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 4px;
+}
+.archive-list::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
