@@ -1,5 +1,5 @@
 /**
- * Credit & Debit Card Statement Regex Extraction Engine
+ * Credit & Debit Card Statement Regex Extraction Engine (Apple, Citi, BoA, Discover, Capital One, Chase)
  */
 
 export function extractCardStatementData(text) {
