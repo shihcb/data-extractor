@@ -7,14 +7,25 @@ export default function FileUpload({
   fileName, 
   onClear, 
   uploadText = 'UPLOAD STATEMENT',
-  uploadedLabel = 'Uploaded Statement'
+  uploadedLabel = 'Uploaded Statement',
+  docType
 }) {
   const inputId = useId();
-  const [isMounted, setIsMounted] = React.useState(false);
+
+  // Track docType changes to skip transitions on tab switch
+  const prevDocTypeRef = React.useRef(docType);
+  const [skipTransition, setSkipTransition] = React.useState(false);
 
   React.useEffect(() => {
-    setIsMounted(true);
-  }, []);
+    if (prevDocTypeRef.current !== docType) {
+      setSkipTransition(true);
+      prevDocTypeRef.current = docType;
+      const timer = setTimeout(() => {
+        setSkipTransition(false);
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [docType]);
 
   const handleChange = (e) => {
     if (isProcessing) return;
@@ -24,7 +35,7 @@ export default function FileUpload({
     }
   };
 
-  const isHidden = !isMounted || isProcessing;
+  const isHidden = isProcessing;
 
   // We keep a single root element and avoid unmounting it, 
   // which prevents triggering the fade-in animation again and stops flickering.
@@ -43,7 +54,7 @@ export default function FileUpload({
         borderWidth: isHidden ? '0px' : '1px',
         overflow: 'hidden',
         pointerEvents: isHidden ? 'none' : 'auto',
-        transition: 'max-height 0.55s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), padding 0.55s cubic-bezier(0.16, 1, 0.3, 1), margin-bottom 0.55s cubic-bezier(0.16, 1, 0.3, 1), border-width 0.55s cubic-bezier(0.16, 1, 0.3, 1)'
+        transition: skipTransition ? 'none' : 'max-height 0.55s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), padding 0.55s cubic-bezier(0.16, 1, 0.3, 1), margin-bottom 0.55s cubic-bezier(0.16, 1, 0.3, 1), border-width 0.55s cubic-bezier(0.16, 1, 0.3, 1)'
       }}
     >
       <input
@@ -63,7 +74,7 @@ export default function FileUpload({
           right: fileName ? 'auto' : '24px',
           opacity: fileName ? 1 : 0,
           transform: fileName ? 'translate3d(0, 0, 0)' : 'translate3d(0, 4px, 0)',
-          transition: 'opacity 0.3s ease-in-out, transform 0.3s ease-in-out',
+          transition: skipTransition ? 'none' : 'opacity 0.3s ease-in-out, transform 0.3s ease-in-out',
           pointerEvents: fileName ? 'auto' : 'none',
         }}
         className="w-full flex items-center justify-between"
@@ -95,7 +106,7 @@ export default function FileUpload({
           right: !fileName ? 'auto' : '24px',
           opacity: !fileName ? 1 : 0,
           transform: !fileName ? 'translate3d(0, 0, 0)' : 'translate3d(0, -4px, 0)',
-          transition: 'opacity 0.3s ease-in-out, transform 0.3s ease-in-out',
+          transition: skipTransition ? 'none' : 'opacity 0.3s ease-in-out, transform 0.3s ease-in-out',
           pointerEvents: !fileName ? 'auto' : 'none',
         }}
         className="w-full flex items-center justify-between"

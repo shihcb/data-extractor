@@ -447,6 +447,7 @@ export default function App() {
             {/* Upload Card Box Component */}
             <FileUpload
               key="global-file-uploader"
+              docType={activeDocType}
               onFileUpload={handleFileUpload}
               isProcessing={isProcessing}
               fileName={activeFileName}
