@@ -52,7 +52,8 @@ export function extractCardStatementData(text) {
   }
 
   const statementBalance = extractAmountByKeywords(cleanText, [
-    /new\s*balance\s*(?:total)?/i,
+    /new\s*balance\s*total/i,
+    /new\s*balance/i,
     /total\s*(?:amount\s*)?due/i,
     /statement\s*balance/i
   ]);
