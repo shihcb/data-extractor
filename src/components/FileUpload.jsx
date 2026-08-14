@@ -59,10 +59,11 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
       className="independent-row-card cursor-pointer uploader-card hover:border-indigo-500 animate-fade-in"
       title="Upload Statement"
     >
+      {/* Explicitly accept standard MIME types so mobile Photo Library uploads raw images instantly without confirmation glitches */}
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.csv"
+        accept="application/pdf,image/*,text/plain,text/csv"
         onChange={(e) => {
           if (e.target.files && e.target.files[0]) {
             onFileUpload(e.target.files[0]);
@@ -78,7 +79,7 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
         </span>
       </div>
 
-      {/* Action buttons: plus symbol box only (Paste button removed) */}
+      {/* Action buttons: plus symbol box only */}
       <div className="flex items-center gap-1.5 shrink-0">
         <div className="w-[34px] h-[34px] rounded-lg bg-slate-50 border border-slate-300 flex items-center justify-center text-slate-400 text-lg font-bold leading-none select-none">
           +
