@@ -3,17 +3,11 @@ import CopyableRow from './CopyableRow';
 
 export default function Step2ExtractedData({ data, docType, isCompleted, onCopyField, isInitialAppLoad = false }) {
   const [renderedData, setRenderedData] = useState(data);
-  const [isVisible, setIsVisible] = useState(() => !!data);
 
   useEffect(() => {
     if (data) {
       setRenderedData(data);
-      const timer = setTimeout(() => {
-        setIsVisible(true);
-      }, 20);
-      return () => clearTimeout(timer);
     } else {
-      setIsVisible(false);
       const timer = setTimeout(() => {
         setRenderedData(null);
       }, 650);
@@ -152,101 +146,86 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
   };
 
   return (
-    <div 
-      style={{
-        maxHeight: isVisible ? '800px' : '0px',
-        opacity: isVisible ? 1 : 0,
-        overflow: 'hidden',
-        transition: 'max-height 0.65s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1)'
-      }}
-    >
-      <div 
-        className="space-y-4"
-        style={{
-          transform: isVisible ? 'translate3d(0, 0, 0)' : 'translate3d(0, 8px, 0)',
-          transition: 'transform 0.55s cubic-bezier(0.16, 1, 0.3, 1)'
-        }}
-      >
-        {isPaycheck && (
-          <>
-            <CopyableRow
-              label="NET PAY"
-              value={renderedData.netPay}
-              highlight={true}
-              onCopy={onCopyField}
-            />
-            <CopyableRow
-              label="GROSS PAY"
-              value={renderedData.grossIncome}
-              onCopy={onCopyField}
-            />
-            <CopyableRow
-              label="PAY PERIOD"
-              value={formatPeriodRange(renderedData.payPeriod)}
-              onCopy={onCopyField}
-            />
-            <CopyableRow
-              label="Total Hours Worked"
-              value={renderedData.hoursWorked}
-              onCopy={onCopyField}
-            />
-            <CopyableRow
-              label="CHECK NUMBER"
-              value={renderedData.paycheckNumber}
-              onCopy={onCopyField}
-            />
-            <CopyableRow
-              label="Pay Date"
-              value={formatDateToFull(renderedData.payDate)}
-              onCopy={onCopyField}
-            />
-          </>
-        )}
+    <div className="space-y-4">
+      {isPaycheck && (
+        <>
+          <CopyableRow
+            label="NET PAY"
+            value={renderedData.netPay}
+            highlight={true}
+            onCopy={onCopyField}
+          />
+          <CopyableRow
+            label="GROSS PAY"
+            value={renderedData.grossIncome}
+            onCopy={onCopyField}
+          />
+          <CopyableRow
+            label="PAY PERIOD"
+            value={formatPeriodRange(renderedData.payPeriod)}
+            onCopy={onCopyField}
+          />
+          <CopyableRow
+            label="Total Hours Worked"
+            value={renderedData.hoursWorked}
+            onCopy={onCopyField}
+          />
+          <CopyableRow
+            label="CHECK NUMBER"
+            value={renderedData.paycheckNumber}
+            onCopy={onCopyField}
+          />
+          <CopyableRow
+            label="Pay Date"
+            value={formatDateToFull(renderedData.payDate)}
+            onCopy={onCopyField}
+          />
+        </>
+      )}
 
-        {isCard && (
-          <>
-            <CopyableRow
-              label="STATEMENT BALANCE"
-              value={renderedData.statementBalance}
-              highlight={true}
-              onCopy={onCopyField}
-            />
-            <CopyableRow
-              label="START DATE"
-              value={formatDateToFull(renderedData.startDate)}
-              onCopy={onCopyField}
-            />
-            <CopyableRow
-              label="END DATE"
-              value={formatDateToFull(renderedData.endDate)}
-              onCopy={onCopyField}
-            />
-            <CopyableRow
-              label="STATEMENT PERIOD"
-              value={formatPeriodRange(renderedData.statementPeriod)}
-              onCopy={onCopyField}
-            />
-          </>
-        )}
+      {isCard && (
+        <>
+          <CopyableRow
+            label="STATEMENT BALANCE"
+            value={renderedData.statementBalance}
+            highlight={true}
+            onCopy={onCopyField}
+          />
+          <CopyableRow
+            label="START DATE"
+            value={formatDateToFull(renderedData.startDate)}
+            onCopy={onCopyField}
+          />
+          <CopyableRow
+            label="END DATE"
+            value={formatDateToFull(renderedData.endDate)}
+            onCopy={onCopyField}
+          />
+          <CopyableRow
+            label="STATEMENT PERIOD"
+            value={formatPeriodRange(renderedData.statementPeriod)}
+            onCopy={onCopyField}
+          />
+        </>
+      )}
 
-        {isTransaction && (
-          <>
-            <CopyableRow
-              label="AMOUNT"
-              value={renderedData.amount}
-              highlight={true}
-              onCopy={onCopyField}
-              forceLowercaseCopy={true}
-            />
-            <CopyableRow
-              label="DATE & TIME"
-              value={formatDateTime(renderedData.dateTime)}
-              onCopy={onCopyField}
-              forceLowercaseCopy={false}
-            />
-          </>
-        )}
-      </div>
+      {isTransaction && (
+        <>
+          <CopyableRow
+            label="AMOUNT"
+            value={renderedData.amount}
+            highlight={true}
+            onCopy={onCopyField}
+            forceLowercaseCopy={true}
+          />
+          <CopyableRow
+            label="DATE & TIME"
+            value={formatDateTime(renderedData.dateTime)}
+            onCopy={onCopyField}
+            forceLowercaseCopy={false}
+          />
+        </>
+      )}
     </div>
   );
 }
