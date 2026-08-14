@@ -386,3 +386,26 @@ button {
   opacity: 1;
   margin-bottom: 8px;
 }
+
+/* Fade and slide up animation for uploader states */
+.animate-fade-in-up {
+  animation: fadeInUp 0.22s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 4px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Specific uploader card styling - block text selection flicker */
+.uploader-card {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
