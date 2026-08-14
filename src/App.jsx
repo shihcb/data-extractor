@@ -122,18 +122,28 @@ export default function App() {
         extractedRawText = await file.text();
       }
 
-      // Parse and save data strictly inside the active tab's scope if content is valid!
+      // Parse and save data strictly inside the active tab's scope if ALL necessary fields exist!
       if (activeDocType === 'paycheck') {
         const parsedPaycheck = extractPaycheckData(extractedRawText);
-        const hasPaycheckInfo = parsedPaycheck.netPay !== 'Not Found' || parsedPaycheck.grossIncome !== 'Not Found';
-        if (hasPaycheckInfo) {
+        const hasAllPaycheckInfo = 
+          parsedPaycheck.netPay !== 'Not Found' && 
+          parsedPaycheck.grossIncome !== 'Not Found' && 
+          parsedPaycheck.payPeriod !== 'Not Found' && 
+          parsedPaycheck.paycheckNumber !== 'Not Found';
+
+        if (hasAllPaycheckInfo) {
           setPaycheckData(parsedPaycheck);
           setPaycheckFileName(file.name);
         }
       } else {
         const parsedCard = extractCardStatementData(extractedRawText);
-        const hasCardInfo = parsedCard.statementBalance !== 'Not Found' || parsedCard.startDate !== 'Not Found';
-        if (hasCardInfo) {
+        const hasAllCardInfo = 
+          parsedCard.statementBalance !== 'Not Found' && 
+          parsedCard.startDate !== 'Not Found' && 
+          parsedCard.endDate !== 'Not Found' && 
+          parsedCard.statementPeriod !== 'Not Found';
+
+        if (hasAllCardInfo) {
           setCardData(parsedCard);
           setCardFileName(file.name);
         }
@@ -154,15 +164,25 @@ export default function App() {
     try {
       if (activeDocType === 'paycheck') {
         const parsedPaycheck = extractPaycheckData(text);
-        const hasPaycheckInfo = parsedPaycheck.netPay !== 'Not Found' || parsedPaycheck.grossIncome !== 'Not Found';
-        if (hasPaycheckInfo) {
+        const hasAllPaycheckInfo = 
+          parsedPaycheck.netPay !== 'Not Found' && 
+          parsedPaycheck.grossIncome !== 'Not Found' && 
+          parsedPaycheck.payPeriod !== 'Not Found' && 
+          parsedPaycheck.paycheckNumber !== 'Not Found';
+
+        if (hasAllPaycheckInfo) {
           setPaycheckData(parsedPaycheck);
           setPaycheckFileName('Pasted Content');
         }
       } else {
         const parsedCard = extractCardStatementData(text);
-        const hasCardInfo = parsedCard.statementBalance !== 'Not Found' || parsedCard.startDate !== 'Not Found';
-        if (hasCardInfo) {
+        const hasAllCardInfo = 
+          parsedCard.statementBalance !== 'Not Found' && 
+          parsedCard.startDate !== 'Not Found' && 
+          parsedCard.endDate !== 'Not Found' && 
+          parsedCard.statementPeriod !== 'Not Found';
+
+        if (hasAllCardInfo) {
           setCardData(parsedCard);
           setCardFileName('Pasted Content');
         }
@@ -200,7 +220,7 @@ export default function App() {
   // Calculate sliding dimensions for switcher animation
   const isCard = activeDocType === 'card';
   const sliderWidth = isCard ? 136 : 94;
-  const sliderTransform = isCard ? 94 : 0; // Fix slider overflow clipping by translating exactly by the first button's width
+  const sliderTransform = isCard ? 94 : 0;
 
   return (
     <div className={`min-h-screen bg-[#faf9f6] text-[#0f172a] px-4 sm:px-6 w-full flex flex-col items-center justify-center py-20 sm:py-24 relative`}>
