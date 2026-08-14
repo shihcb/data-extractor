@@ -23,10 +23,15 @@ export default function FileUpload({
   // which prevents triggering the fade-in animation again and stops flickering.
   return (
     <div 
-      className={`independent-row-card uploader-card ${isProcessing ? 'pointer-events-none cursor-wait' : ''}`}
+      className={`independent-row-card uploader-card relative overflow-hidden ${isProcessing ? 'processing pointer-events-none cursor-wait' : ''}`}
       onDoubleClick={fileName && !isProcessing ? onClear : undefined}
       title={fileName && !isProcessing ? "Double-click to remove file" : undefined}
     >
+      {isProcessing && (
+        <div className="absolute top-0 left-0 right-0 h-[2.5px] bg-[#f1f0ec] overflow-hidden">
+          <div className="animate-loading-bar" />
+        </div>
+      )}
       <input
         id={inputId}
         type="file"

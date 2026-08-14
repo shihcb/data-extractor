@@ -157,14 +157,14 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
         maxHeight: isVisible ? '800px' : '0px',
         opacity: isVisible ? 1 : 0,
         overflow: 'hidden',
-        transition: 'max-height 0.25s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.2s linear'
+        transition: 'max-height 0.65s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1)'
       }}
     >
       <div 
         className="space-y-4"
         style={{
           transform: isVisible ? 'translate3d(0, 0, 0)' : 'translate3d(0, 8px, 0)',
-          transition: 'transform 0.22s cubic-bezier(0.25, 1, 0.5, 1)'
+          transition: 'transform 0.55s cubic-bezier(0.16, 1, 0.3, 1)'
         }}
       >
         {isPaycheck && (
