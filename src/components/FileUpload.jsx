@@ -200,11 +200,11 @@ export default function FileUpload({
             Archived Documents ({archiveItems.length})
           </span>
           {archiveItems.length > 0 && (
-            <div className="w-[36px] flex justify-center shrink-0 mr-[10px]">
+            <div className="relative w-[36px] h-4 shrink-0 mr-1">
               <button
                 type="button"
                 onClick={onClearAllArchives}
-                className="text-[10px] font-extrabold text-red-500 hover:text-red-700 transition-colors uppercase tracking-wider cursor-pointer whitespace-nowrap"
+                className="absolute left-1/2 -translate-x-1/2 top-[-2px] text-[10px] font-extrabold text-red-500 hover:text-red-700 transition-colors uppercase tracking-wider cursor-pointer whitespace-nowrap"
               >
                 Clear All
               </button>
