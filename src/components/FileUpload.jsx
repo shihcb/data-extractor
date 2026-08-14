@@ -237,7 +237,7 @@ export default function FileUpload({
                     className="icon-copy-btn cursor-pointer w-[17px] h-[17px]"
                     title="Load document"
                   >
-                    <Upload size={7} />
+                    <Upload size={10} />
                   </button>
 
                   <button
@@ -246,7 +246,7 @@ export default function FileUpload({
                     className="icon-clear-btn cursor-pointer w-[17px] h-[17px]"
                     title="Delete from archive"
                   >
-                    <Trash2 size={7} />
+                    <Trash2 size={10} />
                   </button>
                 </div>
               </div>

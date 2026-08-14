@@ -514,3 +514,18 @@ button {
   width: 0;
   height: 0;
 }
+
+/* Borderless and transparent overrides for Archive buttons */
+.archive-panel .icon-copy-btn,
+.archive-panel .icon-clear-btn {
+  border: none !important;
+  background: transparent !important;
+  transition: opacity 0.2s ease;
+}
+.archive-panel .icon-copy-btn:hover,
+.archive-panel .icon-clear-btn:hover {
+  opacity: 0.6;
+  background: transparent !important;
+  border: none !important;
+  color: inherit !important;
+}
