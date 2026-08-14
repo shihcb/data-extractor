@@ -283,8 +283,8 @@ export default function App() {
 
   const sliderTransform = 
     activeDocType === 'paycheck' ? 0 : 
-    activeDocType === 'card' ? 98 : 
-    228; // 94 width + 126 width + 8px gaps
+    activeDocType === 'card' ? 94 : // Paycheck button width
+    220; // Paycheck button (94) + Bank Statement button (126) = 220
 
   return (
     <div className={`min-h-screen bg-[#faf9f6] text-[#0f172a] px-4 sm:px-6 w-full flex flex-col items-center justify-center py-20 sm:py-24 relative`}>
