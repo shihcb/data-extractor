@@ -25,7 +25,13 @@ export default function FileUpload({
   const [displayUploadedLabel, setDisplayUploadedLabel] = React.useState(uploadedLabel);
   const [isPlaceholder, setIsPlaceholder] = React.useState(!fileName);
   const [isAnimating, setIsAnimating] = React.useState(false);
-  const [isArchiveOpen, setIsArchiveOpen] = React.useState(false);
+  const [isArchiveOpen, setIsArchiveOpen] = React.useState(() => {
+    return localStorage.getItem('extrkt_archive_open') === 'true';
+  });
+
+  React.useEffect(() => {
+    localStorage.setItem('extrkt_archive_open', isArchiveOpen);
+  }, [isArchiveOpen]);
 
   // Sync state changes
   React.useEffect(() => {
