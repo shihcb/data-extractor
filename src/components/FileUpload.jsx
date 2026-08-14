@@ -11,7 +11,8 @@ export default function FileUpload({
 }) {
   const fileInputRef = useRef(null);
 
-  const handleClick = () => {
+  const handleClick = (e) => {
+    e.stopPropagation();
     fileInputRef.current?.click();
   };
 
@@ -29,14 +30,14 @@ export default function FileUpload({
     );
   }
 
-  // If a file is uploaded, show the horizontal card style with file name
-  // The entire box is clickable to select a new file and override the current one directly!
+  // If a file is uploaded:
+  // - Clicking the outer box does NOT trigger file selector (not clickable).
+  // - Clicking the Refresh/Reset button directly opens the file picker to choose a new file and override it!
   if (fileName) {
     return (
       <div
-        onClick={handleClick}
-        className="independent-row-card uploader-card cursor-pointer hover:border-indigo-500"
-        title="Click to change file"
+        className="independent-row-card uploader-card"
+        title="File uploaded"
       >
         <input
           ref={fileInputRef}
@@ -60,15 +61,12 @@ export default function FileUpload({
           </div>
         </div>
 
-        {/* Reload button clears/removes the files and goes to a blank state */}
+        {/* Clicking this button directly triggers file selector to choose a new file and override */}
         <button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation(); // Avoid triggering file selection picker on clear click
-            onClear();
-          }}
+          onClick={handleClick}
           className="icon-copy-btn shrink-0"
-          title="Remove file and clear data"
+          title="Upload a new file to override"
         >
           <RefreshCw size={14} />
         </button>
