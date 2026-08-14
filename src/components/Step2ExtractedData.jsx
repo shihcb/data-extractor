@@ -16,7 +16,7 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
       setIsVisible(false);
       const timer = setTimeout(() => {
         setRenderedData(null);
-      }, 220);
+      }, 650);
       return () => clearTimeout(timer);
     }
   }, [data]);
