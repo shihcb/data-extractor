@@ -24,7 +24,6 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  /* Bulletproof global removal of mobile Safari tap highlights, especially in iOS Add to Homescreen standalone mode */
   -webkit-tap-highlight-color: transparent !important;
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0) !important;
   -webkit-touch-callout: none !important;
@@ -34,7 +33,7 @@
 }
 
 html, body {
-  overflow: hidden; /* Disable scrolling on both desktop and mobile platforms */
+  overflow: hidden;
   height: 100vh;
   width: 100vw;
 }
@@ -73,8 +72,7 @@ button {
   border: 1px solid var(--border-subtle);
   border-radius: 16px;
   box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.03), 0 1px 3px rgba(15, 23, 42, 0.01);
-  transition: border-color 0.2s ease,
-              background-color 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
   margin-bottom: 8px;
 }
 
@@ -122,7 +120,6 @@ button {
   100% { transform: scale(1); }
 }
 
-/* Green copied success state */
 .icon-copy-btn.copied {
   background: #ecfdf5;
   border-color: #a7f3d0;
@@ -130,7 +127,7 @@ button {
   animation: popScale 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-/* Modern Tab Switcher - Solid Black Themed Container */
+/* Modern Tab Switcher */
 .modern-tab-switch {
   position: relative;
   display: flex;
@@ -168,7 +165,7 @@ button {
   left: 3px;
   background: #ffffff;
   border-radius: 9999px;
-  /* Synchronized transform and width easing & duration parameters perfectly to prevent boundary jitter or choppiness */
+  /* Both transform and width use identical duration + easing to prevent boundary jitter */
   transition: transform 0.24s cubic-bezier(0.25, 1, 0.5, 1),
               width 0.24s cubic-bezier(0.25, 1, 0.5, 1);
   z-index: 1;
@@ -183,4 +180,87 @@ button {
 
 .results-wrapper.visible {
   max-height: 800px;
+}
+
+/* ── Case Converter ─────────────────────────────────────────── */
+
+.case-converter-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+}
+
+.case-converter-textarea {
+  width: 100%;
+  min-height: 180px;
+  resize: none;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.03), 0 1px 3px rgba(15, 23, 42, 0.01);
+  padding: 18px 24px;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--color-navy);
+  line-height: 1.6;
+  /* allow text selection in textarea */
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  transition: border-color 0.2s ease;
+}
+
+.case-converter-textarea::placeholder {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+.case-converter-textarea:focus {
+  border-color: #cbd5e1;
+}
+
+.case-converter-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.case-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 22px;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  background: #ffffff;
+  border: 1.5px solid #000000;
+  color: #000000;
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease, opacity 0.18s ease;
+  cursor: pointer;
+}
+
+.case-btn:hover:not(:disabled) {
+  background: #000000;
+  color: #ffffff;
+}
+
+.case-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.case-btn-upper {
+  /* UPPERCASE variant uses same B&W palette */
+  font-weight: 900;
+  letter-spacing: 0.07em;
+}
+
+.case-btn-copied {
+  background: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
+  color: #059669 !important;
 }

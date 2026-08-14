@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import FileUpload from './components/FileUpload';
 import Step2ExtractedData from './components/Step2ExtractedData';
+import CaseConverter from './components/CaseConverter';
 
 import { parsePdfText } from './utils/pdfParser';
 import { parseImageText } from './utils/imageParser';
@@ -128,7 +129,6 @@ export default function App() {
       localStorage.removeItem('extrkt_transaction_data');
     }
 
-    // Reset timestamp if ALL are cleared
     if (!paycheckFileName && !cardFileName && !transactionFileName) {
       localStorage.removeItem('extrkt_timestamp');
     }
@@ -137,15 +137,12 @@ export default function App() {
   const handleFileUpload = async (file) => {
     if (!file) return;
 
-    // Enforce filename validation ONLY in paycheck and bank statement views
     if (activeDocType !== 'transaction') {
       const fileLower = file.name.toLowerCase();
       if (!fileLower.includes('statement')) {
-        console.log(`[Validation] File rejected in ${activeDocType} view because name does not contain "statement":`, file.name);
+        console.log(`[Validation] File rejected in ${activeDocType} view:`, file.name);
         return;
       }
-    } else {
-      console.log(`[Validation] Bypassing filename validation for transactions view:`, file.name);
     }
 
     setIsProcessing(true);
@@ -165,7 +162,6 @@ export default function App() {
         extractedRawText = await file.text();
       }
 
-      // Parse and save data strictly inside the active tab's scope if ALL core fields exist!
       if (activeDocType === 'paycheck') {
         const parsedPaycheck = extractPaycheckData(extractedRawText);
         const hasAllPaycheckInfo = 
@@ -177,8 +173,6 @@ export default function App() {
         if (hasAllPaycheckInfo) {
           setPaycheckData(parsedPaycheck);
           setPaycheckFileName(file.name);
-        } else {
-          console.log('[Validation] Rejected paycheck info parsed:', parsedPaycheck);
         }
       } else if (activeDocType === 'card') {
         const parsedCard = extractCardStatementData(extractedRawText);
@@ -191,10 +185,8 @@ export default function App() {
         if (hasAllCardInfo) {
           setCardData(parsedCard);
           setCardFileName(file.name);
-        } else {
-          console.log('[Validation] Rejected card info parsed:', parsedCard);
         }
-      } else {
+      } else if (activeDocType === 'transaction') {
         const parsedTx = extractTransactionData(extractedRawText);
         const hasAllTxInfo = 
           parsedTx.amount !== 'Not Found' && 
@@ -203,8 +195,6 @@ export default function App() {
         if (hasAllTxInfo) {
           setTransactionData(parsedTx);
           setTransactionFileName(file.name);
-        } else {
-          console.log('[Validation] Rejected transaction info parsed:', parsedTx);
         }
       }
     } catch (err) {
@@ -245,7 +235,7 @@ export default function App() {
           setCardData(parsedCard);
           setCardFileName('Pasted Content');
         }
-      } else {
+      } else if (activeDocType === 'transaction') {
         const parsedTx = extractTransactionData(text);
         const hasAllTxInfo = 
           parsedTx.amount !== 'Not Found' && 
@@ -256,6 +246,7 @@ export default function App() {
           setTransactionFileName('Pasted Content');
         }
       }
+      // 'case' view has its own paste handling inside the textarea
     } catch (err) {
       console.error('Clipboard paste parsing error:', err);
     } finally {
@@ -263,10 +254,10 @@ export default function App() {
     }
   };
 
-  // Add global window paste listener to catch files or text copied from clipboard (Cmd+V)
+  // Global paste listener (skip for case converter — its textarea handles its own input)
   useEffect(() => {
     const handleGlobalPaste = (e) => {
-      if (isProcessing) return;
+      if (isProcessing || activeDocType === 'case') return;
       const files = e.clipboardData?.files;
       if (files && files.length > 0) {
         handleFileUpload(files[0]);
@@ -294,23 +285,29 @@ export default function App() {
 
   const isStep2Complete = Boolean(activeData);
 
-  // Calculate sliding dimensions for switcher animation
-  const sliderWidth = 
-    activeDocType === 'paycheck' ? 94 : 
-    activeDocType === 'card' ? 126 : 
-    100;
+  // Tab definitions — order matches DOM order in the switcher
+  // Widths: paycheck=94, card=126, transaction=100, case=112
+  const tabDefs = [
+    { key: 'paycheck',     label: 'paychecks',      width: 94  },
+    { key: 'card',         label: 'bank statements', width: 126 },
+    { key: 'transaction',  label: 'transactions',    width: 100 },
+    { key: 'case',         label: 'case converter',  width: 112 },
+  ];
 
-  const sliderTransform = 
-    activeDocType === 'paycheck' ? 0 : 
-    activeDocType === 'card' ? 94 : 
-    220;
+  // Compute slider width + translateX from tabDefs
+  const activeTabDef = tabDefs.find(t => t.key === activeDocType) ?? tabDefs[0];
+  const sliderWidth = activeTabDef.width;
+  const sliderTransform = tabDefs
+    .slice(0, tabDefs.findIndex(t => t.key === activeDocType))
+    .reduce((acc, t) => acc + t.width, 0);
+
+  const isCaseView = activeDocType === 'case';
 
   return (
-    <div className={`min-h-screen bg-[#faf9f6] text-[#0f172a] px-4 sm:px-6 w-full flex flex-col items-center justify-center py-20 sm:py-24 relative`}>
-      {/* View Switcher: fixed bottom-center on mobile, absolute top-right on desktop */}
+    <div className="min-h-screen bg-[#faf9f6] text-[#0f172a] px-4 sm:px-6 w-full flex flex-col items-center justify-center py-20 sm:py-24 relative">
+      {/* View Switcher */}
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-20 sm:absolute sm:top-6 sm:right-6 sm:bottom-auto sm:left-auto sm:translate-x-0">
         <div className="modern-tab-switch">
-          {/* Animated Slider Highlight pill */}
           <div 
             className={`modern-tab-slider ${!isMounted ? 'no-transition' : ''}`}
             style={{
@@ -318,55 +315,51 @@ export default function App() {
               transform: `translate3d(${sliderTransform}px, 0, 0)`
             }}
           />
-          <button
-            onClick={() => setActiveDocType('paycheck')}
-            className={`modern-tab-btn ${activeDocType === 'paycheck' ? 'active' : ''}`}
-            style={{ width: '94px' }}
-          >
-            paychecks
-          </button>
-          <button
-            onClick={() => setActiveDocType('card')}
-            className={`modern-tab-btn ${activeDocType === 'card' ? 'active' : ''}`}
-            style={{ width: '126px' }}
-          >
-            bank statements
-          </button>
-          <button
-            onClick={() => setActiveDocType('transaction')}
-            className={`modern-tab-btn ${activeDocType === 'transaction' ? 'active' : ''}`}
-            style={{ width: '100px' }}
-          >
-            transactions
-          </button>
+          {tabDefs.map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveDocType(tab.key)}
+              className={`modern-tab-btn ${activeDocType === tab.key ? 'active' : ''}`}
+              style={{ width: `${tab.width}px` }}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 
       {/* Centered App Container */}
       <div className="app-container my-auto">
-        
-        {/* Upload Card Box Component */}
-        <FileUpload
-          onFileUpload={handleFileUpload}
-          isProcessing={isProcessing}
-          fileName={activeFileName}
-          onClear={handleClearFile}
-          uploadText={activeDocType === 'transaction' ? 'UPLOAD TRANSACTION' : 'UPLOAD STATEMENT'}
-          uploadedLabel={activeDocType === 'transaction' ? 'Uploaded Transaction' : 'Uploaded Statement'}
-        />
 
-        {/* Extracted Value Cards with Dynamic Fade Out/In Key */}
-        <div 
-          key={`results-${activeDocType}`} 
-          className={`results-wrapper ${isStep2Complete ? 'visible' : ''}`}
-        >
-          <Step2ExtractedData
-            data={activeData}
-            docType={activeDocType}
-            isCompleted={isStep2Complete}
-            isInitialAppLoad={isInitialAppLoad}
-          />
-        </div>
+        {/* Case Converter View */}
+        {isCaseView ? (
+          <CaseConverter />
+        ) : (
+          <>
+            {/* Upload Card Box Component */}
+            <FileUpload
+              onFileUpload={handleFileUpload}
+              isProcessing={isProcessing}
+              fileName={activeFileName}
+              onClear={handleClearFile}
+              uploadText={activeDocType === 'transaction' ? 'UPLOAD TRANSACTION' : 'UPLOAD STATEMENT'}
+              uploadedLabel={activeDocType === 'transaction' ? 'Uploaded Transaction' : 'Uploaded Statement'}
+            />
+
+            {/* Extracted Value Cards */}
+            <div 
+              key={`results-${activeDocType}`} 
+              className={`results-wrapper ${isStep2Complete ? 'visible' : ''}`}
+            >
+              <Step2ExtractedData
+                data={activeData}
+                docType={activeDocType}
+                isCompleted={isStep2Complete}
+                isInitialAppLoad={isInitialAppLoad}
+              />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
