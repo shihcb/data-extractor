@@ -61,11 +61,11 @@ export default function CaseConverter() {
       />
       <div className="case-converter-actions">
         <button
-          className={`case-btn case-btn-paste ${pastedConfirm ? 'case-btn-copied' : ''}`}
+          className={`case-btn case-btn-paste case-btn-icon-only ${pastedConfirm ? 'case-btn-copied' : ''}`}
           onClick={handlePaste}
+          title="Paste from clipboard"
         >
-          {!pastedConfirm && <ClipboardPaste size={13} />}
-          {pastedConfirm ? 'pasted!' : 'paste'}
+          <ClipboardPaste size={14} />
         </button>
 
         <button

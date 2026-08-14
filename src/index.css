@@ -303,6 +303,14 @@ button {
   color: #ffffff;
 }
 
+/* Icon-only square variant for the paste button */
+.case-btn-icon-only {
+  padding: 9px;
+  width: 36px;
+  height: 36px;
+  justify-content: center;
+}
+
 /* Green confirm overrides the black default state */
 .case-btn-paste.case-btn-copied {
   background: #ecfdf5 !important;
