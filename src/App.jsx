@@ -164,38 +164,16 @@ export default function App() {
 
       if (activeDocType === 'paycheck') {
         const parsedPaycheck = extractPaycheckData(extractedRawText);
-        const hasAllPaycheckInfo = 
-          parsedPaycheck.netPay !== 'Not Found' && 
-          parsedPaycheck.grossIncome !== 'Not Found' && 
-          parsedPaycheck.payPeriod !== 'Not Found' && 
-          parsedPaycheck.paycheckNumber !== 'Not Found';
-
-        if (hasAllPaycheckInfo) {
-          setPaycheckData(parsedPaycheck);
-          setPaycheckFileName(file.name);
-        }
+        setPaycheckData(parsedPaycheck);
+        setPaycheckFileName(file.name);
       } else if (activeDocType === 'card') {
         const parsedCard = extractCardStatementData(extractedRawText);
-        const hasAllCardInfo = 
-          parsedCard.statementBalance !== 'Not Found' && 
-          parsedCard.startDate !== 'Not Found' && 
-          parsedCard.endDate !== 'Not Found' && 
-          parsedCard.statementPeriod !== 'Not Found';
-
-        if (hasAllCardInfo) {
-          setCardData(parsedCard);
-          setCardFileName(file.name);
-        }
+        setCardData(parsedCard);
+        setCardFileName(file.name);
       } else if (activeDocType === 'transaction') {
         const parsedTx = extractTransactionData(extractedRawText);
-        const hasAllTxInfo = 
-          parsedTx.amount !== 'Not Found' && 
-          parsedTx.dateTime !== 'Not Found';
-
-        if (hasAllTxInfo) {
-          setTransactionData(parsedTx);
-          setTransactionFileName(file.name);
-        }
+        setTransactionData(parsedTx);
+        setTransactionFileName(file.name);
       }
     } catch (err) {
       console.error('File parsing error:', err);
@@ -213,38 +191,16 @@ export default function App() {
     try {
       if (activeDocType === 'paycheck') {
         const parsedPaycheck = extractPaycheckData(text);
-        const hasAllPaycheckInfo = 
-          parsedPaycheck.netPay !== 'Not Found' && 
-          parsedPaycheck.grossIncome !== 'Not Found' && 
-          parsedPaycheck.payPeriod !== 'Not Found' && 
-          parsedPaycheck.paycheckNumber !== 'Not Found';
-
-        if (hasAllPaycheckInfo) {
-          setPaycheckData(parsedPaycheck);
-          setPaycheckFileName('Pasted Content');
-        }
+        setPaycheckData(parsedPaycheck);
+        setPaycheckFileName('Pasted Content');
       } else if (activeDocType === 'card') {
         const parsedCard = extractCardStatementData(text);
-        const hasAllCardInfo = 
-          parsedCard.statementBalance !== 'Not Found' && 
-          parsedCard.startDate !== 'Not Found' && 
-          parsedCard.endDate !== 'Not Found' && 
-          parsedCard.statementPeriod !== 'Not Found';
-
-        if (hasAllCardInfo) {
-          setCardData(parsedCard);
-          setCardFileName('Pasted Content');
-        }
+        setCardData(parsedCard);
+        setCardFileName('Pasted Content');
       } else if (activeDocType === 'transaction') {
         const parsedTx = extractTransactionData(text);
-        const hasAllTxInfo = 
-          parsedTx.amount !== 'Not Found' && 
-          parsedTx.dateTime !== 'Not Found';
-
-        if (hasAllTxInfo) {
-          setTransactionData(parsedTx);
-          setTransactionFileName('Pasted Content');
-        }
+        setTransactionData(parsedTx);
+        setTransactionFileName('Pasted Content');
       }
       // 'case' view has its own paste handling inside the textarea
     } catch (err) {

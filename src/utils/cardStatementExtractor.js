@@ -10,6 +10,13 @@ export function extractCardStatementData(text) {
   const cleanText = text.replace(/\r/g, '');
   const lines = cleanText.split('\n').map(l => l.trim()).filter(Boolean);
 
+  // Discover Apple Card statement parsing
+  const isAppleCard = cleanText.toLowerCase().includes('apple card') || cleanText.toLowerCase().includes('goldman sachs');
+  if (isAppleCard) {
+    const appleData = parseAppleStatement(cleanText, lines);
+    if (appleData) return appleData;
+  }
+
   // Discover specific statement parsing
   const isDiscover = cleanText.toLowerCase().includes('discover');
   if (isDiscover) {
@@ -24,13 +31,14 @@ export function extractCardStatementData(text) {
     /ending\s*in\s*(\d{4})/i
   ]);
   const statementPeriod = extractStatementPeriod(cleanText);
-  let startDate = 'Not Found';
-  let endDate = 'Not Found';
+  let startDate = 'N/A';
+  let endDate = 'N/A';
   if (statementPeriod) {
     const dates = statementPeriod.split(/\s*(?:-|to|through|–)\s*/);
     if (dates.length >= 2) {
-      startDate = dates[0];
-      endDate = dates[1];
+      startDate = dates[0].trim();
+      endDate = dates[1].trim();
+      startDate = normalizeDateWithYear(startDate, endDate);
     }
   }
 
@@ -42,18 +50,54 @@ export function extractCardStatementData(text) {
 
   return {
     bankName: bankName || 'Bank Statement',
-    cardLast4: cardLast4 ? `•••• ${cardLast4}` : 'Not Found',
-    statementPeriod: statementPeriod || 'Not Found',
+    cardLast4: cardLast4 ? `•••• ${cardLast4}` : 'N/A',
+    statementPeriod: statementPeriod || 'N/A',
     startDate: startDate,
     endDate: endDate,
-    statementBalance: statementBalance ? formatCurrency(statementBalance) : 'Not Found',
+    statementBalance: statementBalance ? formatCurrency(statementBalance) : 'N/A',
     rawText: cleanText
   };
 }
 
+function parseAppleStatement(text, lines) {
+  let statementBalance = null;
+  // Match Apple Card statement balance (e.g. Your June Balance ... $128.06)
+  const balanceMatch = text.match(/Your\s+\w+\s+Balance\s*(?:\n|as\s+of\s+[A-Za-z]{3}\s+\d{1,2},\s+\d{4})?\s*\n?\s*\$?([0-9,]+\.[0-9]{2})/i) ||
+                       text.match(/Total\s+Balance\s+\$?([0-9,]+\.[0-9]{2})/i);
+  if (balanceMatch) {
+    statementBalance = parseFloat(balanceMatch[1].replace(/,/g, ''));
+  }
+
+  // Match Apple Card billing period: "Jun 1 — Jun 30, 2026" or "Jun 1 - Jun 30, 2026"
+  let startDate = 'N/A';
+  let endDate = 'N/A';
+  let statementPeriod = 'N/A';
+
+  const periodMatch = text.match(/([A-Za-z]{3,9})\s+(\d{1,2})\s*(?:—|–|-|to)\s*([A-Za-z]{3,9})\s+(\d{1,2}),\s*(\d{4})/);
+  if (periodMatch) {
+    const startMonth = periodMatch[1];
+    const startDay = periodMatch[2];
+    const endMonth = periodMatch[3];
+    const endDay = periodMatch[4];
+    const year = periodMatch[5];
+
+    startDate = `${startMonth} ${startDay}, ${year}`;
+    endDate = `${endMonth} ${endDay}, ${year}`;
+    statementPeriod = `${startMonth} ${startDay} — ${endMonth} ${endDay}, ${year}`;
+  }
+
+  return {
+    bankName: 'Apple Card',
+    cardLast4: 'N/A',
+    statementPeriod,
+    startDate,
+    endDate,
+    statementBalance: statementBalance ? formatCurrency(statementBalance) : 'N/A',
+    rawText: text
+  };
+}
+
 function parseDiscoverStatement(text, lines) {
-  // 1. Period & Start/End Dates
-  // OPEN TO CLOSE DATE: 07/05/2026 - 08/04/2026 or "07/05/2026 - 08/04/2026"
   let statementPeriod = null;
   let startDate = null;
   let endDate = null;
@@ -65,15 +109,12 @@ function parseDiscoverStatement(text, lines) {
     statementPeriod = `${startDate} - ${endDate}`;
   }
 
-  // 2. New Balance / Statement Balance
-  // "New Balance: $30.37" or "New Balance \n 30.37"
   let statementBalance = null;
   const balanceMatch = text.match(/New\s*Balance:?\s*\$?([0-9,]+\.[0-9]{2})/i) ||
                        text.match(/New\s*Balance\s*\n\s*\$?([0-9,]+\.[0-9]{2})/i);
   if (balanceMatch) {
     statementBalance = parseFloat(balanceMatch[1].replace(/,/g, ''));
   } else {
-    // Check OCR alternate occurrences
     const altMatch = text.match(/30\.37/);
     if (altMatch) {
       statementBalance = 30.37;
@@ -93,14 +134,27 @@ function parseDiscoverStatement(text, lines) {
 
 function getEmptyCardStatementData() {
   return {
-    bankName: 'Not Found',
-    cardLast4: 'Not Found',
-    statementPeriod: 'Not Found',
-    startDate: 'Not Found',
-    endDate: 'Not Found',
-    statementBalance: 'Not Found',
+    bankName: 'N/A',
+    cardLast4: 'N/A',
+    statementPeriod: 'N/A',
+    startDate: 'N/A',
+    endDate: 'N/A',
+    statementBalance: 'N/A',
     rawText: ''
   };
+}
+
+function normalizeDateWithYear(start, end) {
+  if (!start || start === 'N/A') return 'N/A';
+  const hasYear = /\b\d{4}\b/.test(start);
+  if (!hasYear && end) {
+    const yearMatch = end.match(/\b\d{4}\b/);
+    if (yearMatch) {
+      const year = yearMatch[0];
+      return `${start.trim()}, ${year}`;
+    }
+  }
+  return start;
 }
 
 function extractBankName(text, lines) {

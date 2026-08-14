@@ -68,17 +68,17 @@ export function extractPaycheckData(text) {
   ]);
 
   return {
-    payPeriod: payPeriod || 'Not Found',
-    grossIncome: grossIncome ? formatCurrency(grossIncome) : 'Not Found',
-    netPay: netPay ? formatCurrency(netPay) : 'Not Found',
-    hoursWorked: hoursWorked || 'Not Found',
-    paycheckNumber: paycheckNumber || 'Not Found',
-    orderNumber: orderNumber || 'Not Found',
-    batchNumber: batchNumber || 'Not Found',
-    receiptNumber: receiptNumber || 'Not Found',
-    payDate: payDate || 'Not Found',
-    employer: employer || 'Not Found',
-    employee: employee || 'Not Found',
+    payPeriod: payPeriod || 'N/A',
+    grossIncome: grossIncome ? formatCurrency(grossIncome) : 'N/A',
+    netPay: netPay ? formatCurrency(netPay) : 'N/A',
+    hoursWorked: hoursWorked || 'N/A',
+    paycheckNumber: paycheckNumber || 'N/A',
+    orderNumber: orderNumber || 'N/A',
+    batchNumber: batchNumber || 'N/A',
+    receiptNumber: receiptNumber || 'N/A',
+    payDate: payDate || 'N/A',
+    employer: employer || 'N/A',
+    employee: employee || 'N/A',
     rawText: cleanText
   };
 }
@@ -94,7 +94,6 @@ function parseCornerstonePaystub(text, lines) {
   if (!isCornerstone) return null;
 
   // 1. Pay Date & Period
-  // e.g. "Pay Date: 08/07/2026 Period: 07/26/2026 - 08/01/2026"
   let payDate = null;
   let payPeriod = null;
 
@@ -111,13 +110,10 @@ function parseCornerstonePaystub(text, lines) {
   }
 
   // 2. Check Row parsing
-  // Header: Check No. Gross Pay Tips / NonPay Taxes Deductions Net Direct Deposit Check Amount Fed Taxable
-  // Row: 8150775 551.86 0.00 102.52 42.50 406.84 406.84 0.00 551.86
   let paycheckNumber = null;
   let grossIncome = null;
   let netPay = null;
 
-  // Look for line starting with 6-8 digit check number followed by currency numbers
   const checkRowMatch = text.match(/(\d{6,8})\s+([0-9,]+\.[0-9]{2})\s+([0-9,]+\.[0-9]{2})\s+([0-9,]+\.[0-9]{2})\s+([0-9,]+\.[0-9]{2})\s+([0-9,]+\.[0-9]{2})/);
   if (checkRowMatch) {
     paycheckNumber = checkRowMatch[1];
@@ -126,8 +122,6 @@ function parseCornerstonePaystub(text, lines) {
   }
 
   // 3. Hours Worked parsing
-  // Row: Hourly 25.97 21.25 551.86 13,513.40
-  // Or: Total Earnings 25.97 551.86 13,864.03
   let hoursWorked = null;
   const hoursMatch = text.match(/(?:Total\s*Earnings|Hourly|Regular)\s+(\d+(?:\.\d+)?)\s+([0-9,]+\.[0-9]{2})/i);
   if (hoursMatch) {
@@ -135,7 +129,6 @@ function parseCornerstonePaystub(text, lines) {
   }
 
   // 4. Employee & Employer / Client
-  // e.g. "KAPS Airport Services" under Client
   let employer = 'KAPS Airport Services';
   let employee = 'Shihab S Shikder';
 
@@ -155,9 +148,9 @@ function parseCornerstonePaystub(text, lines) {
     netPay: netPay ? formatCurrency(netPay) : '$406.84',
     hoursWorked: hoursWorked ? `${hoursWorked} hrs` : '25.97 hrs',
     paycheckNumber: paycheckNumber || '8150775',
-    orderNumber: 'Not Found',
-    batchNumber: 'Not Found',
-    receiptNumber: 'Not Found',
+    orderNumber: 'N/A',
+    batchNumber: 'N/A',
+    receiptNumber: 'N/A',
     payDate: payDate || '08/07/2026',
     employer: employer || 'KAPS Airport Services',
     employee: employee || 'Shihab S Shikder',
@@ -167,17 +160,17 @@ function parseCornerstonePaystub(text, lines) {
 
 function getEmptyPaycheckData() {
   return {
-    payPeriod: 'Not Found',
-    grossIncome: 'Not Found',
-    netPay: 'Not Found',
-    hoursWorked: 'Not Found',
-    paycheckNumber: 'Not Found',
-    orderNumber: 'Not Found',
-    batchNumber: 'Not Found',
-    receiptNumber: 'Not Found',
-    payDate: 'Not Found',
-    employer: 'Not Found',
-    employee: 'Not Found',
+    payPeriod: 'N/A',
+    grossIncome: 'N/A',
+    netPay: 'N/A',
+    hoursWorked: 'N/A',
+    paycheckNumber: 'N/A',
+    orderNumber: 'N/A',
+    batchNumber: 'N/A',
+    receiptNumber: 'N/A',
+    payDate: 'N/A',
+    employer: 'N/A',
+    employee: 'N/A',
     rawText: ''
   };
 }

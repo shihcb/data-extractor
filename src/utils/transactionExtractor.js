@@ -10,9 +10,9 @@ export function extractTransactionData(text) {
   const cleanText = text.replace(/\r/g, '');
   const lines = cleanText.split('\n').map(l => l.trim()).filter(Boolean);
 
-  let amount = 'Not Found';
-  let dateTime = 'Not Found';
-  let merchant = 'Not Found';
+  let amount = 'N/A';
+  let dateTime = 'N/A';
+  let merchant = 'N/A';
 
   // 1. Extract Amount
   // Search for any dollar pattern, e.g. $1.00, $1, $1.00*
@@ -27,7 +27,7 @@ export function extractTransactionData(text) {
   }
 
   // 2. Extract Date & Time
-  // Support both "Date: August 7, 2026 at 10:00 PM" and standalone "August 7, 2026 at 10:00 PM" (common on mobile email headers)
+  // Support both "Date: August 7, 2026 at 10:00 PM" and standalone "August 7, 2026 at 10:00 PM"
   const standaloneDateRegex = /([A-Za-z]+\s+\d{1,2},\s*\d{4}\s+at\s+\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?)/i;
   const dateLineRegex = /Date:\s*(.*)/i;
 
@@ -49,7 +49,7 @@ export function extractTransactionData(text) {
   }
 
   // Normalize spacing and AM/PM casing
-  if (dateTime !== 'Not Found') {
+  if (dateTime !== 'N/A') {
     dateTime = dateTime
       .replace(/(\d{1,2}:\d{2})\s*(AM|PM|am|pm)?/i, (match, p1, p2) => {
         const suffix = p2 ? p2.toUpperCase() : '';
@@ -60,7 +60,6 @@ export function extractTransactionData(text) {
   }
 
   // 3. Extract Merchant
-  // Find a line right before the amount line, or look for uppercase non-header names
   const amountIndex = lines.findIndex(l => l.includes(amount) || (amount === '$1' && l.includes('$1.00')));
   if (amountIndex > 0) {
     const prevLine = lines[amountIndex - 1];
@@ -70,7 +69,7 @@ export function extractTransactionData(text) {
   }
 
   // Fallback merchant search
-  if (merchant === 'Not Found') {
+  if (merchant === 'N/A') {
     for (const line of lines) {
       const upper = line.toUpperCase();
       if (upper === line && 
@@ -89,11 +88,6 @@ export function extractTransactionData(text) {
     }
   }
 
-  // Final fallback values to prevent empty state lockouts
-  if (amount === 'Not Found') amount = '$1';
-  if (dateTime === 'Not Found') dateTime = 'August 7, 2026 at 10:00 PM';
-  if (merchant === 'Not Found') merchant = 'GOOGLE';
-
   return {
     amount,
     dateTime,
@@ -103,8 +97,8 @@ export function extractTransactionData(text) {
 
 function getEmptyTransactionData() {
   return {
-    amount: 'Not Found',
-    dateTime: 'Not Found',
-    merchant: 'Not Found'
+    amount: 'N/A',
+    dateTime: 'N/A',
+    merchant: 'N/A'
   };
 }
