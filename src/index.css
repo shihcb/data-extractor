@@ -1,9 +1,27 @@
 @import "tailwindcss";
 
-/* Responsive scale for the pill switcher on mobile */
-@media (max-width: 640px) {
+/* Responsive scale for the pill switcher on mobile to prevent clipping */
+@media (max-width: 360px) {
   .modern-tab-switch {
-    transform: scale(0.90);
+    transform: scale(0.58);
+    transform-origin: center bottom;
+  }
+  .modern-tab-btn {
+    font-size: 0.8rem;
+  }
+}
+@media (min-width: 361px) and (max-width: 400px) {
+  .modern-tab-switch {
+    transform: scale(0.65);
+    transform-origin: center bottom;
+  }
+  .modern-tab-btn {
+    font-size: 0.8rem;
+  }
+}
+@media (min-width: 401px) and (max-width: 640px) {
+  .modern-tab-switch {
+    transform: scale(0.72);
     transform-origin: center bottom;
   }
   .modern-tab-btn {
