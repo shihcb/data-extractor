@@ -207,14 +207,49 @@ function getEmptyCardStatementData() {
   };
 }
 
+function getMonthIndex(dateStr) {
+  const months = [
+    ["jan", "january"], ["feb", "february"], ["mar", "march"],
+    ["apr", "april"], ["may"], ["jun", "june"],
+    ["jul", "july"], ["aug", "august"], ["sep", "september"],
+    ["oct", "october"], ["nov", "november"], ["dec", "december"]
+  ];
+  const lower = dateStr.toLowerCase();
+  for (let i = 0; i < months.length; i++) {
+    for (const m of months[i]) {
+      if (lower.includes(m)) return i;
+    }
+  }
+  const numMatch = dateStr.match(/^(\d{1,2})/);
+  if (numMatch) {
+    const m = parseInt(numMatch[1], 10);
+    if (m >= 1 && m <= 12) return m - 1;
+  }
+  return -1;
+}
+
 function normalizeDateWithYear(start, end) {
   if (!start || start === 'N/A') return 'N/A';
-  const hasYear = /\b\d{4}\b/.test(start);
-  if (!hasYear && end) {
-    const yearMatch = end.match(/\b\d{4}\b/);
+  const startHasYear = /\b\d{4}\b/.test(start) || (start.split('/').length === 3 && start.split('/')[2].length === 2);
+  if (!startHasYear && end) {
+    const yearMatch = end.match(/\b\d{4}\b/) || end.match(/\/(\d{2})$/);
     if (yearMatch) {
-      const year = yearMatch[0];
-      return `${start.trim()}, ${year}`;
+      let endYear = parseInt(yearMatch[0].replace('/', ''), 10);
+      if (endYear < 100) endYear += 2000;
+      
+      const startMonthIdx = getMonthIndex(start);
+      const endMonthIdx = getMonthIndex(end);
+      
+      if (startMonthIdx !== -1 && endMonthIdx !== -1) {
+        let startYear = endYear;
+        if (startMonthIdx > endMonthIdx) {
+          startYear = endYear - 1;
+        }
+        if (start.includes('/')) {
+          return `${start}/${startYear}`;
+        }
+        return `${start}, ${startYear}`;
+      }
     }
   }
   return start;
@@ -248,11 +283,35 @@ function extractStatementPeriod(text) {
 }
 
 function extractAmountByKeywords(text, regexes) {
+  // First attempt: match on the same line / nearby space
   for (const regex of regexes) {
     const match = text.match(new RegExp(regex.source + `(?:\\s+as\\s+of\\s+[^\\n$]+)?\\s*[:.-]?\\s*\\$?([0-9,]+\\.[0-9]{2})`, 'i'));
     if (match && match[1]) {
       const val = parseFloat(match[1].replace(/,/g, ''));
       if (!isNaN(val)) return val;
+    }
+  }
+
+  // Second attempt: line-by-line fallback with lookahead to handle columns
+  const lines = text.split('\n');
+  for (const regex of regexes) {
+    for (let i = 0; i < lines.length; i++) {
+      if (regex.test(lines[i])) {
+        // Check current line for a dollar amount
+        const lineMatch = lines[i].match(/\$?([0-9,]+\.[0-9]{2})/);
+        if (lineMatch) {
+          const val = parseFloat(lineMatch[1].replace(/,/g, ''));
+          if (!isNaN(val)) return val;
+        }
+        // Check next 2 lines
+        for (let j = i + 1; j <= Math.min(i + 2, lines.length - 1); j++) {
+          const nextMatch = lines[j].match(/^\s*\$?([0-9,]+\.[0-9]{2})\s*$/) || lines[j].match(/\$?([0-9,]+\.[0-9]{2})/);
+          if (nextMatch) {
+            const val = parseFloat(nextMatch[1].replace(/,/g, ''));
+            if (!isNaN(val)) return val;
+          }
+        }
+      }
     }
   }
   return null;
