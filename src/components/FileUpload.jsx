@@ -1,11 +1,23 @@
 import React, { useRef } from 'react';
-import { Upload, Loader2, FileText, RefreshCw } from 'lucide-react';
+import { Upload, Loader2, FileText, RefreshCw, Clipboard } from 'lucide-react';
 
-export default function FileUpload({ onFileUpload, isProcessing, fileName, onClear }) {
+export default function FileUpload({ onFileUpload, onPasteText, isProcessing, fileName, onClear }) {
   const fileInputRef = useRef(null);
 
   const handleClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const handlePasteClick = async (e) => {
+    e.stopPropagation();
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text && onPasteText) {
+        onPasteText(text);
+      }
+    } catch (err) {
+      console.warn('Could not read clipboard text:', err);
+    }
   };
 
   // If processing, show loading indicator inside a horizontal card matching value box style
@@ -52,7 +64,7 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
   }
 
   // When no file is uploaded, keep the SAME horizontal card appearance:
-  // "UPLOAD STATEMENT" with the upload symbol next to it, left-aligned
+  // "UPLOAD STATEMENT" with paste button and plus symbol next to it
   return (
     <div
       onClick={handleClick}
@@ -78,9 +90,20 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
         </span>
       </div>
 
-      {/* Perfectly centered plus (+) symbol with flex centering and leading-none */}
-      <div className="w-[34px] h-[34px] rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 shrink-0 text-lg font-bold leading-none select-none">
-        +
+      {/* Action buttons: paste & plus symbol */}
+      <div className="flex items-center gap-1.5 shrink-0">
+        <button
+          type="button"
+          onClick={handlePasteClick}
+          className="w-[34px] h-[34px] rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-indigo-50/40 hover:border-indigo-200 transition-colors"
+          title="Paste statement text from clipboard"
+        >
+          <Clipboard size={15} />
+        </button>
+
+        <div className="w-[34px] h-[34px] rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 text-lg font-bold leading-none select-none">
+          +
+        </div>
       </div>
     </div>
   );

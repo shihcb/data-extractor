@@ -145,6 +145,35 @@ export default function App() {
     }
   };
 
+  const handlePasteText = async (text) => {
+    if (!text || typeof text !== 'string') return;
+
+    setIsProcessing(true);
+    localStorage.setItem('extrkt_timestamp', Date.now().toString());
+
+    try {
+      if (activeDocType === 'paycheck') {
+        const parsedPaycheck = extractPaycheckData(text);
+        const hasPaycheckInfo = parsedPaycheck.netPay !== 'Not Found' || parsedPaycheck.grossIncome !== 'Not Found';
+        if (hasPaycheckInfo) {
+          setPaycheckData(parsedPaycheck);
+          setPaycheckFileName('Pasted Content');
+        }
+      } else {
+        const parsedCard = extractCardStatementData(text);
+        const hasCardInfo = parsedCard.statementBalance !== 'Not Found' || parsedCard.startDate !== 'Not Found';
+        if (hasCardInfo) {
+          setCardData(parsedCard);
+          setCardFileName('Pasted Content');
+        }
+      }
+    } catch (err) {
+      console.error('Clipboard paste parsing error:', err);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   // Determine active view states
   const activeFileName = activeDocType === 'paycheck' ? paycheckFileName : cardFileName;
   const activeData = activeDocType === 'paycheck' ? paycheckData : cardData;
@@ -191,6 +220,7 @@ export default function App() {
         {/* Upload Card Box Component */}
         <FileUpload
           onFileUpload={handleFileUpload}
+          onPasteText={handlePasteText}
           isProcessing={isProcessing}
           fileName={activeFileName}
           onClear={handleClearFile}
