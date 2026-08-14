@@ -75,11 +75,30 @@ export default function FileUpload({
     }
   };
 
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isProcessing) return;
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      onFileUpload(files[0]);
+    }
+  };
+
   return (
     <div className="w-full flex flex-col gap-2.5">
       {/* File Upload Main Card Container */}
       <div 
         className={`independent-row-card uploader-card select-none relative overflow-hidden ${isProcessing ? 'processing pointer-events-none cursor-wait' : ''}`}
+        onDragOver={handleDrag}
+        onDragEnter={handleDrag}
+        onDragLeave={handleDrag}
+        onDrop={handleDrop}
       >
         <input
           id={inputId}
