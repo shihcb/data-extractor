@@ -24,10 +24,16 @@ export default function App() {
     return localStorage.getItem('extrkt_doc_type') || 'paycheck';
   });
   
-  const [fileName, setFileName] = useState(() => {
-    return localStorage.getItem('extrkt_file_name') || '';
+  // Independent File Upload Names per View
+  const [paycheckFileName, setPaycheckFileName] = useState(() => {
+    return localStorage.getItem('extrkt_paycheck_file_name') || '';
   });
 
+  const [cardFileName, setCardFileName] = useState(() => {
+    return localStorage.getItem('extrkt_card_file_name') || '';
+  });
+
+  // Independent Parsed Data per View
   const [paycheckData, setPaycheckData] = useState(() => {
     const saved = localStorage.getItem('extrkt_paycheck_data');
     return saved ? JSON.parse(saved) : null;
@@ -40,15 +46,18 @@ export default function App() {
 
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const isStep2Complete = Boolean(paycheckData || cardData);
-
+  // Sync state changes with localStorage
   useEffect(() => {
     localStorage.setItem('extrkt_doc_type', activeDocType);
   }, [activeDocType]);
 
   useEffect(() => {
-    localStorage.setItem('extrkt_file_name', fileName);
-  }, [fileName]);
+    localStorage.setItem('extrkt_paycheck_file_name', paycheckFileName);
+  }, [paycheckFileName]);
+
+  useEffect(() => {
+    localStorage.setItem('extrkt_card_file_name', cardFileName);
+  }, [cardFileName]);
 
   useEffect(() => {
     if (paycheckData) {
@@ -67,13 +76,22 @@ export default function App() {
   }, [cardData]);
 
   const handleClearFile = () => {
-    setFileName('');
-    setPaycheckData(null);
-    setCardData(null);
-    localStorage.removeItem('extrkt_file_name');
-    localStorage.removeItem('extrkt_paycheck_data');
-    localStorage.removeItem('extrkt_card_data');
-    localStorage.removeItem('extrkt_timestamp');
+    if (activeDocType === 'paycheck') {
+      setPaycheckFileName('');
+      setPaycheckData(null);
+      localStorage.removeItem('extrkt_paycheck_file_name');
+      localStorage.removeItem('extrkt_paycheck_data');
+    } else {
+      setCardFileName('');
+      setCardData(null);
+      localStorage.removeItem('extrkt_card_file_name');
+      localStorage.removeItem('extrkt_card_data');
+    }
+
+    // Reset timestamp if BOTH are cleared
+    if (!paycheckFileName && !cardFileName) {
+      localStorage.removeItem('extrkt_timestamp');
+    }
   };
 
   const handleFileUpload = async (file) => {
@@ -86,7 +104,6 @@ export default function App() {
     }
 
     setIsProcessing(true);
-    setFileName(file.name);
     localStorage.setItem('extrkt_timestamp', Date.now().toString());
 
     try {
@@ -103,12 +120,16 @@ export default function App() {
         extractedRawText = await file.text();
       }
 
-      // Extract paycheck data and bank card statement data simultaneously
-      const parsedPaycheck = extractPaycheckData(extractedRawText);
-      const parsedCard = extractCardStatementData(extractedRawText);
-
-      setPaycheckData(parsedPaycheck);
-      setCardData(parsedCard);
+      // Parse and save data strictly inside the active tab's scope!
+      if (activeDocType === 'paycheck') {
+        const parsedPaycheck = extractPaycheckData(extractedRawText);
+        setPaycheckData(parsedPaycheck);
+        setPaycheckFileName(file.name);
+      } else {
+        const parsedCard = extractCardStatementData(extractedRawText);
+        setCardData(parsedCard);
+        setCardFileName(file.name);
+      }
     } catch (err) {
       console.error('File parsing error:', err);
     } finally {
@@ -116,7 +137,10 @@ export default function App() {
     }
   };
 
+  // Determine active view states
+  const activeFileName = activeDocType === 'paycheck' ? paycheckFileName : cardFileName;
   const activeData = activeDocType === 'paycheck' ? paycheckData : cardData;
+  const isStep2Complete = Boolean(activeData);
 
   // Calculate sliding dimensions for switcher animation
   const isCard = activeDocType === 'card';
@@ -158,15 +182,16 @@ export default function App() {
         
         {/* Upload Card Box Component */}
         <FileUpload
+          key={activeDocType} // Reset uploader display when switching document views
           onFileUpload={handleFileUpload}
           isProcessing={isProcessing}
-          fileName={fileName}
+          fileName={activeFileName}
           onClear={handleClearFile}
         />
 
-        {/* Extracted Value Cards with Slide Transitions on View Switch and Collapse on Reset */}
+        {/* Extracted Value Cards with Smooth Collapse & View change transitions */}
         <div 
-          key={activeDocType} // Triggers remount & fresh enter transitions on view changes
+          key={activeDocType} 
           className={`results-wrapper ${isStep2Complete ? 'visible' : ''}`}
         >
           <Step2ExtractedData

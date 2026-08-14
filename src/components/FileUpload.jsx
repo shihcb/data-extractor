@@ -11,7 +11,7 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
   // If processing, show loading indicator inside a horizontal card matching value box style
   if (isProcessing) {
     return (
-      <div className="independent-row-card justify-center py-5">
+      <div className="independent-row-card justify-center py-5 animate-fade-in">
         <Loader2 size={18} className="text-indigo-600 animate-spin" />
         <span className="font-bold text-xs text-slate-700 ml-2">Extracting statement data...</span>
       </div>
@@ -22,7 +22,7 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
   if (fileName) {
     return (
       <div
-        className="independent-row-card uploader-card"
+        className="independent-row-card uploader-card animate-fade-in"
         title="File uploaded"
       >
         <div className="min-w-0 flex-1 text-left">
@@ -56,7 +56,7 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
   return (
     <div
       onClick={handleClick}
-      className="independent-row-card cursor-pointer uploader-card hover:border-indigo-500"
+      className="independent-row-card cursor-pointer uploader-card hover:border-indigo-500 animate-fade-in"
       title="Upload Statement"
     >
       <input
@@ -78,7 +78,8 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
         </span>
       </div>
 
-      <div className="w-[34px] h-[34px] rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 shrink-0 text-lg font-bold">
+      {/* Centered plus (+) symbol with flex centering and vertical align correction */}
+      <div className="w-[34px] h-[34px] rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 shrink-0 text-lg font-bold pb-[3px] leading-none select-none">
         +
       </div>
     </div>
