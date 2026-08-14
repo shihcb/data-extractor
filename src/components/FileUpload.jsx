@@ -200,7 +200,7 @@ export default function FileUpload({
             Archived Documents ({archiveItems.length})
           </span>
           {archiveItems.length > 0 && (
-            <div className="w-[38px] flex justify-center shrink-0 mr-[5px]">
+            <div className="w-[36px] flex justify-center shrink-0 mr-[10px]">
               <button
                 type="button"
                 onClick={onClearAllArchives}
@@ -230,14 +230,14 @@ export default function FileUpload({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1 shrink-0 ml-3">
+                <div className="flex items-center gap-0.5 shrink-0 ml-3">
                   <button
                     type="button"
                     onClick={() => onLoadArchive(item)}
                     className="icon-copy-btn cursor-pointer w-[17px] h-[17px]"
                     title="Load document"
                   >
-                    <Upload size={10} />
+                    <Upload size={12} />
                   </button>
 
                   <button
@@ -246,7 +246,7 @@ export default function FileUpload({
                     className="icon-clear-btn cursor-pointer w-[17px] h-[17px]"
                     title="Delete from archive"
                   >
-                    <Trash2 size={10} />
+                    <Trash2 size={12} />
                   </button>
                 </div>
               </div>
