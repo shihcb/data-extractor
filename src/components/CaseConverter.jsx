@@ -6,13 +6,15 @@ export default function CaseConverter() {
   const [copiedUpper, setCopiedUpper] = useState(false);
   const textareaRef = useRef(null);
 
-  const handleConvert = async (mode) => {
+  const handleConvert = async (e, mode) => {
+    // Immediately blur the button so mobile doesn't keep it in an active/hover state
+    e.currentTarget.blur();
+
     const converted = mode === 'lower' ? text.toLowerCase() : text.toUpperCase();
     setText(converted);
     try {
       await navigator.clipboard.writeText(converted);
     } catch {
-      // fallback: select + copy
       if (textareaRef.current) {
         textareaRef.current.select();
         document.execCommand('copy');
@@ -43,14 +45,14 @@ export default function CaseConverter() {
       <div className="case-converter-actions">
         <button
           className={`case-btn ${copiedLower ? 'case-btn-copied' : ''}`}
-          onClick={() => handleConvert('lower')}
+          onClick={(e) => handleConvert(e, 'lower')}
           disabled={!text.trim()}
         >
           lowercase
         </button>
         <button
           className={`case-btn case-btn-upper ${copiedUpper ? 'case-btn-copied' : ''}`}
-          onClick={() => handleConvert('upper')}
+          onClick={(e) => handleConvert(e, 'upper')}
           disabled={!text.trim()}
         >
           UPPERCASE

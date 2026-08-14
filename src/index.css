@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
-/* Scale the entire tab switcher pill down on mobile so it fits without clipping */
+/* Scale the entire tab switcher pill on mobile — slightly smaller than full size but still readable */
 @media (max-width: 640px) {
   .modern-tab-switch {
-    transform: scale(0.78);
+    transform: scale(0.86);
     transform-origin: center bottom;
   }
 }
@@ -275,9 +275,13 @@ button {
   cursor: pointer;
 }
 
-.case-btn:hover:not(:disabled) {
-  background: #000000;
-  color: #ffffff;
+/* Only apply hover on real pointer devices — prevents mobile tap leaving button stuck black */
+@media (hover: hover) and (pointer: fine) {
+  .case-btn:hover:not(:disabled) {
+    background: #000000;
+    border-color: #000000;
+    color: #ffffff;
+  }
 }
 
 .case-btn:disabled {
