@@ -109,8 +109,6 @@ export default function App() {
 
       setPaycheckData(parsedPaycheck);
       setCardData(parsedCard);
-
-      // Do NOT auto-switch activeDocType back to paychecks! Maintain whatever activeDocType is currently toggled.
     } catch (err) {
       console.error('File parsing error:', err);
     } finally {
@@ -122,8 +120,8 @@ export default function App() {
 
   // Calculate sliding dimensions for switcher animation
   const isCard = activeDocType === 'card';
-  const sliderWidth = isCard ? 122 : 88;
-  const sliderTransform = isCard ? 92 : 0;
+  const sliderWidth = isCard ? 136 : 94;
+  const sliderTransform = isCard ? 98 : 0;
 
   return (
     <div className={`min-h-screen bg-[#faf9f6] text-[#0f172a] px-4 sm:px-6 w-full flex flex-col items-center justify-center py-20 sm:py-24 relative`}>
@@ -141,14 +139,14 @@ export default function App() {
           <button
             onClick={() => setActiveDocType('paycheck')}
             className={`modern-tab-btn ${activeDocType === 'paycheck' ? 'active' : ''}`}
-            style={{ width: '88px' }}
+            style={{ width: '94px' }}
           >
             paychecks
           </button>
           <button
             onClick={() => setActiveDocType('card')}
             className={`modern-tab-btn ${activeDocType === 'card' ? 'active' : ''}`}
-            style={{ width: '122px' }}
+            style={{ width: '136px' }}
           >
             bank statements
           </button>
