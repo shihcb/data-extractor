@@ -46,11 +46,6 @@ export default function FileUpload({
         transition: 'max-height 0.55s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), padding 0.55s cubic-bezier(0.16, 1, 0.3, 1), margin-bottom 0.55s cubic-bezier(0.16, 1, 0.3, 1), border-width 0.55s cubic-bezier(0.16, 1, 0.3, 1)'
       }}
     >
-      {isProcessing && (
-        <div className="absolute top-0 left-0 right-0 h-[2.5px] bg-[#f1f0ec] overflow-hidden">
-          <div className="animate-loading-bar" />
-        </div>
-      )}
       <input
         id={inputId}
         type="file"
