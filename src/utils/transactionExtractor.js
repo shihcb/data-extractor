@@ -16,11 +16,9 @@ export function extractTransactionData(text) {
 
   // 1. Extract Amount
   // Search for any dollar pattern, e.g. $1.00, $1, $1.00*
-  const amountMatches = cleanText.match(/\$[0-9,]+(?:\.[0-9]{2})?\*?/g);
+  const amountMatches = cleanText.match(/\$[0-9,]+(?:\.[0-9]{2})?[\*#]?/g);
   if (amountMatches && amountMatches.length > 0) {
-    // Clean trailing asterisk
-    let rawAmount = amountMatches[amountMatches.length - 1].replace('*', '');
-    // If it is "$1.00", format to "$1"
+    let rawAmount = amountMatches[amountMatches.length - 1].replace(/[\*#]/g, '');
     if (rawAmount === '$1.00') {
       amount = '$1';
     } else {
@@ -29,14 +27,21 @@ export function extractTransactionData(text) {
   }
 
   // 2. Extract Date & Time
-  // Try to match "Date: August 7, 2026 at 10:00PM" or similar
-  const dateLineMatch = cleanText.match(/Date:\s*(.*)/i);
-  if (dateLineMatch) {
+  // Support both "Date: August 7, 2026 at 10:00 PM" and standalone "August 7, 2026 at 10:00 PM" (common on mobile email headers)
+  const standaloneDateRegex = /([A-Za-z]+\s+\d{1,2},\s*\d{4}\s+at\s+\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?)/i;
+  const dateLineRegex = /Date:\s*(.*)/i;
+
+  const standaloneMatch = cleanText.match(standaloneDateRegex);
+  const dateLineMatch = cleanText.match(dateLineRegex);
+
+  if (standaloneMatch) {
+    dateTime = standaloneMatch[1].trim();
+  } else if (dateLineMatch) {
     dateTime = dateLineMatch[1].trim();
   } else {
-    // Fallback: look for a date pattern in lines
+    // Fallback: search lines for month names and years
     for (const line of lines) {
-      if (line.match(/Date:/i) || line.match(/[A-Za-z]+\s+\d{1,2},\s*\d{4}/)) {
+      if (line.match(/[A-Za-z]+\s+\d{1,2},\s*\d{4}/)) {
         dateTime = line.replace(/Date:\s*/i, '').trim();
         break;
       }
