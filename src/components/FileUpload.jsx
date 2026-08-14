@@ -195,7 +195,7 @@ export default function FileUpload({
 
       {/* Archive Submenu Drawer */}
       <div className={`archive-panel ${isArchiveOpen ? 'open' : 'closed'}`}>
-        <div className="flex items-center justify-between pb-2 border-b border-slate-200 mb-4">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-200 mb-6">
           <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
             Archived Documents ({archiveItems.length})
           </span>
@@ -223,13 +223,8 @@ export default function FileUpload({
               >
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
                   <FileText size={14} className="text-slate-400 shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <div className="font-bold text-xs sm:text-sm text-slate-700 truncate" title={item.name}>
-                      {item.name}
-                    </div>
-                    <div className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mt-0.5">
-                      {item.docType === 'paycheck' ? 'paychecks' : item.docType === 'card' ? 'bank statements' : 'transactions'}
-                    </div>
+                  <div className="font-bold text-xs sm:text-sm text-slate-700 truncate" title={item.name}>
+                    {item.name}
                   </div>
                 </div>
 

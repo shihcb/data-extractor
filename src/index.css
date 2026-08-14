@@ -504,21 +504,15 @@ button {
 
 /* Height restricted scroll area - fits exactly 3 items and scrolls on the 4th */
 .archive-list {
-  max-height: 138px;
+  max-height: 104px;
   overflow-y: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
 }
 
-/* Webkit Scrollbar styles for Archive scroll panel */
+/* Hide scrollbar for Chrome, Safari, and Opera */
 .archive-list::-webkit-scrollbar {
-  width: 4px;
-}
-.archive-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-.archive-list::-webkit-scrollbar-thumb {
-  background: #e2e8f0;
-  border-radius: 4px;
-}
-.archive-list::-webkit-scrollbar-thumb:hover {
-  background: #cbd5e1;
+  display: none;
+  width: 0;
+  height: 0;
 }
