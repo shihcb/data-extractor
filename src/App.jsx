@@ -15,7 +15,6 @@ export default function App() {
       const elapsed = Date.now() - parseInt(savedTimestamp, 10);
       const THIRTY_MINUTES = 30 * 60 * 1000;
       if (elapsed > THIRTY_MINUTES) {
-        // Silently clear expired data
         localStorage.clear();
       }
     }
@@ -80,7 +79,7 @@ export default function App() {
   const handleFileUpload = async (file) => {
     if (!file) return;
 
-    // Reject files that do NOT contain "statement" (case-insensitive) - SILENTLY (no warning alert)
+    // Reject files that do NOT contain "statement" (case-insensitive) - SILENTLY
     const fileLower = file.name.toLowerCase();
     if (!fileLower.includes('statement')) {
       return;
@@ -88,7 +87,6 @@ export default function App() {
 
     setIsProcessing(true);
     setFileName(file.name);
-    // Set 30-minute timestamp
     localStorage.setItem('extrkt_timestamp', Date.now().toString());
 
     try {
@@ -105,18 +103,14 @@ export default function App() {
         extractedRawText = await file.text();
       }
 
-      const textLower = extractedRawText.toLowerCase();
-      const isPaycheckText = textLower.includes('pay') || textLower.includes('gross') || textLower.includes('net') || textLower.includes('hours') || textLower.includes('period') || textLower.includes('check');
+      // Extract paycheck data and bank card statement data simultaneously
+      const parsedPaycheck = extractPaycheckData(extractedRawText);
+      const parsedCard = extractCardStatementData(extractedRawText);
 
-      if (isPaycheckText || activeDocType === 'paycheck') {
-        const parsedPaycheck = extractPaycheckData(extractedRawText);
-        setPaycheckData(parsedPaycheck);
-        setActiveDocType('paycheck');
-      } else {
-        const parsedCard = extractCardStatementData(extractedRawText);
-        setCardData(parsedCard);
-        setActiveDocType('card');
-      }
+      setPaycheckData(parsedPaycheck);
+      setCardData(parsedCard);
+
+      // Do NOT auto-switch activeDocType back to paychecks! Maintain whatever activeDocType is currently toggled.
     } catch (err) {
       console.error('File parsing error:', err);
     } finally {

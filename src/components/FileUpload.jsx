@@ -12,7 +12,7 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
   if (isProcessing) {
     return (
       <div className="independent-row-card justify-center py-5">
-        <Loader2 size={20} className="text-indigo-600 animate-spin" />
+        <Loader2 size={18} className="text-indigo-600 animate-spin" />
         <span className="font-bold text-xs text-slate-700 ml-2">Extracting statement data...</span>
       </div>
     );
@@ -38,12 +38,16 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
           className="hidden"
         />
 
-        <div className="min-w-0 flex-1">
+        {/* Balanced spacer */}
+        <div className="w-[34px] shrink-0" />
+
+        {/* Centered Filename */}
+        <div className="min-w-0 flex-1 text-center">
           <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-0.5">
             Uploaded Statement
           </div>
-          <div className="font-bold text-sm sm:text-base text-slate-800 truncate flex items-center gap-2">
-            <FileText size={18} className="text-indigo-600 shrink-0" />
+          <div className="font-bold text-sm sm:text-base text-slate-800 truncate flex items-center justify-center gap-1.5">
+            <FileText size={16} className="text-indigo-600 shrink-0" />
             <span className="truncate">{fileName}</span>
           </div>
         </div>
@@ -57,7 +61,7 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
           className="icon-copy-btn shrink-0"
           title="Replace statement file"
         >
-          <RefreshCw size={16} />
+          <RefreshCw size={14} />
         </button>
       </div>
     );
@@ -83,14 +87,18 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
         className="hidden"
       />
 
-      <div className="flex items-center gap-2.5">
-        <Upload size={18} className="text-slate-800 shrink-0" />
+      {/* Balanced spacer */}
+      <div className="w-[32px] shrink-0" />
+
+      {/* Centered Upload text & icon */}
+      <div className="flex items-center justify-center gap-2.5 flex-1 text-center">
+        <Upload size={16} className="text-slate-800 shrink-0" />
         <span className="font-extrabold text-xs sm:text-sm text-slate-800 tracking-wider">
           UPLOAD STATEMENT
         </span>
       </div>
 
-      <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400">
+      <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
         +
       </div>
     </div>

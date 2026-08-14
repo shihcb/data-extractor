@@ -31,7 +31,11 @@ export default function CopyableRow({ label, value, highlight = false, onCopy })
         highlight ? 'highlighted' : ''
       }`}
     >
-      <div className="min-w-0 flex-1">
+      {/* Invisible spacer to center the text content relative to the copy button */}
+      <div className="w-[34px] shrink-0" />
+
+      {/* Centered Text Column */}
+      <div className="min-w-0 flex-1 text-center">
         <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-0.5">
           {label}
         </div>
@@ -42,6 +46,7 @@ export default function CopyableRow({ label, value, highlight = false, onCopy })
         </div>
       </div>
 
+      {/* Action Copy Button */}
       <button
         type="button"
         onClick={handleCopy}
