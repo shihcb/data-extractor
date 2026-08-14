@@ -22,44 +22,28 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
   if (fileName) {
     return (
       <div
-        onClick={handleClick}
-        className="independent-row-card cursor-pointer uploader-card"
-        title="Click to upload another statement"
+        className="independent-row-card uploader-card"
+        title="File uploaded"
       >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.csv"
-          onChange={(e) => {
-            if (e.target.files && e.target.files[0]) {
-              onFileUpload(e.target.files[0]);
-            }
-          }}
-          className="hidden"
-        />
-
-        {/* Balanced spacer */}
-        <div className="w-[34px] shrink-0" />
-
-        {/* Centered Filename */}
-        <div className="min-w-0 flex-1 text-center">
+        <div className="min-w-0 flex-1 text-left">
           <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-0.5">
             Uploaded Statement
           </div>
-          <div className="font-bold text-sm sm:text-base text-slate-800 truncate flex items-center justify-center gap-1.5">
+          <div className="font-bold text-sm sm:text-base text-slate-800 truncate flex items-center gap-1.5 justify-start">
             <FileText size={16} className="text-indigo-600 shrink-0" />
             <span className="truncate">{fileName}</span>
           </div>
         </div>
 
+        {/* Reload button clears/removes the files and goes to a blank state */}
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            handleClick();
+            onClear();
           }}
           className="icon-copy-btn shrink-0"
-          title="Replace statement file"
+          title="Remove file and clear data"
         >
           <RefreshCw size={14} />
         </button>
@@ -68,7 +52,7 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
   }
 
   // When no file is uploaded, keep the SAME horizontal card appearance:
-  // "UPLOAD STATEMENT" with the upload symbol next to it
+  // "UPLOAD STATEMENT" with the upload symbol next to it, left-aligned
   return (
     <div
       onClick={handleClick}
@@ -87,18 +71,14 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
         className="hidden"
       />
 
-      {/* Balanced spacer */}
-      <div className="w-[32px] shrink-0" />
-
-      {/* Centered Upload text & icon */}
-      <div className="flex items-center justify-center gap-2.5 flex-1 text-center">
+      <div className="flex items-center gap-2.5 min-w-0 flex-1 text-left">
         <Upload size={16} className="text-slate-800 shrink-0" />
         <span className="font-extrabold text-xs sm:text-sm text-slate-800 tracking-wider">
           UPLOAD STATEMENT
         </span>
       </div>
 
-      <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
+      <div className="w-[34px] h-[34px] rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 shrink-0 text-lg font-bold">
         +
       </div>
     </div>

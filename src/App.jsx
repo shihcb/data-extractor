@@ -164,16 +164,17 @@ export default function App() {
           onClear={handleClearFile}
         />
 
-        {/* Extracted Value Cards */}
-        {isStep2Complete && (
-          <div className="step-reveal">
-            <Step2ExtractedData
-              data={activeData}
-              docType={activeDocType}
-              isCompleted={isStep2Complete}
-            />
-          </div>
-        )}
+        {/* Extracted Value Cards with Slide Transitions on View Switch and Collapse on Reset */}
+        <div 
+          key={activeDocType} // Triggers remount & fresh enter transitions on view changes
+          className={`results-wrapper ${isStep2Complete ? 'visible' : ''}`}
+        >
+          <Step2ExtractedData
+            data={activeData}
+            docType={activeDocType}
+            isCompleted={isStep2Complete}
+          />
+        </div>
       </div>
     </div>
   );
