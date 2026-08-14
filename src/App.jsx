@@ -60,6 +60,7 @@ export default function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isInitialAppLoad, setIsInitialAppLoad] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
+  const [pendingUpload, setPendingUpload] = useState(null);
 
   // Sync state changes with localStorage
   useEffect(() => {
@@ -111,6 +112,11 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Reset pending upload state when switching view types
+  useEffect(() => {
+    setPendingUpload(null);
+  }, [activeDocType]);
+
   const handleClearFile = () => {
     if (activeDocType === 'paycheck') {
       setPaycheckFileName('');
@@ -134,6 +140,49 @@ export default function App() {
     }
   };
 
+  // Helper to determine if parsed data contains mostly N/A values
+  const checkIsMostlyNA = (type, parsed) => {
+    if (type === 'paycheck') {
+      const paycheckFields = ['netPay', 'grossIncome', 'payPeriod', 'hoursWorked', 'paycheckNumber', 'payDate'];
+      const naCount = paycheckFields.filter(f => parsed[f] === 'N/A' || !parsed[f]).length;
+      return naCount >= 3;
+    } else if (type === 'card') {
+      const cardFields = ['statementBalance', 'startDate', 'endDate', 'statementPeriod'];
+      const naCount = cardFields.filter(f => parsed[f] === 'N/A' || !parsed[f]).length;
+      return naCount >= 2;
+    } else if (type === 'transaction') {
+      const txFields = ['amount', 'dateTime'];
+      const naCount = txFields.filter(f => parsed[f] === 'N/A' || !parsed[f]).length;
+      return naCount >= 1;
+    }
+    return false;
+  };
+
+  // Helper to save data state for a confirmed file
+  const saveExtractedData = (type, data, fileName) => {
+    if (type === 'paycheck') {
+      setPaycheckData(data);
+      setPaycheckFileName(fileName);
+    } else if (type === 'card') {
+      setCardData(data);
+      setCardFileName(fileName);
+    } else if (type === 'transaction') {
+      setTransactionData(data);
+      setTransactionFileName(fileName);
+    }
+    setPendingUpload(null);
+  };
+
+  const handleConfirmOverride = () => {
+    if (pendingUpload) {
+      saveExtractedData(pendingUpload.docType, pendingUpload.data, pendingUpload.fileName);
+    }
+  };
+
+  const handleCancelOverride = () => {
+    setPendingUpload(null);
+  };
+
   const handleFileUpload = async (file) => {
     if (!file) return;
 
@@ -146,6 +195,7 @@ export default function App() {
     }
 
     setIsProcessing(true);
+    setPendingUpload(null);
     localStorage.setItem('extrkt_timestamp', Date.now().toString());
 
     try {
@@ -162,18 +212,26 @@ export default function App() {
         extractedRawText = await file.text();
       }
 
+      let parsedData = null;
       if (activeDocType === 'paycheck') {
-        const parsedPaycheck = extractPaycheckData(extractedRawText);
-        setPaycheckData(parsedPaycheck);
-        setPaycheckFileName(file.name);
+        parsedData = extractPaycheckData(extractedRawText);
       } else if (activeDocType === 'card') {
-        const parsedCard = extractCardStatementData(extractedRawText);
-        setCardData(parsedCard);
-        setCardFileName(file.name);
+        parsedData = extractCardStatementData(extractedRawText);
       } else if (activeDocType === 'transaction') {
-        const parsedTx = extractTransactionData(extractedRawText);
-        setTransactionData(parsedTx);
-        setTransactionFileName(file.name);
+        parsedData = extractTransactionData(extractedRawText);
+      }
+
+      if (parsedData) {
+        const isMostlyNA = checkIsMostlyNA(activeDocType, parsedData);
+        if (isMostlyNA) {
+          setPendingUpload({
+            docType: activeDocType,
+            fileName: file.name,
+            data: parsedData
+          });
+        } else {
+          saveExtractedData(activeDocType, parsedData, file.name);
+        }
       }
     } catch (err) {
       console.error('File parsing error:', err);
@@ -186,23 +244,31 @@ export default function App() {
     if (!text || typeof text !== 'string') return;
 
     setIsProcessing(true);
+    setPendingUpload(null);
     localStorage.setItem('extrkt_timestamp', Date.now().toString());
 
     try {
+      let parsedData = null;
       if (activeDocType === 'paycheck') {
-        const parsedPaycheck = extractPaycheckData(text);
-        setPaycheckData(parsedPaycheck);
-        setPaycheckFileName('Pasted Content');
+        parsedData = extractPaycheckData(text);
       } else if (activeDocType === 'card') {
-        const parsedCard = extractCardStatementData(text);
-        setCardData(parsedCard);
-        setCardFileName('Pasted Content');
+        parsedData = extractCardStatementData(text);
       } else if (activeDocType === 'transaction') {
-        const parsedTx = extractTransactionData(text);
-        setTransactionData(parsedTx);
-        setTransactionFileName('Pasted Content');
+        parsedData = extractTransactionData(text);
       }
-      // 'case' view has its own paste handling inside the textarea
+
+      if (parsedData) {
+        const isMostlyNA = checkIsMostlyNA(activeDocType, parsedData);
+        if (isMostlyNA) {
+          setPendingUpload({
+            docType: activeDocType,
+            fileName: 'Pasted Content',
+            data: parsedData
+          });
+        } else {
+          saveExtractedData(activeDocType, parsedData, 'Pasted Content');
+        }
+      }
     } catch (err) {
       console.error('Clipboard paste parsing error:', err);
     } finally {
@@ -241,8 +307,7 @@ export default function App() {
 
   const isStep2Complete = Boolean(activeData);
 
-  // Tab definitions — order matches DOM order in the switcher
-  // Widths: paycheck=94, card=126, transaction=100, case=112
+  // Tab definitions
   const tabDefs = [
     { key: 'paycheck',     label: 'paychecks',      width: 112 },
     { key: 'card',         label: 'bank statements', width: 150 },
@@ -263,7 +328,6 @@ export default function App() {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        // Prevent action if user is actively typing in textarea or input field
         const activeEl = document.activeElement;
         const isTyping = activeEl && (
           activeEl.tagName === 'INPUT' || 
@@ -325,6 +389,31 @@ export default function App() {
           <CaseConverter />
         ) : (
           <>
+            {/* Warning Override Prompt (for mostly N/A uploads) */}
+            {pendingUpload && (
+              <div className="independent-row-card border-slate-300 bg-white mb-4 py-3 animate-fade-in">
+                <div className="flex flex-col sm:flex-row items-center justify-between w-full gap-3">
+                  <span className="text-[11px] font-extrabold text-slate-800 uppercase tracking-wider text-center sm:text-left">
+                    override document upload?
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleConfirmOverride}
+                      className="px-3 py-1.5 rounded-lg bg-black text-white text-[10px] font-extrabold uppercase tracking-wider hover:bg-zinc-850 transition-colors cursor-pointer"
+                    >
+                      override
+                    </button>
+                    <button
+                      onClick={handleCancelOverride}
+                      className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-700 text-[10px] font-extrabold uppercase tracking-wider hover:bg-slate-50 transition-colors cursor-pointer"
+                    >
+                      cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Upload Card Box Component */}
             <FileUpload
               onFileUpload={handleFileUpload}
