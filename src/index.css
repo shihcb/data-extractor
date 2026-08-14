@@ -289,6 +289,21 @@ button {
   cursor: default;
 }
 
+/* Paste button — filled black, always enabled */
+.case-btn-paste {
+  gap: 6px;
+  background: #000000;
+  border-color: #000000;
+  color: #ffffff;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .case-btn-paste:hover {
+    background: #27272a;
+    border-color: #27272a;
+  }
+}
+
 .case-btn-upper {
   /* UPPERCASE variant uses same B&W palette */
   font-weight: 900;

@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { ClipboardPaste } from 'lucide-react';
 
 export default function CaseConverter() {
   const [text, setText] = useState('');
@@ -6,10 +7,22 @@ export default function CaseConverter() {
   const [copiedUpper, setCopiedUpper] = useState(false);
   const textareaRef = useRef(null);
 
-  const handleConvert = async (e, mode) => {
-    // Immediately blur the button so mobile doesn't keep it in an active/hover state
+  const handlePaste = async (e) => {
     e.currentTarget.blur();
+    try {
+      const clipText = await navigator.clipboard.readText();
+      if (clipText) setText(clipText);
+    } catch {
+      // Fallback: focus textarea and let the browser handle paste
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        document.execCommand('paste');
+      }
+    }
+  };
 
+  const handleConvert = async (e, mode) => {
+    e.currentTarget.blur();
     const converted = mode === 'lower' ? text.toLowerCase() : text.toUpperCase();
     setText(converted);
     try {
@@ -43,6 +56,15 @@ export default function CaseConverter() {
         autoCapitalize="off"
       />
       <div className="case-converter-actions">
+        {/* Paste button — fills textarea from clipboard */}
+        <button
+          className="case-btn case-btn-paste"
+          onClick={handlePaste}
+        >
+          <ClipboardPaste size={13} />
+          paste
+        </button>
+
         <button
           className={`case-btn ${copiedLower ? 'case-btn-copied' : ''}`}
           onClick={(e) => handleConvert(e, 'lower')}
