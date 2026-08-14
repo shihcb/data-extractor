@@ -195,18 +195,20 @@ export default function FileUpload({
 
       {/* Archive Submenu Drawer */}
       <div className={`archive-panel ${isArchiveOpen ? 'open' : 'closed'}`}>
-        <div className="flex items-center justify-between pb-2 border-b border-slate-200 mb-6">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-6">
           <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
             Archived Documents ({archiveItems.length})
           </span>
           {archiveItems.length > 0 && (
-            <button
-              type="button"
-              onClick={onClearAllArchives}
-              className="text-[10px] font-extrabold text-red-500 hover:text-red-700 transition-colors uppercase tracking-wider cursor-pointer"
-            >
-              Clear All
-            </button>
+            <div className="w-[64px] flex justify-center shrink-0 mr-1">
+              <button
+                type="button"
+                onClick={onClearAllArchives}
+                className="text-[10px] font-extrabold text-red-500 hover:text-red-700 transition-colors uppercase tracking-wider cursor-pointer whitespace-nowrap"
+              >
+                Clear All
+              </button>
+            </div>
           )}
         </div>
 
