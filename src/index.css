@@ -133,6 +133,7 @@ button {
   margin-bottom: 12px !important;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .uploader-card:hover {
@@ -141,10 +142,12 @@ button {
 
 .uploader-card:focus,
 .uploader-card:active,
+.uploader-card:focus-within,
 .uploader-card *:focus,
 .uploader-card *:active {
   outline: none !important;
-  box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.03) !important;
+  box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent !important;
 }
 
 /* The "+" upload trigger button — native label, black hover, no purple */
@@ -420,11 +423,6 @@ button {
   }
 }
 
-/* Specific uploader card styling - block text selection flicker */
-.uploader-card {
-  user-select: none;
-  -webkit-user-select: none;
-}
 
 /* Processing state shimmer animation */
 @keyframes uploaderShimmer {
