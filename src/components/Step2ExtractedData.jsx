@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import CopyableRow from './CopyableRow';
 
 export default function Step2ExtractedData({ data, docType, isCompleted, onCopyField, isInitialAppLoad = false }) {
-  const [renderedData, setRenderedData] = useState(null);
-  const [isVisible, setIsVisible] = useState(false);
+  const [renderedData, setRenderedData] = useState(data);
+  const [isVisible, setIsVisible] = useState(() => !!data);
 
   useEffect(() => {
     if (data) {

@@ -247,6 +247,10 @@ button {
   z-index: 1;
 }
 
+.no-transition {
+  transition: none !important;
+}
+
 /* Flat collapsing entry/exit wrapper */
 .results-wrapper {
   max-height: 0;
