@@ -12,20 +12,23 @@ export default function FileUpload({
 }) {
   const inputId = useId();
 
-  // Track docType changes to skip transitions on tab switch
-  const prevDocTypeRef = React.useRef(docType);
+  // Track docType synchronously during render to skip transitions instantly
+  const [prevDocType, setPrevDocType] = React.useState(docType);
   const [skipTransition, setSkipTransition] = React.useState(false);
 
+  if (docType !== prevDocType) {
+    setPrevDocType(docType);
+    setSkipTransition(true);
+  }
+
   React.useEffect(() => {
-    if (prevDocTypeRef.current !== docType) {
-      setSkipTransition(true);
-      prevDocTypeRef.current = docType;
+    if (skipTransition) {
       const timer = setTimeout(() => {
         setSkipTransition(false);
       }, 50);
       return () => clearTimeout(timer);
     }
-  }, [docType]);
+  }, [skipTransition]);
 
   const handleChange = (e) => {
     if (isProcessing) return;
@@ -73,6 +76,8 @@ export default function FileUpload({
           left: fileName ? 'auto' : '0px',
           right: fileName ? 'auto' : '0px',
           width: '100%',
+          height: '38px',
+          flexShrink: 0,
           opacity: fileName ? 1 : 0,
           transform: fileName ? 'translate3d(0, 0, 0)' : 'translate3d(0, 4px, 0)',
           transition: skipTransition ? 'none' : 'opacity 0.3s ease-in-out, transform 0.3s ease-in-out',
@@ -106,6 +111,8 @@ export default function FileUpload({
           left: !fileName ? 'auto' : '0px',
           right: !fileName ? 'auto' : '0px',
           width: '100%',
+          height: '38px',
+          flexShrink: 0,
           opacity: !fileName ? 1 : 0,
           transform: !fileName ? 'translate3d(0, 0, 0)' : 'translate3d(0, -4px, 0)',
           transition: skipTransition ? 'none' : 'opacity 0.3s ease-in-out, transform 0.3s ease-in-out',
