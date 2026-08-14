@@ -10,6 +10,11 @@ export default function FileUpload({
   uploadedLabel = 'Uploaded Statement'
 }) {
   const inputId = useId();
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const handleChange = (e) => {
     if (isProcessing) return;
@@ -19,13 +24,27 @@ export default function FileUpload({
     }
   };
 
+  const isHidden = !isMounted || isProcessing;
+
   // We keep a single root element and avoid unmounting it, 
   // which prevents triggering the fade-in animation again and stops flickering.
   return (
     <div 
-      className={`independent-row-card uploader-card relative overflow-hidden ${isProcessing ? 'processing pointer-events-none cursor-wait' : ''}`}
+      className={`independent-row-card uploader-card relative overflow-hidden ${isProcessing ? 'processing' : ''}`}
       onDoubleClick={fileName && !isProcessing ? onClear : undefined}
       title={fileName && !isProcessing ? "Double-click to remove file" : undefined}
+      style={{
+        maxHeight: isHidden ? '0px' : '100px',
+        opacity: isHidden ? 0 : 1,
+        paddingTop: isHidden ? '0px' : '10px',
+        paddingBottom: isHidden ? '0px' : '10px',
+        marginTop: isHidden ? '0px' : '0px',
+        marginBottom: isHidden ? '0px' : '12px',
+        borderWidth: isHidden ? '0px' : '1px',
+        overflow: 'hidden',
+        pointerEvents: isHidden ? 'none' : 'auto',
+        transition: 'max-height 0.55s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), padding 0.55s cubic-bezier(0.16, 1, 0.3, 1), margin-bottom 0.55s cubic-bezier(0.16, 1, 0.3, 1), border-width 0.55s cubic-bezier(0.16, 1, 0.3, 1)'
+      }}
     >
       {isProcessing && (
         <div className="absolute top-0 left-0 right-0 h-[2.5px] bg-[#f1f0ec] overflow-hidden">
