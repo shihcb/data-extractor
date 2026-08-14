@@ -11,12 +11,45 @@ export default function FileUpload({ onFileUpload, onPasteText, isProcessing, fi
   const handlePasteClick = async (e) => {
     e.stopPropagation();
     try {
+      const clipboardItems = await navigator.clipboard.read();
+      
+      for (const item of clipboardItems) {
+        // 1. Look for PDF file in clipboard
+        const pdfType = item.types.find(t => t === 'application/pdf');
+        if (pdfType) {
+          const blob = await item.getType('application/pdf');
+          const file = new File([blob], "Pasted statement.pdf", { type: 'application/pdf' });
+          onFileUpload(file);
+          return;
+        }
+
+        // 2. Look for Image file in clipboard
+        const imgType = item.types.find(t => t.startsWith('image/'));
+        if (imgType) {
+          const blob = await item.getType(imgType);
+          const ext = imgType.split('/')[1] || 'png';
+          const file = new File([blob], `Pasted statement.${ext}`, { type: imgType });
+          onFileUpload(file);
+          return;
+        }
+      }
+
+      // 3. Fallback: If no files in clipboard, check for text paste
       const text = await navigator.clipboard.readText();
       if (text && onPasteText) {
         onPasteText(text);
       }
     } catch (err) {
-      console.warn('Could not read clipboard text:', err);
+      console.warn('Could not read clipboard items:', err);
+      // Fallback direct readText if read() is blocked by permissions on older browsers
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text && onPasteText) {
+          onPasteText(text);
+        }
+      } catch (textErr) {
+        console.warn('Text fallback failed:', textErr);
+      }
     }
   };
 
@@ -90,18 +123,18 @@ export default function FileUpload({ onFileUpload, onPasteText, isProcessing, fi
         </span>
       </div>
 
-      {/* Action buttons: paste & plus symbol */}
+      {/* Action buttons: paste & plus symbol with clean matching outlines */}
       <div className="flex items-center gap-1.5 shrink-0">
         <button
           type="button"
           onClick={handlePasteClick}
-          className="w-[34px] h-[34px] rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-indigo-50/40 hover:border-indigo-200 transition-colors"
-          title="Paste statement text from clipboard"
+          className="w-[34px] h-[34px] rounded-lg bg-slate-50 border border-slate-300 flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-indigo-50/40 hover:border-indigo-200 transition-colors focus:outline-hidden"
+          title="Paste statement file from clipboard"
         >
           <Clipboard size={15} />
         </button>
 
-        <div className="w-[34px] h-[34px] rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 text-lg font-bold leading-none select-none">
+        <div className="w-[34px] h-[34px] rounded-lg bg-slate-50 border border-slate-300 flex items-center justify-center text-slate-400 text-lg font-bold leading-none select-none">
           +
         </div>
       </div>
