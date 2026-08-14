@@ -70,14 +70,15 @@ export default function FileUpload({
       <div 
         style={{
           position: fileName ? 'relative' : 'absolute',
-          left: fileName ? 'auto' : '24px',
-          right: fileName ? 'auto' : '24px',
+          left: fileName ? 'auto' : '0px',
+          right: fileName ? 'auto' : '0px',
+          width: '100%',
           opacity: fileName ? 1 : 0,
           transform: fileName ? 'translate3d(0, 0, 0)' : 'translate3d(0, 4px, 0)',
           transition: skipTransition ? 'none' : 'opacity 0.3s ease-in-out, transform 0.3s ease-in-out',
           pointerEvents: fileName ? 'auto' : 'none',
         }}
-        className="w-full flex items-center justify-between"
+        className="flex items-center justify-between"
       >
         <div className="min-w-0 flex-1 text-left">
           <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-0.5">
@@ -102,14 +103,15 @@ export default function FileUpload({
       <div 
         style={{
           position: !fileName ? 'relative' : 'absolute',
-          left: !fileName ? 'auto' : '24px',
-          right: !fileName ? 'auto' : '24px',
+          left: !fileName ? 'auto' : '0px',
+          right: !fileName ? 'auto' : '0px',
+          width: '100%',
           opacity: !fileName ? 1 : 0,
           transform: !fileName ? 'translate3d(0, 0, 0)' : 'translate3d(0, -4px, 0)',
           transition: skipTransition ? 'none' : 'opacity 0.3s ease-in-out, transform 0.3s ease-in-out',
           pointerEvents: !fileName ? 'auto' : 'none',
         }}
-        className="w-full flex items-center justify-between"
+        className="flex items-center justify-between"
       >
         <div className="flex items-center gap-2.5 min-w-0 flex-1 text-left">
           <Upload size={16} className="text-slate-800 shrink-0" />
