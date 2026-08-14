@@ -1,5 +1,5 @@
 import React, { useId } from 'react';
-import { Upload, FileText, RefreshCw } from 'lucide-react';
+import { Upload, FileText, RefreshCw, X } from 'lucide-react';
 
 export default function FileUpload({ 
   onFileUpload, 
@@ -22,18 +22,6 @@ export default function FileUpload({
   return (
     <div 
       className={`independent-row-card uploader-card select-none relative overflow-hidden ${isProcessing ? 'processing pointer-events-none cursor-wait' : ''}`}
-      onDoubleClick={(e) => {
-        if (fileName && !isProcessing) {
-          e.preventDefault();
-          onClear();
-        }
-      }}
-      onMouseDown={(e) => {
-        if (e.detail > 1) {
-          e.preventDefault();
-        }
-      }}
-      title={fileName && !isProcessing ? "Double-click to remove file" : undefined}
     >
       <input
         id={inputId}
@@ -57,13 +45,27 @@ export default function FileUpload({
             </div>
           </div>
 
-          <label
-            htmlFor={inputId}
-            className="icon-copy-btn shrink-0 cursor-pointer"
-            title="Upload a new file to override"
-          >
-            <RefreshCw size={14} />
-          </label>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClear();
+              }}
+              className="icon-clear-btn shrink-0 cursor-pointer"
+              title="Clear file"
+            >
+              <X size={14} />
+            </button>
+
+            <label
+              htmlFor={inputId}
+              className="icon-copy-btn shrink-0 cursor-pointer"
+              title="Upload a new file to override"
+            >
+              <RefreshCw size={14} />
+            </label>
+          </div>
         </div>
       ) : (
         // ── Empty state content ───────────────────────────────────
