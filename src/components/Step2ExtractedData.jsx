@@ -101,16 +101,19 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
             value={displayData.amount}
             highlight={true}
             onCopy={onCopyField}
+            forceLowercaseCopy={true}
           />
           <CopyableRow
             label="DATE & TIME"
             value={displayData.dateTime}
             onCopy={onCopyField}
+            forceLowercaseCopy={true}
           />
           <CopyableRow
             label="MERCHANT"
             value={displayData.merchant}
             onCopy={onCopyField}
+            forceLowercaseCopy={true}
           />
         </>
       )}

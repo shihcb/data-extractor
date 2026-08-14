@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 
-export default function CopyableRow({ label, value, highlight = false, onCopy }) {
+export default function CopyableRow({ label, value, highlight = false, onCopy, forceLowercaseCopy = false }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = (e) => {
     e.stopPropagation();
     if (!value || value === 'Not Found') return;
 
-    navigator.clipboard.writeText(value);
+    const textToCopy = forceLowercaseCopy ? value.toLowerCase() : value;
+    navigator.clipboard.writeText(textToCopy);
     setCopied(true);
 
     if (onCopy) {
-      onCopy(label, value);
+      onCopy(label, textToCopy);
     }
 
     setTimeout(() => {
