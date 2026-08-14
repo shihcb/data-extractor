@@ -180,7 +180,7 @@ function extractStatementPeriod(text) {
     return `${rangeMatch[1]} - ${rangeMatch[2]}`;
   }
 
-  // Fallback to numeric ranges
+  // Fallback to numeric ranges (with optional spaces)
   const periodMatch = text.match(/(?:billing\s*period|statement\s*period|period)\s*[:.-]?\s*(\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4}\s*(?:-|to|through|–)\s*\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4})/i)
     || text.match(/(\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4}\s*(?:-|to|through|–)\s*\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4})/);
 
@@ -190,7 +190,8 @@ function extractStatementPeriod(text) {
 
 function extractAmountByKeywords(text, regexes) {
   for (const regex of regexes) {
-    const match = text.match(new RegExp(regex.source + `\\s*[:.-]?\\s*\\$?([0-9,]+\\.[0-9]{2})`, 'i'));
+    // Optional 'as of [date]' support for Citi/others
+    const match = text.match(new RegExp(regex.source + `(?:\\s+as\\s+of\\s+[^\\n$]+)?\\s*[:.-]?\\s*\\$?([0-9,]+\\.[0-9]{2})`, 'i'));
     if (match && match[1]) {
       const val = parseFloat(match[1].replace(/,/g, ''));
       if (!isNaN(val)) return val;
