@@ -29,10 +29,33 @@ export default function FileUpload({
     return localStorage.getItem('extrkt_archive_open') === 'true';
   });
   const [isClearingAll, setIsClearingAll] = React.useState(false);
+  const [deletingId, setDeletingId] = React.useState(null);
+  const [newItemId, setNewItemId] = React.useState(null);
+  const prevArchiveIdsRef = React.useRef(archiveItems.map(i => i.id));
 
   React.useEffect(() => {
     localStorage.setItem('extrkt_archive_open', isArchiveOpen);
   }, [isArchiveOpen]);
+
+  // Detect newly added archive item and trigger fade-in
+  React.useEffect(() => {
+    const prevIds = prevArchiveIdsRef.current;
+    const currentIds = archiveItems.map(i => i.id);
+    const added = currentIds.find(id => !prevIds.includes(id));
+    if (added) {
+      setNewItemId(added);
+      setTimeout(() => setNewItemId(null), 400);
+    }
+    prevArchiveIdsRef.current = currentIds;
+  }, [archiveItems]);
+
+  const handleDeleteWithFade = (id) => {
+    setDeletingId(id);
+    setTimeout(() => {
+      onDeleteArchive(id);
+      setDeletingId(null);
+    }, 300);
+  };
 
   const handleClearWithFade = () => {
     setIsClearingAll(true);
@@ -233,9 +256,16 @@ export default function FileUpload({
         >
           {archiveItems.length > 0 && (
             archiveItems.map((item) => (
-              <div 
-                key={item.id} 
+              <div
+                key={item.id}
                 className="flex items-center justify-between py-0.5"
+                style={{
+                  opacity: deletingId === item.id ? 0 : newItemId === item.id ? 0 : 1,
+                  transform: newItemId === item.id ? 'translateY(-4px)' : 'translateY(0)',
+                  transition: deletingId === item.id
+                    ? 'opacity 0.25s ease'
+                    : 'opacity 0.35s ease, transform 0.35s ease',
+                }}
               >
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
                   <FileText size={14} className="text-slate-400 shrink-0" />
@@ -256,7 +286,7 @@ export default function FileUpload({
 
                   <button
                     type="button"
-                    onClick={() => onDeleteArchive(item.id)}
+                    onClick={() => handleDeleteWithFade(item.id)}
                     className="icon-clear-btn cursor-pointer w-[17px] h-[17px]"
                     title="Delete from archive"
                   >
