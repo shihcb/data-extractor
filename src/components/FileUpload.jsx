@@ -41,46 +41,66 @@ export default function FileUpload({
         disabled={isProcessing}
       />
 
-      {fileName ? (
-        // ── Uploaded state content ────────────────────────────────
-        <>
-          <div className="min-w-0 flex-1 text-left">
-            <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-0.5">
-              {uploadedLabel}
-            </div>
-            <div className="font-bold text-sm sm:text-base text-slate-800 truncate flex items-center gap-1.5 justify-start">
-              <FileText size={16} className="text-emerald-600 shrink-0" />
-              <span className="truncate">{fileName}</span>
-            </div>
+      {/* Uploaded state content container */}
+      <div 
+        style={{
+          position: fileName ? 'relative' : 'absolute',
+          left: fileName ? 'auto' : '24px',
+          right: fileName ? 'auto' : '24px',
+          opacity: fileName ? 1 : 0,
+          transform: fileName ? 'translate3d(0, 0, 0)' : 'translate3d(0, 4px, 0)',
+          transition: 'opacity 0.3s ease-in-out, transform 0.3s ease-in-out',
+          pointerEvents: fileName ? 'auto' : 'none',
+        }}
+        className="w-full flex items-center justify-between"
+      >
+        <div className="min-w-0 flex-1 text-left">
+          <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-0.5">
+            {uploadedLabel}
           </div>
-
-          <label
-            htmlFor={inputId}
-            className="icon-copy-btn shrink-0 cursor-pointer"
-            title="Upload a new file to override"
-          >
-            <RefreshCw size={14} />
-          </label>
-        </>
-      ) : (
-        // ── Empty state content ───────────────────────────────────
-        <>
-          <div className="flex items-center gap-2.5 min-w-0 flex-1 text-left">
-            <Upload size={16} className="text-slate-800 shrink-0" />
-            <span className="font-extrabold text-xs sm:text-sm text-slate-800 tracking-wider">
-              {uploadText}
-            </span>
+          <div className="font-bold text-sm sm:text-base text-slate-800 truncate flex items-center gap-1.5 justify-start">
+            <FileText size={16} className="text-emerald-600 shrink-0" />
+            <span className="truncate">{fileName}</span>
           </div>
+        </div>
 
-          <label
-            htmlFor={inputId}
-            className="upload-plus-btn cursor-pointer"
-            title="Choose file"
-          >
-            +
-          </label>
-        </>
-      )}
+        <label
+          htmlFor={inputId}
+          className="icon-copy-btn shrink-0 cursor-pointer"
+          title="Upload a new file to override"
+        >
+          <RefreshCw size={14} />
+        </label>
+      </div>
+
+      {/* Empty state content container */}
+      <div 
+        style={{
+          position: !fileName ? 'relative' : 'absolute',
+          left: !fileName ? 'auto' : '24px',
+          right: !fileName ? 'auto' : '24px',
+          opacity: !fileName ? 1 : 0,
+          transform: !fileName ? 'translate3d(0, 0, 0)' : 'translate3d(0, -4px, 0)',
+          transition: 'opacity 0.3s ease-in-out, transform 0.3s ease-in-out',
+          pointerEvents: !fileName ? 'auto' : 'none',
+        }}
+        className="w-full flex items-center justify-between"
+      >
+        <div className="flex items-center gap-2.5 min-w-0 flex-1 text-left">
+          <Upload size={16} className="text-slate-800 shrink-0" />
+          <span className="font-extrabold text-xs sm:text-sm text-slate-800 tracking-wider">
+            {uploadText}
+          </span>
+        </div>
+
+        <label
+          htmlFor={inputId}
+          className="upload-plus-btn cursor-pointer"
+          title="Choose file"
+        >
+          +
+        </label>
+      </div>
     </div>
   );
 }
