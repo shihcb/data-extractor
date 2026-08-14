@@ -210,7 +210,7 @@ export default function FileUpload({
           )}
         </div>
 
-        <div className="archive-list pr-1 flex flex-col gap-2">
+        <div className="archive-list pr-1 flex flex-col gap-0.5">
           {archiveItems.length === 0 ? (
             <div className="text-slate-400 text-xs py-4 text-center font-medium italic">
               No archived documents yet.
@@ -219,7 +219,7 @@ export default function FileUpload({
             archiveItems.map((item) => (
               <div 
                 key={item.id} 
-                className="flex items-center justify-between py-1.5"
+                className="flex items-center justify-between py-1"
               >
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
                   <FileText size={14} className="text-slate-400 shrink-0" />

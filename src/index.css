@@ -500,7 +500,7 @@ button {
 
 /* Height restricted scroll area - fits exactly 3 items and scrolls on the 4th */
 .archive-list {
-  max-height: 104px;
+  max-height: 78px;
   overflow-y: auto;
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE and Edge */
