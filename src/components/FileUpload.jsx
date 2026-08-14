@@ -78,8 +78,8 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
         </span>
       </div>
 
-      {/* Centered plus (+) symbol with flex centering and vertical align correction */}
-      <div className="w-[34px] h-[34px] rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 shrink-0 text-lg font-bold pb-[3px] leading-none select-none">
+      {/* Perfectly centered plus (+) symbol with flex centering and leading-none */}
+      <div className="w-[34px] h-[34px] rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 shrink-0 text-lg font-bold leading-none select-none">
         +
       </div>
     </div>

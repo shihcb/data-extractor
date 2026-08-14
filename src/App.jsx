@@ -10,6 +10,9 @@ import { extractCardStatementData } from './utils/cardStatementExtractor';
 export default function App() {
   // Check 30-minute expiration before loading initial states
   useEffect(() => {
+    // Clear old legacy un-scoped filename keys if any
+    localStorage.removeItem('extrkt_file_name');
+
     const savedTimestamp = localStorage.getItem('extrkt_timestamp');
     if (savedTimestamp) {
       const elapsed = Date.now() - parseInt(savedTimestamp, 10);
@@ -180,18 +183,17 @@ export default function App() {
       {/* Centered App Container */}
       <div className="app-container my-auto">
         
-        {/* Upload Card Box Component */}
+        {/* Upload Card Box Component (No key to prevent unneeded destructive remounts) */}
         <FileUpload
-          key={activeDocType} // Reset uploader display when switching document views
           onFileUpload={handleFileUpload}
           isProcessing={isProcessing}
           fileName={activeFileName}
           onClear={handleClearFile}
         />
 
-        {/* Extracted Value Cards with Smooth Collapse & View change transitions */}
+        {/* Extracted Value Cards with Unique Prefix Key to prevent sibling key collisions */}
         <div 
-          key={activeDocType} 
+          key={`results-${activeDocType}`} 
           className={`results-wrapper ${isStep2Complete ? 'visible' : ''}`}
         >
           <Step2ExtractedData
