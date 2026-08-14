@@ -10,7 +10,7 @@
     font-size: 0.8rem;
   }
 }
-@media (min-width: 361px) and (max-width: 400px) {
+@media (min-width: 361px) and (max-width: 390px) {
   .modern-tab-switch {
     transform: scale(0.65);
     transform-origin: center bottom;
@@ -19,9 +19,19 @@
     font-size: 0.8rem;
   }
 }
-@media (min-width: 401px) and (max-width: 640px) {
+@media (min-width: 391px) and (max-width: 425px) {
   .modern-tab-switch {
-    transform: scale(0.72);
+    transform: scale(0.70);
+    transform-origin: center bottom;
+  }
+  .modern-tab-btn {
+    font-size: 0.8rem;
+  }
+}
+@media (min-width: 426px) and (max-width: 640px) {
+  /* Slightly wider scale on iPhone Pro Max models (viewport width ~430px-440px) */
+  .modern-tab-switch {
+    transform: scale(0.80);
     transform-origin: center bottom;
   }
   .modern-tab-btn {
