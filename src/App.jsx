@@ -391,7 +391,10 @@ export default function App() {
           <>
             {/* Warning Override Prompt (for mostly N/A uploads) */}
             {pendingUpload && (
-              <div className="independent-row-card border-slate-300 bg-white mb-4 py-3 animate-fade-in">
+              <div 
+                className="independent-row-card mb-4 py-3 animate-fade-in"
+                style={{ backgroundColor: '#fffdf0', borderColor: '#fef08a' }}
+              >
                 <div className="flex flex-col sm:flex-row items-center justify-between w-full gap-3">
                   <span className="text-[11px] font-extrabold text-slate-800 uppercase tracking-wider text-center sm:text-left">
                     override document upload?
@@ -399,15 +402,15 @@ export default function App() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleConfirmOverride}
-                      className="px-3 py-1.5 rounded-lg bg-black text-white text-[10px] font-extrabold uppercase tracking-wider hover:bg-zinc-850 transition-colors cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-lg bg-black text-white text-[10px] font-extrabold uppercase tracking-wider hover:bg-zinc-850 transition-colors cursor-pointer"
                     >
-                      override
+                      yes
                     </button>
                     <button
                       onClick={handleCancelOverride}
-                      className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-700 text-[10px] font-extrabold uppercase tracking-wider hover:bg-slate-50 transition-colors cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-700 text-[10px] font-extrabold uppercase tracking-wider hover:bg-slate-50 transition-colors cursor-pointer"
                     >
-                      cancel
+                      no
                     </button>
                   </div>
                 </div>
