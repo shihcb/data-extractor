@@ -86,8 +86,7 @@ export default function FileUpload({
       <div
         style={{
           opacity: isAnimating ? 0 : 1,
-          transform: isAnimating ? 'translateY(2px)' : 'translateY(0)',
-          transition: 'opacity 0.3s ease-in-out, transform 0.3s ease-in-out',
+          transition: 'opacity 0.3s ease-in-out',
           width: '100%'
         }}
       >
