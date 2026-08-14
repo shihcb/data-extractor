@@ -78,8 +78,9 @@ export function extractCardStatementData(text) {
 
 function parseBoAStatement(text, lines) {
   let statementBalance = null;
-  // Match BoA statement balance (e.g. New Balance Total followed closely by amount, supporting flattened page layouts)
-  const matchTotal = text.match(/New\s*Balance\s*Total[\s\S]{1,150}?\$?([0-9,]+\.[0-9]{2})/i);
+  // Match BoA statement balance (e.g. New Balance Total or New Balance followed closely by amount, supporting flattened page layouts)
+  const matchTotal = text.match(/New\s*Balance\s*Total[\s\S]{1,250}?\$?([0-9,]+\.[0-9]{2})/i) ||
+                     text.match(/New\s*Balance[\s\S]{1,250}?\$?([0-9,]+\.[0-9]{2})/i);
   if (matchTotal) {
     statementBalance = parseFloat(matchTotal[1].replace(/,/g, ''));
   }
