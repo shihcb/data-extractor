@@ -19,17 +19,14 @@ export default function FileUpload({
     }
   };
 
-  if (isProcessing) {
-    return null;
-  }
-
   // ── Uploaded state ────────────────────────────────────────
   if (fileName) {
     return (
       <div 
-        className={`independent-row-card uploader-card animate-fade-in-up ${isProcessing ? 'opacity-60 pointer-events-none' : ''}`}
-        onDoubleClick={isProcessing ? undefined : onClear}
-        title={isProcessing ? undefined : "Double-click to remove file"}
+        className="independent-row-card uploader-card animate-fade-in-up"
+        onDoubleClick={onClear}
+        title="Double-click to remove file"
+        style={{ visibility: isProcessing ? 'hidden' : 'visible' }}
       >
         <input
           id={inputId}
@@ -51,8 +48,8 @@ export default function FileUpload({
         </div>
 
         <label
-          htmlFor={isProcessing ? undefined : inputId}
-          className={`icon-copy-btn shrink-0 ${isProcessing ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+          htmlFor={inputId}
+          className="icon-copy-btn shrink-0 cursor-pointer"
           title="Upload a new file to override"
         >
           <RefreshCw size={14} />
@@ -63,7 +60,10 @@ export default function FileUpload({
 
   // ── Empty state ───────────────────────────────────────────
   return (
-    <div className={`independent-row-card uploader-card animate-fade-in-up ${isProcessing ? 'opacity-60 pointer-events-none' : ''}`}>
+    <div 
+      className="independent-row-card uploader-card animate-fade-in-up"
+      style={{ visibility: isProcessing ? 'hidden' : 'visible' }}
+    >
       <input
         id={inputId}
         type="file"
@@ -81,8 +81,8 @@ export default function FileUpload({
       </div>
 
       <label
-        htmlFor={isProcessing ? undefined : inputId}
-        className={`upload-plus-btn ${isProcessing ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+        htmlFor={inputId}
+        className="upload-plus-btn cursor-pointer"
         title="Choose file"
       >
         +
