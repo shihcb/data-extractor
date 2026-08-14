@@ -1,11 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Copy, Check } from 'lucide-react';
 
 export default function CopyableRow({ label, value, highlight = false, onCopy, forceLowercaseCopy = false }) {
   const [copied, setCopied] = useState(false);
 
-  const isPlaceholder = !value || value === 'N/A' || value === 'Not Found';
-  const displayValue = isPlaceholder ? 'N/A' : value;
+  const initialPlaceholder = !value || value === 'N/A' || value === 'Not Found';
+  const [displayValue, setDisplayValue] = useState(initialPlaceholder ? 'N/A' : value);
+  const [isPlaceholder, setIsPlaceholder] = useState(initialPlaceholder);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  useEffect(() => {
+    const nextPlaceholder = !value || value === 'N/A' || value === 'Not Found';
+    const nextVal = nextPlaceholder ? 'N/A' : value;
+
+    if (nextVal !== displayValue) {
+      setIsAnimating(true);
+      const timer = setTimeout(() => {
+        setDisplayValue(nextVal);
+        setIsPlaceholder(nextPlaceholder);
+        setIsAnimating(false);
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [value, displayValue]);
 
   const handleCopy = (e) => {
     e.stopPropagation();
@@ -40,8 +57,12 @@ export default function CopyableRow({ label, value, highlight = false, onCopy, f
           {label}
         </div>
         <div 
-          key={displayValue}
-          className={`font-mono text-sm sm:text-base font-bold truncate animate-value-change ${
+          style={{
+            opacity: isAnimating ? 0 : 1,
+            transform: isAnimating ? 'translateY(2px)' : 'translateY(0)',
+            transition: 'opacity 0.3s ease-in-out, transform 0.3s ease-in-out'
+          }}
+          className={`font-mono text-sm sm:text-base font-bold truncate ${
             highlight && !isPlaceholder ? 'text-emerald-700' : 'text-slate-800'
           }`}
         >
@@ -54,7 +75,11 @@ export default function CopyableRow({ label, value, highlight = false, onCopy, f
         <button
           type="button"
           onClick={handleCopy}
-          className={`icon-copy-btn shrink-0 animate-value-change ${copied ? 'copied' : ''}`}
+          style={{
+            opacity: isAnimating ? 0 : 1,
+            transition: 'opacity 0.25s ease-in-out'
+          }}
+          className={`icon-copy-btn shrink-0 ${copied ? 'copied' : ''}`}
           title={`Copy ${label}`}
         >
           {copied ? <Check size={14} /> : <Copy size={14} />}

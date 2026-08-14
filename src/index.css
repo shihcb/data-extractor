@@ -460,19 +460,3 @@ button {
   background-color: #0f172a;
   animation: loadingBar 1.2s infinite ease-in-out;
 }
-
-/* Extracted field value fade-in animation */
-@keyframes valueFadeIn {
-  from {
-    opacity: 0.1;
-    transform: translateY(3px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-value-change {
-  animation: valueFadeIn 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
