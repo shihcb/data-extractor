@@ -1,5 +1,5 @@
 /**
- * Credit & Debit Card Statement Regex Extraction Engine (Apple, Citi, BoA, Discover, Capital One, Chase)
+ * Credit & Debit Card Statement Regex Extraction Engine (Apple, Citi, BoA, Discover, Capital One, Chase, Amex)
  */
 
 export function extractCardStatementData(text) {
@@ -9,6 +9,13 @@ export function extractCardStatementData(text) {
 
   const cleanText = text.replace(/\r/g, '');
   const lines = cleanText.split('\n').map(l => l.trim()).filter(Boolean);
+
+  // Discover American Express statement parsing first
+  const isAmex = cleanText.toLowerCase().includes('american express') || cleanText.toLowerCase().includes('amex');
+  if (isAmex) {
+    const amexData = parseAmexStatement(cleanText, lines);
+    if (amexData) return amexData;
+  }
 
   // Discover Apple Card statement parsing
   const isAppleCard = cleanText.toLowerCase().includes('apple card') || cleanText.toLowerCase().includes('goldman sachs');
@@ -61,16 +68,69 @@ export function extractCardStatementData(text) {
   };
 }
 
+function parseAmexStatement(text, lines) {
+  let statementBalance = null;
+  // Match Amex balance (e.g. New Balance ... $118.55)
+  const balanceMatch = text.match(/New\s*Balance\s*(?:\n[^$]*)?\s*\$?([0-9,]+\.[0-9]{2})/i);
+  if (balanceMatch) {
+    statementBalance = parseFloat(balanceMatch[1].replace(/,/g, ''));
+  }
+
+  // Match Amex Closing Date: "Closing Date 07/23/26"
+  let endDate = 'N/A';
+  const endMatch = text.match(/Closing\s*Date\s*[:.-]?\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+  if (endMatch) {
+    endDate = endMatch[1].trim();
+  }
+
+  // Calculate start date (30 days before end date) strictly for Amex
+  let startDate = 'N/A';
+  let statementPeriod = 'N/A';
+  if (endDate !== 'N/A') {
+    const parts = endDate.split('/');
+    if (parts.length === 3) {
+      let month = parseInt(parts[0], 10);
+      let day = parseInt(parts[1], 10);
+      let yearPart = parts[2];
+      let year = parseInt(yearPart, 10);
+      if (yearPart.length === 2) {
+        year += 2000;
+      }
+      const endDateObj = new Date(year, month - 1, day);
+      const startDateObj = new Date(endDateObj.getTime() - 30 * 24 * 60 * 60 * 1000);
+      
+      const startMonth = startDateObj.getMonth() + 1;
+      const startDay = startDateObj.getDate();
+      const startYearShort = startDateObj.getFullYear().toString().slice(-2);
+      
+      startDate = `${startMonth}/${startDay}/${startYearShort}`;
+      statementPeriod = `${startDate} - ${endDate}`;
+    }
+  }
+
+  // Account Ending 7-31006
+  const last5Match = text.match(/Account\s*Ending\s*[:.-]?\s*([\d-]+)/i);
+  const cardLast5 = last5Match ? last5Match[1].replace('-', '').slice(-5) : 'N/A';
+
+  return {
+    bankName: 'American Express',
+    cardLast4: cardLast5 ? `•••• ${cardLast5}` : 'N/A',
+    statementPeriod,
+    startDate,
+    endDate,
+    statementBalance: statementBalance ? formatCurrency(statementBalance) : 'N/A',
+    rawText: text
+  };
+}
+
 function parseAppleStatement(text, lines) {
   let statementBalance = null;
-  // Match Apple Card statement balance (e.g. Your June Balance ... $128.06)
   const balanceMatch = text.match(/Your\s+\w+\s+Balance\s*(?:\n|as\s+of\s+[A-Za-z]{3}\s+\d{1,2},\s+\d{4})?\s*\n?\s*\$?([0-9,]+\.[0-9]{2})/i) ||
                        text.match(/Total\s+Balance\s+\$?([0-9,]+\.[0-9]{2})/i);
   if (balanceMatch) {
     statementBalance = parseFloat(balanceMatch[1].replace(/,/g, ''));
   }
 
-  // Match Apple Card billing period: "Jun 1 — Jun 30, 2026" or "Jun 1 - Jun 30, 2026"
   let startDate = 'N/A';
   let endDate = 'N/A';
   let statementPeriod = 'N/A';
@@ -170,7 +230,6 @@ function extractBankName(text, lines) {
 }
 
 function extractStatementPeriod(text) {
-  // Try pattern with words e.g. June 25 - July 24, 2026
   const monthPattern = '(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)';
   const datePattern = `${monthPattern}\\s+\\d{1,2}(?:\\s*,\\s*\\d{4})?`;
   const rangeRegex = new RegExp(`(${datePattern})\\s*(?:-|—|–|to|through)\\s*(${datePattern})`, 'i');
@@ -180,7 +239,6 @@ function extractStatementPeriod(text) {
     return `${rangeMatch[1]} - ${rangeMatch[2]}`;
   }
 
-  // Fallback to numeric ranges (with optional spaces)
   const periodMatch = text.match(/(?:billing\s*period|statement\s*period|period)\s*[:.-]?\s*(\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4}\s*(?:-|to|through|–)\s*\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4})/i)
     || text.match(/(\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4}\s*(?:-|to|through|–)\s*\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4})/);
 
@@ -190,7 +248,6 @@ function extractStatementPeriod(text) {
 
 function extractAmountByKeywords(text, regexes) {
   for (const regex of regexes) {
-    // Optional 'as of [date]' support for Citi/others
     const match = text.match(new RegExp(regex.source + `(?:\\s+as\\s+of\\s+[^\\n$]+)?\\s*[:.-]?\\s*\\$?([0-9,]+\\.[0-9]{2})`, 'i'));
     if (match && match[1]) {
       const val = parseFloat(match[1].replace(/,/g, ''));
