@@ -355,13 +355,15 @@ export default function App() {
               key="global-results-wrapper" 
               className={`results-wrapper ${isStep2Complete ? 'visible' : ''}`}
             >
-              <Step2ExtractedData
-                key={activeDocType}
-                data={activeData}
-                docType={activeDocType}
-                isCompleted={isStep2Complete}
-                isInitialAppLoad={isInitialAppLoad}
-              />
+              <div className="results-inner">
+                <Step2ExtractedData
+                  key={activeDocType}
+                  data={activeData}
+                  docType={activeDocType}
+                  isCompleted={isStep2Complete}
+                  isInitialAppLoad={isInitialAppLoad}
+                />
+              </div>
             </div>
           </>
         )}

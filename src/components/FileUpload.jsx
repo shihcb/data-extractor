@@ -22,7 +22,17 @@ export default function FileUpload({
   return (
     <div 
       className={`independent-row-card uploader-card select-none relative overflow-hidden ${isProcessing ? 'processing pointer-events-none cursor-wait' : ''}`}
-      onDoubleClick={fileName && !isProcessing ? onClear : undefined}
+      onDoubleClick={(e) => {
+        if (fileName && !isProcessing) {
+          e.preventDefault();
+          onClear();
+        }
+      }}
+      onMouseDown={(e) => {
+        if (e.detail > 1) {
+          e.preventDefault();
+        }
+      }}
       title={fileName && !isProcessing ? "Double-click to remove file" : undefined}
     >
       <input
