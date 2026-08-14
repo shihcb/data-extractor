@@ -10,7 +10,6 @@ import { extractCardStatementData } from './utils/cardStatementExtractor';
 export default function App() {
   // Check 30-minute expiration before loading initial states
   useEffect(() => {
-    // Clear old legacy un-scoped filename keys if any
     localStorage.removeItem('extrkt_file_name');
 
     const savedTimestamp = localStorage.getItem('extrkt_timestamp');
@@ -123,15 +122,21 @@ export default function App() {
         extractedRawText = await file.text();
       }
 
-      // Parse and save data strictly inside the active tab's scope!
+      // Parse and save data strictly inside the active tab's scope if content is valid!
       if (activeDocType === 'paycheck') {
         const parsedPaycheck = extractPaycheckData(extractedRawText);
-        setPaycheckData(parsedPaycheck);
-        setPaycheckFileName(file.name);
+        const hasPaycheckInfo = parsedPaycheck.netPay !== 'Not Found' || parsedPaycheck.grossIncome !== 'Not Found';
+        if (hasPaycheckInfo) {
+          setPaycheckData(parsedPaycheck);
+          setPaycheckFileName(file.name);
+        }
       } else {
         const parsedCard = extractCardStatementData(extractedRawText);
-        setCardData(parsedCard);
-        setCardFileName(file.name);
+        const hasCardInfo = parsedCard.statementBalance !== 'Not Found' || parsedCard.startDate !== 'Not Found';
+        if (hasCardInfo) {
+          setCardData(parsedCard);
+          setCardFileName(file.name);
+        }
       }
     } catch (err) {
       console.error('File parsing error:', err);
@@ -183,7 +188,7 @@ export default function App() {
       {/* Centered App Container */}
       <div className="app-container my-auto">
         
-        {/* Upload Card Box Component (No key to prevent unneeded destructive remounts) */}
+        {/* Upload Card Box Component */}
         <FileUpload
           onFileUpload={handleFileUpload}
           isProcessing={isProcessing}
@@ -191,7 +196,7 @@ export default function App() {
           onClear={handleClearFile}
         />
 
-        {/* Extracted Value Cards with Unique Prefix Key to prevent sibling key collisions */}
+        {/* Extracted Value Cards with Unique Prefix Key */}
         <div 
           key={`results-${activeDocType}`} 
           className={`results-wrapper ${isStep2Complete ? 'visible' : ''}`}
