@@ -306,7 +306,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#faf9f6] text-[#0f172a] px-4 sm:px-6 w-full flex flex-col items-center justify-center py-20 sm:py-24 relative">
       {/* View Switcher */}
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-20 sm:absolute sm:top-6 sm:right-6 sm:bottom-auto sm:left-auto sm:translate-x-0">
+      <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-20 sm:absolute sm:top-6 sm:right-6 sm:bottom-auto sm:left-auto sm:translate-x-0">
         <div className="modern-tab-switch">
           <div 
             className={`modern-tab-slider ${!isMounted ? 'no-transition' : ''}`}

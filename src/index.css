@@ -1,15 +1,9 @@
 @import "tailwindcss";
 
-/* Responsive scale for the pill switcher on mobile — two breakpoints to stay unclipped */
-@media (max-width: 390px) {
+/* Responsive scale for the pill switcher on mobile */
+@media (max-width: 640px) {
   .modern-tab-switch {
-    transform: scale(0.82);
-    transform-origin: center bottom;
-  }
-}
-@media (min-width: 391px) and (max-width: 640px) {
-  .modern-tab-switch {
-    transform: scale(0.90);
+    transform: scale(0.95);
     transform-origin: center bottom;
   }
 }
