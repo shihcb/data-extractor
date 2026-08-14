@@ -231,11 +231,7 @@ export default function FileUpload({
           className="archive-list pr-1 flex flex-col gap-0"
           style={{ opacity: isClearingAll ? 0 : 1, transition: 'opacity 0.3s ease' }}
         >
-          {archiveItems.length === 0 ? (
-            <div className="text-slate-400 text-xs py-4 text-center font-medium italic">
-              No archived documents yet.
-            </div>
-          ) : (
+          {archiveItems.length > 0 && (
             archiveItems.map((item) => (
               <div 
                 key={item.id} 
