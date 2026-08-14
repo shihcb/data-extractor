@@ -58,7 +58,6 @@ export default function App() {
   });
 
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isInitialAppLoad, setIsInitialAppLoad] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
 
   // Sync state changes with localStorage
@@ -105,10 +104,6 @@ export default function App() {
   // Handle initial page load timings
   useEffect(() => {
     setIsMounted(true);
-    const timer = setTimeout(() => {
-      setIsInitialAppLoad(false);
-    }, 100);
-    return () => clearTimeout(timer);
   }, []);
 
 
@@ -252,7 +247,6 @@ export default function App() {
     activeDocType === 'card' ? cardData : 
     transactionData;
 
-  const isStep2Complete = Boolean(activeData);
 
   // Tab definitions
   const tabDefs = [
@@ -351,19 +345,12 @@ export default function App() {
             />
 
             {/* Extracted Value Cards */}
-            <div 
-              key="global-results-wrapper" 
-              className={`results-wrapper ${isStep2Complete ? 'visible' : ''}`}
-            >
-              <div className="results-inner">
-                <Step2ExtractedData
-                  key={activeDocType}
-                  data={activeData}
-                  docType={activeDocType}
-                  isCompleted={isStep2Complete}
-                  isInitialAppLoad={isInitialAppLoad}
-                />
-              </div>
+            <div className="w-full mt-1">
+              <Step2ExtractedData
+                key={activeDocType}
+                data={activeData}
+                docType={activeDocType}
+              />
             </div>
           </>
         )}

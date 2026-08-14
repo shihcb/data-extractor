@@ -1,25 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import CopyableRow from './CopyableRow';
 
-export default function Step2ExtractedData({ data, docType, isCompleted, onCopyField, isInitialAppLoad = false }) {
-  const [renderedData, setRenderedData] = useState(data);
-
-  useEffect(() => {
-    if (data) {
-      setRenderedData(data);
-    } else {
-      const timer = setTimeout(() => {
-        setRenderedData(null);
-      }, 650);
-      return () => clearTimeout(timer);
-    }
-  }, [data]);
-
-  if (!renderedData) return null;
-
+export default function Step2ExtractedData({ data, docType, onCopyField }) {
   const isPaycheck = docType === 'paycheck';
   const isCard = docType === 'card';
   const isTransaction = docType === 'transaction';
+
+  const displayData = data || {};
 
   // Helper to resolve month names to chronological indices (0-11)
   const getMonthIndex = (dateStr) => {
@@ -151,33 +138,33 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
         <>
           <CopyableRow
             label="NET PAY"
-            value={renderedData.netPay}
+            value={displayData.netPay}
             highlight={true}
             onCopy={onCopyField}
           />
           <CopyableRow
             label="GROSS PAY"
-            value={renderedData.grossIncome}
+            value={displayData.grossIncome}
             onCopy={onCopyField}
           />
           <CopyableRow
             label="PAY PERIOD"
-            value={formatPeriodRange(renderedData.payPeriod)}
+            value={formatPeriodRange(displayData.payPeriod)}
             onCopy={onCopyField}
           />
           <CopyableRow
             label="Total Hours Worked"
-            value={renderedData.hoursWorked}
+            value={displayData.hoursWorked}
             onCopy={onCopyField}
           />
           <CopyableRow
             label="CHECK NUMBER"
-            value={renderedData.paycheckNumber}
+            value={displayData.paycheckNumber}
             onCopy={onCopyField}
           />
           <CopyableRow
             label="Pay Date"
-            value={formatDateToFull(renderedData.payDate)}
+            value={formatDateToFull(displayData.payDate)}
             onCopy={onCopyField}
           />
         </>
@@ -187,23 +174,23 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
         <>
           <CopyableRow
             label="STATEMENT BALANCE"
-            value={renderedData.statementBalance}
+            value={displayData.statementBalance}
             highlight={true}
             onCopy={onCopyField}
           />
           <CopyableRow
             label="START DATE"
-            value={formatDateToFull(renderedData.startDate)}
+            value={formatDateToFull(displayData.startDate)}
             onCopy={onCopyField}
           />
           <CopyableRow
             label="END DATE"
-            value={formatDateToFull(renderedData.endDate)}
+            value={formatDateToFull(displayData.endDate)}
             onCopy={onCopyField}
           />
           <CopyableRow
             label="STATEMENT PERIOD"
-            value={formatPeriodRange(renderedData.statementPeriod)}
+            value={formatPeriodRange(displayData.statementPeriod)}
             onCopy={onCopyField}
           />
         </>
@@ -213,14 +200,14 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
         <>
           <CopyableRow
             label="AMOUNT"
-            value={renderedData.amount}
+            value={displayData.amount}
             highlight={true}
             onCopy={onCopyField}
             forceLowercaseCopy={true}
           />
           <CopyableRow
             label="DATE & TIME"
-            value={formatDateTime(renderedData.dateTime)}
+            value={formatDateTime(displayData.dateTime)}
             onCopy={onCopyField}
             forceLowercaseCopy={false}
           />

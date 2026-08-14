@@ -4,11 +4,14 @@ import { Copy, Check } from 'lucide-react';
 export default function CopyableRow({ label, value, highlight = false, onCopy, forceLowercaseCopy = false }) {
   const [copied, setCopied] = useState(false);
 
+  const isPlaceholder = !value || value === 'N/A' || value === 'Not Found';
+  const displayValue = isPlaceholder ? 'N/A' : value;
+
   const handleCopy = (e) => {
     e.stopPropagation();
-    if (!value || value === 'Not Found') return;
+    if (isPlaceholder) return;
 
-    const textToCopy = forceLowercaseCopy ? value.toLowerCase() : value;
+    const textToCopy = forceLowercaseCopy ? displayValue.toLowerCase() : displayValue;
     navigator.clipboard.writeText(textToCopy);
     setCopied(true);
 
@@ -21,16 +24,15 @@ export default function CopyableRow({ label, value, highlight = false, onCopy, f
     }, 1800);
   };
 
-  const isNotFound = !value || value === 'Not Found';
-
-  if (isNotFound) return null;
-
   return (
     <div
-      onClick={handleCopy}
-      className={`group cursor-pointer independent-row-card ${
-        highlight ? 'highlighted' : ''
+      onClick={!isPlaceholder ? handleCopy : undefined}
+      className={`independent-row-card select-none ${
+        isPlaceholder ? 'cursor-default opacity-60' : 'group cursor-pointer'
+      } ${
+        highlight && !isPlaceholder ? 'highlighted' : ''
       }`}
+      style={isPlaceholder ? { borderStyle: 'dashed', backgroundColor: '#fcfcfb' } : undefined}
     >
       {/* Left aligned text layout */}
       <div className="min-w-0 flex-1 text-left">
@@ -38,21 +40,23 @@ export default function CopyableRow({ label, value, highlight = false, onCopy, f
           {label}
         </div>
         <div className={`font-mono text-sm sm:text-base font-bold truncate ${
-          highlight ? 'text-emerald-700' : 'text-slate-800'
+          highlight && !isPlaceholder ? 'text-emerald-700' : 'text-slate-800'
         }`}>
-          {value}
+          {displayValue}
         </div>
       </div>
 
       {/* Action Copy Button */}
-      <button
-        type="button"
-        onClick={handleCopy}
-        className={`icon-copy-btn shrink-0 ${copied ? 'copied' : ''}`}
-        title={`Copy ${label}`}
-      >
-        {copied ? <Check size={14} /> : <Copy size={14} />}
-      </button>
+      {!isPlaceholder && (
+        <button
+          type="button"
+          onClick={handleCopy}
+          className={`icon-copy-btn shrink-0 ${copied ? 'copied' : ''}`}
+          title={`Copy ${label}`}
+        >
+          {copied ? <Check size={14} /> : <Copy size={14} />}
+        </button>
+      )}
     </div>
   );
 }
