@@ -303,10 +303,43 @@ export default function App() {
 
   const isCaseView = activeDocType === 'case';
 
+  // Global Keyboard Shortcuts (Shift + 1/2/3/4) to switch tabs
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        // Prevent action if user is actively typing in textarea or input field
+        const activeEl = document.activeElement;
+        const isTyping = activeEl && (
+          activeEl.tagName === 'INPUT' || 
+          activeEl.tagName === 'TEXTAREA' || 
+          activeEl.isContentEditable
+        );
+        if (isTyping) return;
+
+        if (e.key === '1') {
+          e.preventDefault();
+          setActiveDocType('paycheck');
+        } else if (e.key === '2') {
+          e.preventDefault();
+          setActiveDocType('card');
+        } else if (e.key === '3') {
+          e.preventDefault();
+          setActiveDocType('transaction');
+        } else if (e.key === '4') {
+          e.preventDefault();
+          setActiveDocType('case');
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#faf9f6] text-[#0f172a] px-4 sm:px-6 w-full flex flex-col items-center justify-center py-20 sm:py-24 relative">
-      {/* View Switcher */}
-      <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-20 sm:absolute sm:top-6 sm:right-6 sm:bottom-auto sm:left-auto sm:translate-x-0">
+      {/* View Switcher: fixed bottom-center on all displays */}
+      <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-20">
         <div className="modern-tab-switch">
           <div 
             className={`modern-tab-slider ${!isMounted ? 'no-transition' : ''}`}
