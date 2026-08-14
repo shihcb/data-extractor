@@ -200,7 +200,7 @@ export default function App() {
   // Calculate sliding dimensions for switcher animation
   const isCard = activeDocType === 'card';
   const sliderWidth = isCard ? 136 : 94;
-  const sliderTransform = isCard ? 98 : 0;
+  const sliderTransform = isCard ? 94 : 0; // Fix slider overflow clipping by translating exactly by the first button's width
 
   return (
     <div className={`min-h-screen bg-[#faf9f6] text-[#0f172a] px-4 sm:px-6 w-full flex flex-col items-center justify-center py-20 sm:py-24 relative`}>
