@@ -130,7 +130,6 @@ button {
 
 /* Specific uploader card styling */
 .uploader-card {
-  margin-bottom: 12px !important;
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -486,12 +485,10 @@ button {
   padding: 0 24px;
   border: 0 solid var(--border-subtle);
   overflow: hidden;
-  margin-bottom: 0;
   transition: max-height 0.65s cubic-bezier(0.25, 1, 0.5, 1),
               opacity 0.6s cubic-bezier(0.25, 1, 0.5, 1),
               padding 0.65s cubic-bezier(0.25, 1, 0.5, 1),
-              border-width 0.65s cubic-bezier(0.25, 1, 0.5, 1),
-              margin-bottom 0.65s cubic-bezier(0.25, 1, 0.5, 1);
+              border-width 0.65s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .archive-panel.open {
@@ -499,7 +496,6 @@ button {
   opacity: 1;
   padding: 16px 24px;
   border-width: 1px;
-  margin-bottom: 12px;
 }
 
 /* Height restricted scroll area - fits exactly 3 items and scrolls on the 4th */

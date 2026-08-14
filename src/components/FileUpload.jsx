@@ -91,7 +91,7 @@ export default function FileUpload({
   };
 
   return (
-    <div className="w-full flex flex-col gap-2.5">
+    <div className="w-full flex flex-col gap-1.5 mb-3">
       {/* File Upload Main Card Container */}
       <div 
         className={`independent-row-card uploader-card select-none relative overflow-hidden ${isProcessing ? 'processing pointer-events-none cursor-wait' : ''}`}
