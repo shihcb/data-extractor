@@ -78,30 +78,10 @@ export function extractCardStatementData(text) {
 
 function parseBoAStatement(text, lines) {
   let statementBalance = null;
-  // Match BoA statement balance (e.g. New Balance Total $11.39)
-  const matchTotal = text.match(/New\s*Balance\s*Total\s*[:.-]?\s*\$?([0-9,]+\.[0-9]{2})/i);
+  // Match BoA statement balance (e.g. New Balance Total followed closely by amount, supporting flattened page layouts)
+  const matchTotal = text.match(/New\s*Balance\s*Total[\s\S]{1,150}?\$?([0-9,]+\.[0-9]{2})/i);
   if (matchTotal) {
     statementBalance = parseFloat(matchTotal[1].replace(/,/g, ''));
-  } else {
-    // Lookahead line search
-    for (let i = 0; i < lines.length; i++) {
-      if (/New\s*Balance\s*Total/i.test(lines[i])) {
-        const lineMatch = lines[i].match(/\$?([0-9,]+\.[0-9]{2})/);
-        if (lineMatch) {
-          statementBalance = parseFloat(lineMatch[1].replace(/,/g, ''));
-          break;
-        }
-        // Check next lines
-        for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
-          const nextMatch = lines[j].match(/\$?([0-9,]+\.[0-9]{2})/);
-          if (nextMatch) {
-            statementBalance = parseFloat(nextMatch[1].replace(/,/g, ''));
-            break;
-          }
-        }
-        if (statementBalance !== null) break;
-      }
-    }
   }
 
   const statementPeriod = extractStatementPeriod(text);
