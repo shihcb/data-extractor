@@ -1,5 +1,5 @@
 import React, { useId } from 'react';
-import { Upload, Loader2, FileText, RefreshCw } from 'lucide-react';
+import { Upload, FileText, RefreshCw } from 'lucide-react';
 
 export default function FileUpload({ 
   onFileUpload, 
@@ -12,33 +12,24 @@ export default function FileUpload({
   const inputId = useId();
 
   const handleChange = (e) => {
+    if (isProcessing) return;
     if (e.target.files && e.target.files[0]) {
       onFileUpload(e.target.files[0]);
       e.target.value = '';
     }
   };
 
-  // ── Loading state ─────────────────────────────────────────
   if (isProcessing) {
-    return (
-      <div className="independent-row-card uploader-card justify-start py-[15px] animate-fade-in-up">
-        <div className="flex items-center gap-1.5">
-          <Loader2 size={16} className="text-black animate-spin shrink-0" />
-          <span className="font-extrabold text-xs text-slate-800 tracking-wider">
-            extracting data..
-          </span>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   // ── Uploaded state ────────────────────────────────────────
   if (fileName) {
     return (
       <div 
-        className="independent-row-card uploader-card animate-fade-in-up"
-        onDoubleClick={onClear}
-        title="Double-click to remove file"
+        className={`independent-row-card uploader-card animate-fade-in-up ${isProcessing ? 'opacity-60 pointer-events-none' : ''}`}
+        onDoubleClick={isProcessing ? undefined : onClear}
+        title={isProcessing ? undefined : "Double-click to remove file"}
       >
         <input
           id={inputId}
@@ -46,6 +37,7 @@ export default function FileUpload({
           accept="application/pdf,image/png,image/jpeg,image/webp,text/plain,text/csv"
           onChange={handleChange}
           className="hidden"
+          disabled={isProcessing}
         />
 
         <div className="min-w-0 flex-1 text-left">
@@ -59,8 +51,8 @@ export default function FileUpload({
         </div>
 
         <label
-          htmlFor={inputId}
-          className="icon-copy-btn shrink-0 cursor-pointer"
+          htmlFor={isProcessing ? undefined : inputId}
+          className={`icon-copy-btn shrink-0 ${isProcessing ? 'cursor-not-allowed' : 'cursor-pointer'}`}
           title="Upload a new file to override"
         >
           <RefreshCw size={14} />
@@ -71,13 +63,14 @@ export default function FileUpload({
 
   // ── Empty state ───────────────────────────────────────────
   return (
-    <div className="independent-row-card uploader-card animate-fade-in-up">
+    <div className={`independent-row-card uploader-card animate-fade-in-up ${isProcessing ? 'opacity-60 pointer-events-none' : ''}`}>
       <input
         id={inputId}
         type="file"
         accept="application/pdf,image/png,image/jpeg,image/webp,text/plain,text/csv"
         onChange={handleChange}
         className="hidden"
+        disabled={isProcessing}
       />
 
       <div className="flex items-center gap-2.5 min-w-0 flex-1 text-left">
@@ -88,8 +81,8 @@ export default function FileUpload({
       </div>
 
       <label
-        htmlFor={inputId}
-        className="upload-plus-btn cursor-pointer"
+        htmlFor={isProcessing ? undefined : inputId}
+        className={`upload-plus-btn ${isProcessing ? 'cursor-not-allowed' : 'cursor-pointer'}`}
         title="Choose file"
       >
         +
