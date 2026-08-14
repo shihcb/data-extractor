@@ -59,6 +59,7 @@ export default function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isInitialAppLoad, setIsInitialAppLoad] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   // Sync state changes with localStorage
   useEffect(() => {
@@ -104,7 +105,6 @@ export default function App() {
   // Handle initial page load timings
   useEffect(() => {
     setIsMounted(true);
-    // Turn off initial app load animation overrides after first paint
     const timer = setTimeout(() => {
       setIsInitialAppLoad(false);
     }, 100);
@@ -264,6 +264,18 @@ export default function App() {
     }
   };
 
+  // Delayed tab switcher function to trigger seamless fade-out / fade-in transitions
+  const handleTabSwitch = (newType) => {
+    if (newType === activeDocType || isTransitioning) return;
+    setIsTransitioning(true);
+    
+    // 180ms delay matches CSS results-wrapper fade out duration exactly
+    setTimeout(() => {
+      setActiveDocType(newType);
+      setIsTransitioning(false);
+    }, 180);
+  };
+
   // Add global window paste listener to catch files or text copied from clipboard (Cmd+V)
   useEffect(() => {
     const handleGlobalPaste = (e) => {
@@ -294,6 +306,7 @@ export default function App() {
     transactionData;
 
   const isStep2Complete = Boolean(activeData);
+  const isResultsVisible = isStep2Complete && !isTransitioning;
 
   // Calculate sliding dimensions for switcher animation
   const sliderWidth = 
@@ -311,7 +324,7 @@ export default function App() {
       {/* View Switcher: fixed bottom-center on mobile, absolute top-right on desktop */}
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-20 sm:absolute sm:top-6 sm:right-6 sm:bottom-auto sm:left-auto sm:translate-x-0">
         <div className="modern-tab-switch">
-          {/* Animated Slider Highlight pill (disabled transition on mount to prevent flicker) */}
+          {/* Animated Slider Highlight pill */}
           <div 
             className={`modern-tab-slider ${!isMounted ? 'no-transition' : ''}`}
             style={{
@@ -320,21 +333,21 @@ export default function App() {
             }}
           />
           <button
-            onClick={() => setActiveDocType('paycheck')}
+            onClick={() => handleTabSwitch('paycheck')}
             className={`modern-tab-btn ${activeDocType === 'paycheck' ? 'active' : ''}`}
             style={{ width: '94px' }}
           >
             paychecks
           </button>
           <button
-            onClick={() => setActiveDocType('card')}
+            onClick={() => handleTabSwitch('card')}
             className={`modern-tab-btn ${activeDocType === 'card' ? 'active' : ''}`}
             style={{ width: '126px' }}
           >
             bank statements
           </button>
           <button
-            onClick={() => setActiveDocType('transaction')}
+            onClick={() => handleTabSwitch('transaction')}
             className={`modern-tab-btn ${activeDocType === 'transaction' ? 'active' : ''}`}
             style={{ width: '100px' }}
           >
@@ -356,10 +369,10 @@ export default function App() {
           uploadedLabel={activeDocType === 'transaction' ? 'Uploaded Transaction' : 'Uploaded Statement'}
         />
 
-        {/* Extracted Value Cards with Unique Prefix Key */}
+        {/* Extracted Value Cards with Dynamic Fade Out/In Key */}
         <div 
           key={`results-${activeDocType}`} 
-          className={`results-wrapper ${isStep2Complete ? 'visible' : ''}`}
+          className={`results-wrapper ${isResultsVisible ? 'visible' : ''}`}
         >
           <Step2ExtractedData
             data={activeData}
