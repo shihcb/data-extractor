@@ -476,12 +476,36 @@ button {
 /* Premium Archive Drawer Panel */
 .archive-panel {
   background: #fcfcfb;
-  border: 1px solid var(--border-subtle);
   border-radius: 16px;
-  padding: 16px 24px;
-  margin-bottom: 12px;
   width: 100%;
   box-sizing: border-box;
+  
+  /* Collapsible Transitions */
+  max-height: 0;
+  opacity: 0;
+  padding: 0 24px;
+  border: 0 solid var(--border-subtle);
+  overflow: hidden;
+  margin-bottom: 0;
+  transition: max-height 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              padding 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              border-width 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              margin-bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.archive-panel.open {
+  max-height: 320px; /* Safe bounds to display 3 items + header */
+  opacity: 1;
+  padding: 16px 24px;
+  border-width: 1px;
+  margin-bottom: 12px;
+}
+
+/* Height restricted scroll area - fits exactly 3 items and scrolls on the 4th */
+.archive-list {
+  max-height: 138px;
+  overflow-y: auto;
 }
 
 /* Webkit Scrollbar styles for Archive scroll panel */

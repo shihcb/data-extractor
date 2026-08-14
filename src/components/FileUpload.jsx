@@ -194,71 +194,69 @@ export default function FileUpload({
       </div>
 
       {/* Archive Submenu Drawer */}
-      {isArchiveOpen && (
-        <div className="archive-panel animate-fade-in-up">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-200 mb-2.5">
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
-              Archived Documents ({archiveItems.length})
-            </span>
-            {archiveItems.length > 0 && (
-              <button
-                type="button"
-                onClick={onClearAllArchives}
-                className="text-[10px] font-extrabold text-red-500 hover:text-red-700 transition-colors uppercase tracking-wider cursor-pointer"
-              >
-                Clear All
-              </button>
-            )}
-          </div>
+      <div className={`archive-panel ${isArchiveOpen ? 'open' : 'closed'}`}>
+        <div className="flex items-center justify-between pb-2 border-b border-slate-200 mb-4">
+          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+            Archived Documents ({archiveItems.length})
+          </span>
+          {archiveItems.length > 0 && (
+            <button
+              type="button"
+              onClick={onClearAllArchives}
+              className="text-[10px] font-extrabold text-red-500 hover:text-red-700 transition-colors uppercase tracking-wider cursor-pointer"
+            >
+              Clear All
+            </button>
+          )}
+        </div>
 
-          <div className="archive-list max-h-[220px] overflow-y-auto pr-1 flex flex-col gap-2">
-            {archiveItems.length === 0 ? (
-              <div className="text-slate-400 text-xs py-4 text-center font-medium italic">
-                No archived documents yet.
-              </div>
-            ) : (
-              archiveItems.map((item) => (
-                <div 
-                  key={item.id} 
-                  className="flex items-center justify-between py-1.5 border-b border-slate-100 last:border-0"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <FileText size={14} className="text-slate-400 shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <div className="font-bold text-xs sm:text-sm text-slate-700 truncate" title={item.name}>
-                        {item.name}
-                      </div>
-                      <div className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mt-0.5">
-                        {item.docType === 'paycheck' ? 'paychecks' : item.docType === 'card' ? 'bank statements' : 'transactions'}
-                      </div>
+        <div className="archive-list pr-1 flex flex-col gap-2">
+          {archiveItems.length === 0 ? (
+            <div className="text-slate-400 text-xs py-4 text-center font-medium italic">
+              No archived documents yet.
+            </div>
+          ) : (
+            archiveItems.map((item) => (
+              <div 
+                key={item.id} 
+                className="flex items-center justify-between py-1.5"
+              >
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <FileText size={14} className="text-slate-400 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <div className="font-bold text-xs sm:text-sm text-slate-700 truncate" title={item.name}>
+                      {item.name}
+                    </div>
+                    <div className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mt-0.5">
+                      {item.docType === 'paycheck' ? 'paychecks' : item.docType === 'card' ? 'bank statements' : 'transactions'}
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2 shrink-0 ml-3">
-                    <button
-                      type="button"
-                      onClick={() => onLoadArchive(item)}
-                      className="icon-copy-btn cursor-pointer w-7 h-7"
-                      title="Load document"
-                    >
-                      <Upload size={12} />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => onDeleteArchive(item.id)}
-                      className="icon-clear-btn cursor-pointer w-7 h-7"
-                      title="Delete from archive"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
                 </div>
-              ))
-            )}
-          </div>
+
+                <div className="flex items-center gap-2 shrink-0 ml-3">
+                  <button
+                    type="button"
+                    onClick={() => onLoadArchive(item)}
+                    className="icon-copy-btn cursor-pointer w-7 h-7"
+                    title="Load document"
+                  >
+                    <Upload size={12} />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onDeleteArchive(item.id)}
+                    className="icon-clear-btn cursor-pointer w-7 h-7"
+                    title="Delete from archive"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
