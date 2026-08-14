@@ -19,50 +19,13 @@ export default function FileUpload({
     }
   };
 
-  // ── Uploaded state ────────────────────────────────────────
-  if (fileName) {
-    return (
-      <div 
-        className="independent-row-card uploader-card animate-fade-in-up"
-        onDoubleClick={onClear}
-        title="Double-click to remove file"
-        style={{ visibility: isProcessing ? 'hidden' : 'visible' }}
-      >
-        <input
-          id={inputId}
-          type="file"
-          accept="application/pdf,image/png,image/jpeg,image/webp,text/plain,text/csv"
-          onChange={handleChange}
-          className="hidden"
-          disabled={isProcessing}
-        />
-
-        <div className="min-w-0 flex-1 text-left">
-          <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-0.5">
-            {uploadedLabel}
-          </div>
-          <div className="font-bold text-sm sm:text-base text-slate-800 truncate flex items-center gap-1.5 justify-start">
-            <FileText size={16} className="text-emerald-600 shrink-0" />
-            <span className="truncate">{fileName}</span>
-          </div>
-        </div>
-
-        <label
-          htmlFor={inputId}
-          className="icon-copy-btn shrink-0 cursor-pointer"
-          title="Upload a new file to override"
-        >
-          <RefreshCw size={14} />
-        </label>
-      </div>
-    );
-  }
-
-  // ── Empty state ───────────────────────────────────────────
+  // We keep a single root element and avoid unmounting it, 
+  // which prevents triggering the fade-in animation again and stops flickering.
   return (
     <div 
-      className="independent-row-card uploader-card animate-fade-in-up"
-      style={{ visibility: isProcessing ? 'hidden' : 'visible' }}
+      className={`independent-row-card uploader-card animate-fade-in-up ${isProcessing ? 'opacity-70 pointer-events-none cursor-wait' : ''}`}
+      onDoubleClick={fileName && !isProcessing ? onClear : undefined}
+      title={fileName && !isProcessing ? "Double-click to remove file" : undefined}
     >
       <input
         id={inputId}
@@ -73,20 +36,46 @@ export default function FileUpload({
         disabled={isProcessing}
       />
 
-      <div className="flex items-center gap-2.5 min-w-0 flex-1 text-left">
-        <Upload size={16} className="text-slate-800 shrink-0" />
-        <span className="font-extrabold text-xs sm:text-sm text-slate-800 tracking-wider">
-          {uploadText}
-        </span>
-      </div>
+      {fileName ? (
+        // ── Uploaded state content ────────────────────────────────
+        <>
+          <div className="min-w-0 flex-1 text-left">
+            <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-0.5">
+              {uploadedLabel}
+            </div>
+            <div className="font-bold text-sm sm:text-base text-slate-800 truncate flex items-center gap-1.5 justify-start">
+              <FileText size={16} className="text-emerald-600 shrink-0" />
+              <span className="truncate">{fileName}</span>
+            </div>
+          </div>
 
-      <label
-        htmlFor={inputId}
-        className="upload-plus-btn cursor-pointer"
-        title="Choose file"
-      >
-        +
-      </label>
+          <label
+            htmlFor={inputId}
+            className="icon-copy-btn shrink-0 cursor-pointer"
+            title="Upload a new file to override"
+          >
+            <RefreshCw size={14} />
+          </label>
+        </>
+      ) : (
+        // ── Empty state content ───────────────────────────────────
+        <>
+          <div className="flex items-center gap-2.5 min-w-0 flex-1 text-left">
+            <Upload size={16} className="text-slate-800 shrink-0" />
+            <span className="font-extrabold text-xs sm:text-sm text-slate-800 tracking-wider">
+              {uploadText}
+            </span>
+          </div>
+
+          <label
+            htmlFor={inputId}
+            className="upload-plus-btn cursor-pointer"
+            title="Choose file"
+          >
+            +
+          </label>
+        </>
+      )}
     </div>
   );
 }
