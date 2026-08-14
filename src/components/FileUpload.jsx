@@ -30,38 +30,46 @@ export default function FileUpload({
   });
   const [isClearingAll, setIsClearingAll] = React.useState(false);
   const [deletingId, setDeletingId] = React.useState(null);
-  // pendingIds: IDs rendered at opacity-0 awaiting fade-in transition
-  const [pendingIds, setPendingIds] = React.useState(() => new Set());
-  const prevIdsRef = React.useRef(new Set(archiveItems.map(i => i.id)));
+  // visibleIds: IDs that have completed their fade-in and are at opacity 1.
+  // New items are NOT in this set on first render → start at opacity 0.
+  const [visibleIds, setVisibleIds] = React.useState(
+    () => new Set(archiveItems.map(i => i.id))
+  );
 
   React.useEffect(() => {
     localStorage.setItem('extrkt_archive_open', isArchiveOpen);
   }, [isArchiveOpen]);
 
-  // Fade-in: detect new items, hold them at opacity-0 for one paint,
-  // then release so the CSS transition animates them in naturally.
-  React.useEffect(() => {
-    const currentIds = archiveItems.map(i => i.id);
-    const newIds = currentIds.filter(id => !prevIdsRef.current.has(id));
-    prevIdsRef.current = new Set(currentIds);
-    if (newIds.length === 0) return;
+  // Compute new IDs during render (not in effect) so the first paint is at opacity 0
+  const currentIds = archiveItems.map(i => i.id);
+  const newIds = currentIds.filter(id => !visibleIds.has(id));
+  const newIdsKey = newIds.join(',');
 
-    // Add to pending immediately (renders at opacity-0 / translateY)
-    setPendingIds(prev => {
-      const next = new Set(prev);
-      newIds.forEach(id => next.add(id));
-      return next;
-    });
-    // Double-rAF ensures the browser paints the opacity-0 frame
-    // before the transition starts
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setPendingIds(prev => {
-          const next = new Set(prev);
-          newIds.forEach(id => next.delete(id));
-          return next;
-        });
+  // useLayoutEffect fires before browser paint → schedules rAF to flip visible
+  // This guarantees: paint1=opacity0, paint2=opacity1 (real CSS transition)
+  React.useLayoutEffect(() => {
+    if (!newIdsKey) return;
+    const ids = newIdsKey.split(',').filter(Boolean);
+    const raf = requestAnimationFrame(() => {
+      setVisibleIds(prev => {
+        const next = new Set(prev);
+        ids.forEach(id => next.add(id));
+        return next;
       });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [newIdsKey]);
+
+  // Clean up removed IDs from visibleIds after deletion
+  React.useEffect(() => {
+    const currentIdSet = new Set(archiveItems.map(i => i.id));
+    setVisibleIds(prev => {
+      let changed = false;
+      const next = new Set(prev);
+      for (const id of prev) {
+        if (!currentIdSet.has(id)) { next.delete(id); changed = true; }
+      }
+      return changed ? next : prev;
     });
   }, [archiveItems]);
 
@@ -272,15 +280,15 @@ export default function FileUpload({
         >
           {archiveItems.length > 0 && (
             archiveItems.map((item) => {
-              const isPending = pendingIds.has(item.id);
+              const isVisible = visibleIds.has(item.id);
               const isDeleting = deletingId === item.id;
               return (
               <div
                 key={item.id}
                 className="flex items-center justify-between py-0.5"
                 style={{
-                  opacity: isDeleting || isPending ? 0 : 1,
-                  transform: isPending ? 'translateY(8px)' : 'translateY(0)',
+                  opacity: isDeleting || !isVisible ? 0 : 1,
+                  transform: !isVisible ? 'translateY(8px)' : 'translateY(0)',
                   transition: isDeleting
                     ? 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1)'
                     : 'opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
