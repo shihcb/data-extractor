@@ -14,7 +14,13 @@ export default function FileUpload({ onFileUpload, onPasteText, isProcessing, fi
       const clipboardItems = await navigator.clipboard.read();
       
       for (const item of clipboardItems) {
-        // 1. Look for PDF file in clipboard
+        // Detect if it contains file paths copied from OS Finder (text/uri-list)
+        if (item.types.includes('text/uri-list')) {
+          alert("To paste a file copied from Finder/Explorer, please press Cmd+V (or Ctrl+V) directly on the page.");
+          return;
+        }
+
+        // Look for PDF file in clipboard
         const pdfType = item.types.find(t => t === 'application/pdf');
         if (pdfType) {
           const blob = await item.getType('application/pdf');
@@ -23,7 +29,7 @@ export default function FileUpload({ onFileUpload, onPasteText, isProcessing, fi
           return;
         }
 
-        // 2. Look for Image file in clipboard
+        // Look for Image file in clipboard
         const imgType = item.types.find(t => t.startsWith('image/'));
         if (imgType) {
           const blob = await item.getType(imgType);
@@ -34,14 +40,14 @@ export default function FileUpload({ onFileUpload, onPasteText, isProcessing, fi
         }
       }
 
-      // 3. Fallback: If no files in clipboard, check for text paste
+      // Fallback to text copy-paste
       const text = await navigator.clipboard.readText();
       if (text && onPasteText) {
         onPasteText(text);
       }
     } catch (err) {
       console.warn('Could not read clipboard items:', err);
-      // Fallback direct readText if read() is blocked by permissions on older browsers
+      // Fallback direct readText
       try {
         const text = await navigator.clipboard.readText();
         if (text && onPasteText) {
@@ -97,7 +103,6 @@ export default function FileUpload({ onFileUpload, onPasteText, isProcessing, fi
   }
 
   // When no file is uploaded, keep the SAME horizontal card appearance:
-  // "UPLOAD STATEMENT" with paste button and plus symbol next to it
   return (
     <div
       onClick={handleClick}
@@ -123,7 +128,7 @@ export default function FileUpload({ onFileUpload, onPasteText, isProcessing, fi
         </span>
       </div>
 
-      {/* Action buttons: paste & plus symbol with clean matching outlines */}
+      {/* Action buttons: paste & plus symbol with identical box outline stylings */}
       <div className="flex items-center gap-1.5 shrink-0">
         <button
           type="button"
