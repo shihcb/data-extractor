@@ -27,9 +27,11 @@ export function extractCardStatementData(text) {
   // Fallback card statement parsing
   const bankName = extractBankName(cleanText, lines);
   const cardLast4 = extractPatternValue(cleanText, [
+    /(?:account|card|credit\s*card)\s*(?:number|ending|#)?\s*[:.-]?\s*(?:\d{4}[\s-]){3}(\d{4})/i,
     /(?:account|card|credit\s*card)\s*(?:number|ending|#)?\s*[:.-]?\s*(?:x{4,}|[*]{4,}|[-])?\s*(\d{4})/i,
     /ending\s*in\s*(\d{4})/i
   ]);
+  
   const statementPeriod = extractStatementPeriod(cleanText);
   let startDate = 'N/A';
   let endDate = 'N/A';
@@ -43,7 +45,7 @@ export function extractCardStatementData(text) {
   }
 
   const statementBalance = extractAmountByKeywords(cleanText, [
-    /new\s*balance/i,
+    /new\s*balance\s*(?:total)?/i,
     /total\s*(?:amount\s*)?due/i,
     /statement\s*balance/i
   ]);
@@ -168,6 +170,17 @@ function extractBankName(text, lines) {
 }
 
 function extractStatementPeriod(text) {
+  // Try pattern with words e.g. June 25 - July 24, 2026
+  const monthPattern = '(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)';
+  const datePattern = `${monthPattern}\\s+\\d{1,2}(?:\\s*,\\s*\\d{4})?`;
+  const rangeRegex = new RegExp(`(${datePattern})\\s*(?:-|—|–|to|through)\\s*(${datePattern})`, 'i');
+  
+  const rangeMatch = text.match(rangeRegex);
+  if (rangeMatch) {
+    return `${rangeMatch[1]} - ${rangeMatch[2]}`;
+  }
+
+  // Fallback to numeric ranges
   const periodMatch = text.match(/(?:billing\s*period|statement\s*period|period)\s*[:.-]?\s*(\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4}\s*(?:-|to|through|–)\s*\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4})/i)
     || text.match(/(\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4}\s*(?:-|to|through|–)\s*\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4})/);
 
