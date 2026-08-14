@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { ClipboardPaste } from 'lucide-react';
+import { ClipboardPaste, ClipboardCopy } from 'lucide-react';
 
 export default function CaseConverter() {
   const [text, setText] = useState('');
   const [pastedConfirm, setPastedConfirm] = useState(false);
+  const [copiedConfirm, setCopiedConfirm] = useState(false);
   const [copiedLower, setCopiedLower] = useState(false);
   const [copiedUpper, setCopiedUpper] = useState(false);
   const textareaRef = useRef(null);
@@ -23,6 +24,21 @@ export default function CaseConverter() {
         document.execCommand('paste');
       }
     }
+  };
+
+  const handleCopy = async (e) => {
+    e.currentTarget.blur();
+    if (!text.trim()) return;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      if (textareaRef.current) {
+        textareaRef.current.select();
+        document.execCommand('copy');
+      }
+    }
+    setCopiedConfirm(true);
+    setTimeout(() => setCopiedConfirm(false), 1800);
   };
 
   const handleConvert = async (e, mode) => {
@@ -59,12 +75,23 @@ export default function CaseConverter() {
         autoCapitalize="off"
       />
       <div className="case-converter-actions">
+        {/* Paste icon button */}
         <button
           className={`case-btn case-btn-paste case-btn-icon-only ${pastedConfirm ? 'case-btn-copied' : ''}`}
           onClick={handlePaste}
           title="Paste from clipboard"
         >
           <ClipboardPaste size={14} />
+        </button>
+
+        {/* Copy icon button */}
+        <button
+          className={`case-btn case-btn-paste case-btn-icon-only ${copiedConfirm ? 'case-btn-copied' : ''}`}
+          onClick={handleCopy}
+          disabled={!text.trim()}
+          title="Copy text"
+        >
+          <ClipboardCopy size={14} />
         </button>
 
         <button
