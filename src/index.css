@@ -302,8 +302,7 @@ button {
 
 /* Icon-only square variant for the paste button */
 .case-btn-icon-only {
-  padding: 9px 11px;
-  width: auto;
+  padding: 9px 22px;
   justify-content: center;
 }
 
