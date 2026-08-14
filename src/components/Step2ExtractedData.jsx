@@ -204,11 +204,6 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
             value={formatPeriodRange(displayData.statementPeriod)}
             onCopy={onCopyField}
           />
-          <CopyableRow
-            label="Pay Date"
-            value="N/A"
-            onCopy={onCopyField}
-          />
         </>
       )}
 
