@@ -31,8 +31,8 @@ export default function FileUpload({
   }
 
   // If a file is uploaded:
-  // - Clicking the outer box does NOT trigger file selector (not clickable).
-  // - Clicking the Refresh/Reset button directly opens the file picker to choose a new file and override it!
+  // - Clicking the outer box does NOT trigger file selector.
+  // - Only clicking the RefreshCw reload/reset button triggers the file picker.
   if (fileName) {
     return (
       <div
@@ -74,11 +74,12 @@ export default function FileUpload({
     );
   }
 
-  // When no file is uploaded, show empty state
+  // When no file is uploaded:
+  // - Clicking the outer box does NOT trigger file selector.
+  // - Only clicking the "+" button triggers the file picker.
   return (
     <div
-      onClick={handleClick}
-      className="independent-row-card cursor-pointer uploader-card hover:border-indigo-500"
+      className="independent-row-card uploader-card"
       title="Upload Statement"
     >
       <input
@@ -100,9 +101,13 @@ export default function FileUpload({
         </span>
       </div>
 
-      {/* Action buttons: plus symbol box only */}
+      {/* Action buttons: "+" symbol box is the ONLY clickable target to trigger file selection */}
       <div className="flex items-center gap-1.5 shrink-0">
-        <div className="w-[34px] h-[34px] rounded-lg bg-slate-50 border border-slate-300 flex items-center justify-center text-slate-400 text-lg font-bold leading-none select-none">
+        <div 
+          onClick={handleClick}
+          className="w-[34px] h-[34px] rounded-lg bg-slate-50 border border-slate-300 flex items-center justify-center text-slate-400 text-lg font-bold leading-none select-none cursor-pointer hover:border-indigo-500 hover:text-indigo-600 transition-colors"
+          title="Choose file"
+        >
           +
         </div>
       </div>

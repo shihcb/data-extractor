@@ -130,11 +130,11 @@ button {
   animation: popScale 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-/* Modern Tab Switcher - Premium Black Themed Container */
+/* Modern Tab Switcher - Solid Black Themed Container */
 .modern-tab-switch {
   position: relative;
   display: flex;
-  background: #000000;
+  background: #000000; /* Pure black container background */
   padding: 3px;
   border-radius: 9999px;
   border: 1px solid #27272a;
@@ -148,17 +148,18 @@ button {
   padding: 6px 0;
   font-size: 0.75rem;
   font-weight: 700;
-  color: #ffffff !important; /* Text color remains pure white consistently */
+  color: #ffffff !important; /* Inactive text color is clean white */
   border-radius: 9999px;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
   white-space: nowrap;
+  /* Removed transitions to prevent text casing flash/flicker glitches */
 }
 
 .modern-tab-btn.active {
-  color: #ffffff !important;
+  color: #000000 !important; /* Active text color is black, sitting on top of white slider */
 }
 
 .modern-tab-slider {
@@ -166,7 +167,7 @@ button {
   top: 3px;
   bottom: 3px;
   left: 3px;
-  background: #4f46e5; /* Solid Indigo highlight pill stands out clearly on black while legibly highlighting white text labels */
+  background: #ffffff; /* Solid White highlight slider pill */
   border-radius: 9999px;
   transition: transform 0.22s cubic-bezier(0.25, 1, 0.5, 1), width 0.2s ease;
   z-index: 1;
