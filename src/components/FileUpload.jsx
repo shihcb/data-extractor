@@ -23,7 +23,7 @@ export default function FileUpload({
   // which prevents triggering the fade-in animation again and stops flickering.
   return (
     <div 
-      className={`independent-row-card uploader-card animate-fade-in-up ${isProcessing ? 'opacity-70 pointer-events-none cursor-wait' : ''}`}
+      className={`independent-row-card uploader-card ${isProcessing ? 'pointer-events-none cursor-wait' : ''}`}
       onDoubleClick={fileName && !isProcessing ? onClear : undefined}
       title={fileName && !isProcessing ? "Double-click to remove file" : undefined}
     >
