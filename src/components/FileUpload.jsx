@@ -72,9 +72,8 @@ export default function FileUpload({
       <div 
         style={{
           position: fileName ? 'relative' : 'absolute',
-          left: fileName ? 'auto' : '0px',
-          right: fileName ? 'auto' : '0px',
-          width: '100%',
+          left: fileName ? 'auto' : '24px',
+          right: fileName ? 'auto' : '24px',
           height: '38px',
           flexShrink: 0,
           opacity: fileName ? 1 : 0,
@@ -107,9 +106,8 @@ export default function FileUpload({
       <div 
         style={{
           position: !fileName ? 'relative' : 'absolute',
-          left: !fileName ? 'auto' : '0px',
-          right: !fileName ? 'auto' : '0px',
-          width: '100%',
+          left: !fileName ? 'auto' : '24px',
+          right: !fileName ? 'auto' : '24px',
           height: '38px',
           flexShrink: 0,
           opacity: !fileName ? 1 : 0,
