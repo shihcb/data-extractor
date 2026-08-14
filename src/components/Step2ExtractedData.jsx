@@ -16,6 +16,8 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
   if (!displayData) return null;
 
   const isPaycheck = docType === 'paycheck';
+  const isCard = docType === 'card';
+  const isTransaction = docType === 'transaction';
 
   // Format date range separator hyphens (-) to em-dashes (—)
   const formatRangeSeparator = (str) => {
@@ -25,7 +27,7 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
 
   return (
     <div className="animate-fade-in">
-      {isPaycheck ? (
+      {isPaycheck && (
         <>
           <CopyableRow
             label="NET PAY"
@@ -59,7 +61,9 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
             onCopy={onCopyField}
           />
         </>
-      ) : (
+      )}
+
+      {isCard && (
         <>
           <CopyableRow
             label="STATEMENT BALANCE"
@@ -85,6 +89,27 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
           <CopyableRow
             label="Pay Date"
             value="Not Found"
+            onCopy={onCopyField}
+          />
+        </>
+      )}
+
+      {isTransaction && (
+        <>
+          <CopyableRow
+            label="AMOUNT"
+            value={displayData.amount}
+            highlight={true}
+            onCopy={onCopyField}
+          />
+          <CopyableRow
+            label="DATE & TIME"
+            value={displayData.dateTime}
+            onCopy={onCopyField}
+          />
+          <CopyableRow
+            label="MERCHANT"
+            value={displayData.merchant}
             onCopy={onCopyField}
           />
         </>

@@ -6,6 +6,7 @@ import { parsePdfText } from './utils/pdfParser';
 import { parseImageText } from './utils/imageParser';
 import { extractPaycheckData } from './utils/paycheckExtractor';
 import { extractCardStatementData } from './utils/cardStatementExtractor';
+import { extractTransactionData } from './utils/transactionExtractor';
 
 export default function App() {
   // Check 30-minute expiration before loading initial states
@@ -35,6 +36,10 @@ export default function App() {
     return localStorage.getItem('extrkt_card_file_name') || '';
   });
 
+  const [transactionFileName, setTransactionFileName] = useState(() => {
+    return localStorage.getItem('extrkt_transaction_file_name') || '';
+  });
+
   // Independent Parsed Data per View
   const [paycheckData, setPaycheckData] = useState(() => {
     const saved = localStorage.getItem('extrkt_paycheck_data');
@@ -43,6 +48,11 @@ export default function App() {
 
   const [cardData, setCardData] = useState(() => {
     const saved = localStorage.getItem('extrkt_card_data');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const [transactionData, setTransactionData] = useState(() => {
+    const saved = localStorage.getItem('extrkt_transaction_data');
     return saved ? JSON.parse(saved) : null;
   });
 
@@ -62,6 +72,10 @@ export default function App() {
   }, [cardFileName]);
 
   useEffect(() => {
+    localStorage.setItem('extrkt_transaction_file_name', transactionFileName);
+  }, [transactionFileName]);
+
+  useEffect(() => {
     if (paycheckData) {
       localStorage.setItem('extrkt_paycheck_data', JSON.stringify(paycheckData));
     } else {
@@ -77,21 +91,34 @@ export default function App() {
     }
   }, [cardData]);
 
+  useEffect(() => {
+    if (transactionData) {
+      localStorage.setItem('extrkt_transaction_data', JSON.stringify(transactionData));
+    } else {
+      localStorage.removeItem('extrkt_transaction_data');
+    }
+  }, [transactionData]);
+
   const handleClearFile = () => {
     if (activeDocType === 'paycheck') {
       setPaycheckFileName('');
       setPaycheckData(null);
       localStorage.removeItem('extrkt_paycheck_file_name');
       localStorage.removeItem('extrkt_paycheck_data');
-    } else {
+    } else if (activeDocType === 'card') {
       setCardFileName('');
       setCardData(null);
       localStorage.removeItem('extrkt_card_file_name');
       localStorage.removeItem('extrkt_card_data');
+    } else {
+      setTransactionFileName('');
+      setTransactionData(null);
+      localStorage.removeItem('extrkt_transaction_file_name');
+      localStorage.removeItem('extrkt_transaction_data');
     }
 
-    // Reset timestamp if BOTH are cleared
-    if (!paycheckFileName && !cardFileName) {
+    // Reset timestamp if ALL are cleared
+    if (!paycheckFileName && !cardFileName && !transactionFileName) {
       localStorage.removeItem('extrkt_timestamp');
     }
   };
@@ -99,9 +126,10 @@ export default function App() {
   const handleFileUpload = async (file) => {
     if (!file) return;
 
-    // Reject files that do NOT contain "statement" (case-insensitive) - SILENTLY
+    // Reject files that do NOT contain "statement" or "purchase" or "approved" (case-insensitive) - SILENTLY
     const fileLower = file.name.toLowerCase();
-    if (!fileLower.includes('statement')) {
+    const isValidName = fileLower.includes('statement') || fileLower.includes('purchase') || fileLower.includes('approved') || fileLower.includes('email');
+    if (!isValidName) {
       return;
     }
 
@@ -122,7 +150,7 @@ export default function App() {
         extractedRawText = await file.text();
       }
 
-      // Parse and save data strictly inside the active tab's scope if ALL necessary fields exist!
+      // Parse and save data strictly inside the active tab's scope if ALL core fields exist!
       if (activeDocType === 'paycheck') {
         const parsedPaycheck = extractPaycheckData(extractedRawText);
         const hasAllPaycheckInfo = 
@@ -135,7 +163,7 @@ export default function App() {
           setPaycheckData(parsedPaycheck);
           setPaycheckFileName(file.name);
         }
-      } else {
+      } else if (activeDocType === 'card') {
         const parsedCard = extractCardStatementData(extractedRawText);
         const hasAllCardInfo = 
           parsedCard.statementBalance !== 'Not Found' && 
@@ -146,6 +174,17 @@ export default function App() {
         if (hasAllCardInfo) {
           setCardData(parsedCard);
           setCardFileName(file.name);
+        }
+      } else {
+        const parsedTx = extractTransactionData(extractedRawText);
+        const hasAllTxInfo = 
+          parsedTx.amount !== 'Not Found' && 
+          parsedTx.dateTime !== 'Not Found' && 
+          parsedTx.merchant !== 'Not Found';
+
+        if (hasAllTxInfo) {
+          setTransactionData(parsedTx);
+          setTransactionFileName(file.name);
         }
       }
     } catch (err) {
@@ -174,7 +213,7 @@ export default function App() {
           setPaycheckData(parsedPaycheck);
           setPaycheckFileName('Pasted Content');
         }
-      } else {
+      } else if (activeDocType === 'card') {
         const parsedCard = extractCardStatementData(text);
         const hasAllCardInfo = 
           parsedCard.statementBalance !== 'Not Found' && 
@@ -185,6 +224,17 @@ export default function App() {
         if (hasAllCardInfo) {
           setCardData(parsedCard);
           setCardFileName('Pasted Content');
+        }
+      } else {
+        const parsedTx = extractTransactionData(text);
+        const hasAllTxInfo = 
+          parsedTx.amount !== 'Not Found' && 
+          parsedTx.dateTime !== 'Not Found' && 
+          parsedTx.merchant !== 'Not Found';
+
+        if (hasAllTxInfo) {
+          setTransactionData(parsedTx);
+          setTransactionFileName('Pasted Content');
         }
       }
     } catch (err) {
@@ -210,17 +260,31 @@ export default function App() {
     };
     window.addEventListener('paste', handleGlobalPaste);
     return () => window.removeEventListener('paste', handleGlobalPaste);
-  }, [activeDocType, isProcessing, paycheckFileName, cardFileName]);
+  }, [activeDocType, isProcessing, paycheckFileName, cardFileName, transactionFileName]);
 
   // Determine active view states
-  const activeFileName = activeDocType === 'paycheck' ? paycheckFileName : cardFileName;
-  const activeData = activeDocType === 'paycheck' ? paycheckData : cardData;
+  const activeFileName = 
+    activeDocType === 'paycheck' ? paycheckFileName : 
+    activeDocType === 'card' ? cardFileName : 
+    transactionFileName;
+
+  const activeData = 
+    activeDocType === 'paycheck' ? paycheckData : 
+    activeDocType === 'card' ? cardData : 
+    transactionData;
+
   const isStep2Complete = Boolean(activeData);
 
   // Calculate sliding dimensions for switcher animation
-  const isCard = activeDocType === 'card';
-  const sliderWidth = isCard ? 136 : 94;
-  const sliderTransform = isCard ? 94 : 0;
+  const sliderWidth = 
+    activeDocType === 'paycheck' ? 94 : 
+    activeDocType === 'card' ? 126 : 
+    100;
+
+  const sliderTransform = 
+    activeDocType === 'paycheck' ? 0 : 
+    activeDocType === 'card' ? 98 : 
+    228; // 94 width + 126 width + 8px gaps
 
   return (
     <div className={`min-h-screen bg-[#faf9f6] text-[#0f172a] px-4 sm:px-6 w-full flex flex-col items-center justify-center py-20 sm:py-24 relative`}>
@@ -245,9 +309,16 @@ export default function App() {
           <button
             onClick={() => setActiveDocType('card')}
             className={`modern-tab-btn ${activeDocType === 'card' ? 'active' : ''}`}
-            style={{ width: '136px' }}
+            style={{ width: '126px' }}
           >
             bank statements
+          </button>
+          <button
+            onClick={() => setActiveDocType('transaction')}
+            className={`modern-tab-btn ${activeDocType === 'transaction' ? 'active' : ''}`}
+            style={{ width: '100px' }}
+          >
+            transactions
           </button>
         </div>
       </div>
