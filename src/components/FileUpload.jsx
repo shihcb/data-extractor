@@ -21,7 +21,7 @@ export default function FileUpload({
 
   return (
     <div 
-      className={`independent-row-card uploader-card relative overflow-hidden ${isProcessing ? 'processing pointer-events-none cursor-wait' : ''}`}
+      className={`independent-row-card uploader-card select-none relative overflow-hidden ${isProcessing ? 'processing pointer-events-none cursor-wait' : ''}`}
       onDoubleClick={fileName && !isProcessing ? onClear : undefined}
       title={fileName && !isProcessing ? "Double-click to remove file" : undefined}
     >

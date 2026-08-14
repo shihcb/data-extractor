@@ -131,6 +131,8 @@ button {
 /* Specific uploader card styling */
 .uploader-card {
   margin-bottom: 12px !important;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .uploader-card:hover {
