@@ -399,11 +399,11 @@ export default function App() {
                   <span className="text-[11px] font-extrabold text-slate-800 uppercase tracking-wider text-center sm:text-left">
                     override document upload?
                   </span>
-                  <div className="flex items-center gap-6 pr-2">
+                  <div className="flex items-center gap-3 pr-2">
                     <button
                       onClick={handleConfirmOverride}
-                      className="text-[10px] font-extrabold uppercase tracking-wider transition-colors cursor-pointer"
-                      style={{ background: 'none', border: 'none', color: '#0f172a', padding: '4px 8px' }}
+                      className="text-[10px] font-extrabold uppercase tracking-wider transition-colors cursor-pointer select-none"
+                      style={{ background: 'none', border: 'none', color: '#0f172a', padding: '4px 8px', outline: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
                       onMouseEnter={(e) => e.currentTarget.style.color = '#64748b'}
                       onMouseLeave={(e) => e.currentTarget.style.color = '#0f172a'}
                     >
@@ -411,8 +411,8 @@ export default function App() {
                     </button>
                     <button
                       onClick={handleCancelOverride}
-                      className="text-[10px] font-extrabold uppercase tracking-wider transition-colors cursor-pointer"
-                      style={{ background: 'none', border: 'none', color: '#ef4444', padding: '4px 8px' }}
+                      className="text-[10px] font-extrabold uppercase tracking-wider transition-colors cursor-pointer select-none"
+                      style={{ background: 'none', border: 'none', color: '#ef4444', padding: '4px 8px', outline: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
                       onMouseEnter={(e) => e.currentTarget.style.color = '#f87171'}
                       onMouseLeave={(e) => e.currentTarget.style.color = '#ef4444'}
                     >
