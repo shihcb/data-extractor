@@ -206,7 +206,7 @@ export default function FileUpload({
             Archived Documents ({archiveItems.length})
           </span>
           {archiveItems.length > 0 && (
-            <div className="flex items-center gap-0.5 shrink-0 ml-3 w-[36px] justify-center">
+            <div className="flex items-center gap-0.5 shrink-0 ml-3 w-[36px] justify-center pl-[1px]">
               <button
                 type="button"
                 onClick={onClearAllArchives}
