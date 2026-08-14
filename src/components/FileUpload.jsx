@@ -8,8 +8,18 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
     fileInputRef.current?.click();
   };
 
-  // If a file is uploaded, render the file card EXACTLY like the other boxes for consistent styling!
-  if (fileName && !isProcessing) {
+  // If processing, show loading indicator inside a horizontal card matching value box style
+  if (isProcessing) {
+    return (
+      <div className="independent-row-card justify-center py-5">
+        <Loader2 size={20} className="text-indigo-600 animate-spin" />
+        <span className="font-bold text-xs text-slate-700 ml-2">Extracting statement data...</span>
+      </div>
+    );
+  }
+
+  // If a file is uploaded, show the horizontal card style with file name
+  if (fileName) {
     return (
       <div
         onClick={handleClick}
@@ -29,16 +39,15 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
         />
 
         <div className="min-w-0 flex-1">
-          <div className="text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-1">
+          <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-0.5">
             Uploaded Statement
           </div>
-          <div className="font-bold text-lg sm:text-xl text-slate-900 truncate flex items-center gap-2">
-            <FileText size={20} className="text-indigo-600 shrink-0" />
+          <div className="font-bold text-sm sm:text-base text-slate-800 truncate flex items-center gap-2">
+            <FileText size={18} className="text-indigo-600 shrink-0" />
             <span className="truncate">{fileName}</span>
           </div>
         </div>
 
-        {/* Action Button: triggers replace */}
         <button
           type="button"
           onClick={(e) => {
@@ -48,42 +57,42 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
           className="icon-copy-btn shrink-0"
           title="Replace statement file"
         >
-          <RefreshCw size={18} />
+          <RefreshCw size={16} />
         </button>
       </div>
     );
   }
 
+  // When no file is uploaded, keep the SAME horizontal card appearance:
+  // "UPLOAD STATEMENT" with the upload symbol next to it
   return (
-    <div className="flex flex-col items-center justify-center py-4">
-      {/* Empty State Centered Upload Icon Button */}
-      <button
-        onClick={handleClick}
-        disabled={isProcessing}
-        type="button"
-        className={`w-28 h-28 sm:w-32 sm:h-32 rounded-[28px] bg-white border border-slate-200 shadow-md hover:shadow-lg flex items-center justify-center transition-all hover:-translate-y-1.5 focus:outline-hidden ${
-          isProcessing ? 'border-indigo-400 bg-indigo-50/20' : 'hover:border-indigo-500'
-        }`}
-        title="Upload Statement"
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.csv"
-          onChange={(e) => {
-            if (e.target.files && e.target.files[0]) {
-              onFileUpload(e.target.files[0]);
-            }
-          }}
-          className="hidden"
-        />
+    <div
+      onClick={handleClick}
+      className="independent-row-card cursor-pointer uploader-card hover:border-indigo-500"
+      title="Upload Statement"
+    >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.csv"
+        onChange={(e) => {
+          if (e.target.files && e.target.files[0]) {
+            onFileUpload(e.target.files[0]);
+          }
+        }}
+        className="hidden"
+      />
 
-        {isProcessing ? (
-          <Loader2 size={36} className="text-indigo-600 animate-spin" />
-        ) : (
-          <Upload size={36} className="text-slate-800" />
-        )}
-      </button>
+      <div className="flex items-center gap-2.5">
+        <Upload size={18} className="text-slate-800 shrink-0" />
+        <span className="font-extrabold text-xs sm:text-sm text-slate-800 tracking-wider">
+          UPLOAD STATEMENT
+        </span>
+      </div>
+
+      <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400">
+        +
+      </div>
     </div>
   );
 }

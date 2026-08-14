@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import FileUpload from './components/FileUpload';
 import Step2ExtractedData from './components/Step2ExtractedData';
-import Toast from './components/Toast';
 
 import { parsePdfText } from './utils/pdfParser';
 import { parseImageText } from './utils/imageParser';
@@ -9,6 +8,19 @@ import { extractPaycheckData } from './utils/paycheckExtractor';
 import { extractCardStatementData } from './utils/cardStatementExtractor';
 
 export default function App() {
+  // Check 30-minute expiration before loading initial states
+  useEffect(() => {
+    const savedTimestamp = localStorage.getItem('extrkt_timestamp');
+    if (savedTimestamp) {
+      const elapsed = Date.now() - parseInt(savedTimestamp, 10);
+      const THIRTY_MINUTES = 30 * 60 * 1000;
+      if (elapsed > THIRTY_MINUTES) {
+        // Silently clear expired data
+        localStorage.clear();
+      }
+    }
+  }, []);
+
   const [activeDocType, setActiveDocType] = useState(() => {
     return localStorage.getItem('extrkt_doc_type') || 'paycheck';
   });
@@ -28,7 +40,6 @@ export default function App() {
   });
 
   const [isProcessing, setIsProcessing] = useState(false);
-  const [toast, setToast] = useState(null);
 
   const isStep2Complete = Boolean(paycheckData || cardData);
 
@@ -56,13 +67,6 @@ export default function App() {
     }
   }, [cardData]);
 
-  const handleCopyNotification = (label, value) => {
-    setToast({ label, value });
-    setTimeout(() => {
-      setToast(null);
-    }, 2000);
-  };
-
   const handleClearFile = () => {
     setFileName('');
     setPaycheckData(null);
@@ -70,23 +74,22 @@ export default function App() {
     localStorage.removeItem('extrkt_file_name');
     localStorage.removeItem('extrkt_paycheck_data');
     localStorage.removeItem('extrkt_card_data');
+    localStorage.removeItem('extrkt_timestamp');
   };
 
   const handleFileUpload = async (file) => {
     if (!file) return;
 
-    // Validate PDF filenames
+    // Reject files that do NOT contain "statement" (case-insensitive) - SILENTLY (no warning alert)
     const fileLower = file.name.toLowerCase();
-    if (fileLower.endsWith('.pdf')) {
-      const isValidName = fileLower.includes('pay stub for') || fileLower.includes('statement for');
-      if (!isValidName) {
-        alert("Upload rejected: PDF files must contain 'Pay Stub for' or 'Statement for' in their file name.");
-        return;
-      }
+    if (!fileLower.includes('statement')) {
+      return;
     }
 
     setIsProcessing(true);
     setFileName(file.name);
+    // Set 30-minute timestamp
+    localStorage.setItem('extrkt_timestamp', Date.now().toString());
 
     try {
       let extractedRawText = '';
@@ -103,7 +106,6 @@ export default function App() {
       }
 
       const textLower = extractedRawText.toLowerCase();
-      // Auto-detect doc type but respect manual toggle switch
       const isPaycheckText = textLower.includes('pay') || textLower.includes('gross') || textLower.includes('net') || textLower.includes('hours') || textLower.includes('period') || textLower.includes('check');
 
       if (isPaycheckText || activeDocType === 'paycheck') {
@@ -115,63 +117,54 @@ export default function App() {
         setCardData(parsedCard);
         setActiveDocType('card');
       }
-
-      handleCopyNotification('File Processed', `Extracted values from ${file.name}`);
     } catch (err) {
       console.error('File parsing error:', err);
-      alert('Error parsing file: ' + err.message);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleCopyAll = () => {
-    const data = activeDocType === 'paycheck' ? paycheckData : cardData;
-    if (!data) return;
-
-    let summary = '';
-    if (activeDocType === 'paycheck') {
-      summary = `PAYCHECK STATEMENT SUMMARY:\nNET PAY: ${data.netPay}\nGROSS PAY: ${data.grossIncome}\nPAY PERIOD: ${data.payPeriod}\nHours Worked: ${data.hoursWorked}\nCHECK NUMBER: ${data.paycheckNumber}\nPay Date: ${data.payDate}`;
-    } else {
-      summary = `CARD STATEMENT SUMMARY:\nSTATEMENT BALANCE: ${data.statementBalance}\nSTART DATE: ${data.startDate}\nEND DATE: ${data.endDate}\nSTATEMENT PERIOD: ${data.statementPeriod}`;
-    }
-
-    navigator.clipboard.writeText(summary);
-    handleCopyNotification('Full Summary', 'Copied all values to clipboard');
-  };
-
   const activeData = activeDocType === 'paycheck' ? paycheckData : cardData;
+
+  // Calculate sliding dimensions for switcher animation
+  const isCard = activeDocType === 'card';
+  const sliderWidth = isCard ? 122 : 88;
+  const sliderTransform = isCard ? 92 : 0;
 
   return (
     <div className={`min-h-screen bg-[#faf9f6] text-[#0f172a] px-4 sm:px-6 w-full flex flex-col items-center justify-center py-20 sm:py-24 relative`}>
-      {/* Top Right Stepper/Toggle Switch */}
-      <div className="absolute top-6 right-6 z-10 flex items-center p-1 bg-slate-200/80 rounded-full border border-slate-300/60 shadow-xs">
-        <button
-          onClick={() => setActiveDocType('paycheck')}
-          className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
-            activeDocType === 'paycheck'
-              ? 'bg-[#0f172a] text-white shadow-sm'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          paychecks
-        </button>
-        <button
-          onClick={() => setActiveDocType('card')}
-          className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
-            activeDocType === 'card'
-              ? 'bg-[#0f172a] text-white shadow-sm'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          bank statements
-        </button>
+      {/* Top Right Switched Button Container */}
+      <div className="absolute top-6 right-6 z-10">
+        <div className="modern-tab-switch">
+          {/* Animated Slider Highlight pill */}
+          <div 
+            className="modern-tab-slider"
+            style={{
+              width: `${sliderWidth}px`,
+              transform: `translate3d(${sliderTransform}px, 0, 0)`
+            }}
+          />
+          <button
+            onClick={() => setActiveDocType('paycheck')}
+            className={`modern-tab-btn ${activeDocType === 'paycheck' ? 'active' : ''}`}
+            style={{ width: '88px' }}
+          >
+            paychecks
+          </button>
+          <button
+            onClick={() => setActiveDocType('card')}
+            className={`modern-tab-btn ${activeDocType === 'card' ? 'active' : ''}`}
+            style={{ width: '122px' }}
+          >
+            bank statements
+          </button>
+        </div>
       </div>
 
       {/* Centered App Container */}
       <div className="app-container my-auto">
         
-        {/* Upload Button Component */}
+        {/* Upload Card Box Component */}
         <FileUpload
           onFileUpload={handleFileUpload}
           isProcessing={isProcessing}
@@ -186,14 +179,10 @@ export default function App() {
               data={activeData}
               docType={activeDocType}
               isCompleted={isStep2Complete}
-              onCopyField={handleCopyNotification}
             />
           </div>
         )}
       </div>
-
-      {/* Toast Notification */}
-      <Toast toast={toast} />
     </div>
   );
 }
