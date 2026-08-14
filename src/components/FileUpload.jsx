@@ -56,7 +56,7 @@ export default function FileUpload({
             {uploadedLabel}
           </div>
           <div className="font-bold text-sm sm:text-base text-slate-800 truncate flex items-center gap-1.5 justify-start">
-            <FileText size={16} className="text-indigo-600 shrink-0" />
+            <FileText size={16} className="text-emerald-600 shrink-0" />
             <span className="truncate">{fileName}</span>
           </div>
         </div>
