@@ -126,12 +126,15 @@ export default function App() {
   const handleFileUpload = async (file) => {
     if (!file) return;
 
-    // Enforce file name validation ONLY in paycheck and bank statement views
+    // Enforce filename validation ONLY in paycheck and bank statement views
     if (activeDocType !== 'transaction') {
       const fileLower = file.name.toLowerCase();
       if (!fileLower.includes('statement')) {
+        console.log(`[Validation] File rejected in ${activeDocType} view because name does not contain "statement":`, file.name);
         return;
       }
+    } else {
+      console.log(`[Validation] Bypassing filename validation for transactions view:`, file.name);
     }
 
     setIsProcessing(true);
@@ -163,6 +166,8 @@ export default function App() {
         if (hasAllPaycheckInfo) {
           setPaycheckData(parsedPaycheck);
           setPaycheckFileName(file.name);
+        } else {
+          console.log('[Validation] Rejected paycheck info parsed:', parsedPaycheck);
         }
       } else if (activeDocType === 'card') {
         const parsedCard = extractCardStatementData(extractedRawText);
@@ -175,6 +180,8 @@ export default function App() {
         if (hasAllCardInfo) {
           setCardData(parsedCard);
           setCardFileName(file.name);
+        } else {
+          console.log('[Validation] Rejected card info parsed:', parsedCard);
         }
       } else {
         const parsedTx = extractTransactionData(extractedRawText);
@@ -186,6 +193,8 @@ export default function App() {
         if (hasAllTxInfo) {
           setTransactionData(parsedTx);
           setTransactionFileName(file.name);
+        } else {
+          console.log('[Validation] Rejected transaction info parsed:', parsedTx);
         }
       }
     } catch (err) {
