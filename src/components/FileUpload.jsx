@@ -21,12 +21,11 @@ export default function FileUpload({
     setSkipTransition(true);
   }
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     if (skipTransition) {
-      const timer = setTimeout(() => {
-        setSkipTransition(false);
-      }, 50);
-      return () => clearTimeout(timer);
+      // Force immediate browser layout calculation to apply the transition-free state
+      document.body.offsetHeight;
+      setSkipTransition(false);
     }
   }, [skipTransition]);
 

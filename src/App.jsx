@@ -458,10 +458,11 @@ export default function App() {
 
             {/* Extracted Value Cards */}
             <div 
-              key={`results-${activeDocType}`} 
+              key="global-results-wrapper" 
               className={`results-wrapper ${isStep2Complete ? 'visible' : ''}`}
             >
               <Step2ExtractedData
+                key={activeDocType}
                 data={activeData}
                 docType={activeDocType}
                 isCompleted={isStep2Complete}
