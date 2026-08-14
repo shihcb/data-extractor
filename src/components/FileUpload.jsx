@@ -28,10 +28,19 @@ export default function FileUpload({
   const [isArchiveOpen, setIsArchiveOpen] = React.useState(() => {
     return localStorage.getItem('extrkt_archive_open') === 'true';
   });
+  const [isClearingAll, setIsClearingAll] = React.useState(false);
 
   React.useEffect(() => {
     localStorage.setItem('extrkt_archive_open', isArchiveOpen);
   }, [isArchiveOpen]);
+
+  const handleClearWithFade = () => {
+    setIsClearingAll(true);
+    setTimeout(() => {
+      onClearAllArchives();
+      setIsClearingAll(false);
+    }, 350);
+  };
 
   // Sync state changes
   React.useEffect(() => {
@@ -209,7 +218,7 @@ export default function FileUpload({
             <div className="flex items-center gap-0.5 shrink-0 ml-3 w-[36px] justify-center pl-[11px]">
               <button
                 type="button"
-                onClick={onClearAllArchives}
+                onClick={handleClearWithFade}
                 className="text-[10px] font-extrabold text-red-500 hover:text-red-700 transition-colors uppercase tracking-wider cursor-pointer whitespace-nowrap"
               >
                 Clear
@@ -218,7 +227,10 @@ export default function FileUpload({
           )}
         </div>
 
-        <div className="archive-list pr-1 flex flex-col gap-0">
+        <div
+          className="archive-list pr-1 flex flex-col gap-0"
+          style={{ opacity: isClearingAll ? 0 : 1, transition: 'opacity 0.3s ease' }}
+        >
           {archiveItems.length === 0 ? (
             <div className="text-slate-400 text-xs py-4 text-center font-medium italic">
               No archived documents yet.
