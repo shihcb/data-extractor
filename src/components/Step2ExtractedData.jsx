@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import CopyableRow from './CopyableRow';
 
-export default function Step2ExtractedData({ data, docType, isCompleted, onCopyField }) {
+export default function Step2ExtractedData({ data, docType, isCompleted, onCopyField, isInitialAppLoad = false }) {
   // Cache data to keep fields rendered during transition out
   const [cachedData, setCachedData] = useState(data);
 
@@ -38,7 +38,7 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
   };
 
   return (
-    <div className="animate-fade-in">
+    <div className={isInitialAppLoad ? "" : "animate-fade-in"}>
       {isPaycheck && (
         <>
           <CopyableRow

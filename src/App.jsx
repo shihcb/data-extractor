@@ -57,6 +57,8 @@ export default function App() {
   });
 
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isInitialAppLoad, setIsInitialAppLoad] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
 
   // Sync state changes with localStorage
   useEffect(() => {
@@ -98,6 +100,16 @@ export default function App() {
       localStorage.removeItem('extrkt_transaction_data');
     }
   }, [transactionData]);
+
+  // Handle initial page load timings
+  useEffect(() => {
+    setIsMounted(true);
+    // Turn off initial app load animation overrides after first paint
+    const timer = setTimeout(() => {
+      setIsInitialAppLoad(false);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleClearFile = () => {
     if (activeDocType === 'paycheck') {
@@ -299,9 +311,9 @@ export default function App() {
       {/* View Switcher: fixed bottom-center on mobile, absolute top-right on desktop */}
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-20 sm:absolute sm:top-6 sm:right-6 sm:bottom-auto sm:left-auto sm:translate-x-0">
         <div className="modern-tab-switch">
-          {/* Animated Slider Highlight pill */}
+          {/* Animated Slider Highlight pill (disabled transition on mount to prevent flicker) */}
           <div 
-            className="modern-tab-slider"
+            className={`modern-tab-slider ${!isMounted ? 'no-transition' : ''}`}
             style={{
               width: `${sliderWidth}px`,
               transform: `translate3d(${sliderTransform}px, 0, 0)`
@@ -341,6 +353,7 @@ export default function App() {
           fileName={activeFileName}
           onClear={handleClearFile}
           uploadText={activeDocType === 'transaction' ? 'UPLOAD TRANSACTION' : 'UPLOAD STATEMENT'}
+          uploadedLabel={activeDocType === 'transaction' ? 'Uploaded Transaction' : 'Uploaded Statement'}
         />
 
         {/* Extracted Value Cards with Unique Prefix Key */}
@@ -352,6 +365,7 @@ export default function App() {
             data={activeData}
             docType={activeDocType}
             isCompleted={isStep2Complete}
+            isInitialAppLoad={isInitialAppLoad}
           />
         </div>
       </div>

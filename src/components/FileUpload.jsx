@@ -1,17 +1,24 @@
 import React, { useRef } from 'react';
 import { Upload, Loader2, FileText, RefreshCw } from 'lucide-react';
 
-export default function FileUpload({ onFileUpload, isProcessing, fileName, onClear, uploadText = 'UPLOAD STATEMENT' }) {
+export default function FileUpload({ 
+  onFileUpload, 
+  isProcessing, 
+  fileName, 
+  onClear, 
+  uploadText = 'UPLOAD STATEMENT',
+  uploadedLabel = 'Uploaded Statement'
+}) {
   const fileInputRef = useRef(null);
 
   const handleClick = () => {
     fileInputRef.current?.click();
   };
 
-  // If processing, show loading indicator inside a horizontal card matching value box style
+  // If processing, show loading indicator
   if (isProcessing) {
     return (
-      <div className="independent-row-card justify-center py-5 animate-fade-in">
+      <div className="independent-row-card justify-center py-5">
         <Loader2 size={18} className="text-indigo-600 animate-spin" />
         <span className="font-bold text-xs text-slate-700 ml-2">Extracting statement data...</span>
       </div>
@@ -20,11 +27,12 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
 
   // If a file is uploaded, show the horizontal card style with file name
   // The entire box is clickable to select a new file and override the current one directly!
+  // Removed animate-fade-in class to completely stop text flickering on clicks/interactions
   if (fileName) {
     return (
       <div
         onClick={handleClick}
-        className="independent-row-card uploader-card cursor-pointer hover:border-indigo-500 animate-fade-in"
+        className="independent-row-card uploader-card cursor-pointer hover:border-indigo-500"
         title="Click to change file"
       >
         <input
@@ -41,7 +49,7 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
 
         <div className="min-w-0 flex-1 text-left">
           <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-0.5">
-            Uploaded Statement
+            {uploadedLabel}
           </div>
           <div className="font-bold text-sm sm:text-base text-slate-800 truncate flex items-center gap-1.5 justify-start">
             <FileText size={16} className="text-indigo-600 shrink-0" />
@@ -53,7 +61,7 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
         <button
           type="button"
           onClick={(e) => {
-            e.stopPropagation(); // Avoid triggering file selection trigger on clear click
+            e.stopPropagation(); // Avoid triggering file selection picker on clear click
             onClear();
           }}
           className="icon-copy-btn shrink-0"
@@ -65,11 +73,11 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
     );
   }
 
-  // When no file is uploaded, keep the SAME horizontal card appearance:
+  // When no file is uploaded, show empty state (removed animate-fade-in to prevent flickering)
   return (
     <div
       onClick={handleClick}
-      className="independent-row-card cursor-pointer uploader-card hover:border-indigo-500 animate-fade-in"
+      className="independent-row-card cursor-pointer uploader-card hover:border-indigo-500"
       title="Upload Statement"
     >
       <input
