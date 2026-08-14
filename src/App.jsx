@@ -60,9 +60,6 @@ export default function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isInitialAppLoad, setIsInitialAppLoad] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
-  const [pendingUpload, setPendingUpload] = useState(null);
-  const [isWarningVisible, setIsWarningVisible] = useState(false);
-  const [warningData, setWarningData] = useState(null);
 
   // Sync state changes with localStorage
   useEffect(() => {
@@ -114,27 +111,7 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Reset pending upload state when switching view types
-  useEffect(() => {
-    setPendingUpload(null);
-  }, [activeDocType]);
 
-  // Handle warning box exit and entry animations
-  useEffect(() => {
-    if (pendingUpload) {
-      setWarningData(pendingUpload);
-      const timer = setTimeout(() => {
-        setIsWarningVisible(true);
-      }, 20);
-      return () => clearTimeout(timer);
-    } else {
-      setIsWarningVisible(false);
-      const timer = setTimeout(() => {
-        setWarningData(null);
-      }, 220);
-      return () => clearTimeout(timer);
-    }
-  }, [pendingUpload]);
 
   const handleClearFile = () => {
     if (activeDocType === 'paycheck') {
@@ -159,24 +136,6 @@ export default function App() {
     }
   };
 
-  // Helper to determine if parsed data contains mostly N/A values
-  const checkIsMostlyNA = (type, parsed) => {
-    if (type === 'paycheck') {
-      const paycheckFields = ['netPay', 'grossIncome', 'payPeriod', 'hoursWorked', 'paycheckNumber', 'payDate'];
-      const naCount = paycheckFields.filter(f => parsed[f] === 'N/A' || !parsed[f]).length;
-      return naCount >= 3;
-    } else if (type === 'card') {
-      const cardFields = ['statementBalance', 'startDate', 'endDate', 'statementPeriod'];
-      const naCount = cardFields.filter(f => parsed[f] === 'N/A' || !parsed[f]).length;
-      return naCount >= 2;
-    } else if (type === 'transaction') {
-      const txFields = ['amount', 'dateTime'];
-      const naCount = txFields.filter(f => parsed[f] === 'N/A' || !parsed[f]).length;
-      return naCount >= 1;
-    }
-    return false;
-  };
-
   // Helper to save data state for a confirmed file
   const saveExtractedData = (type, data, fileName) => {
     if (type === 'paycheck') {
@@ -189,17 +148,6 @@ export default function App() {
       setTransactionData(data);
       setTransactionFileName(fileName);
     }
-    setPendingUpload(null);
-  };
-
-  const handleConfirmOverride = () => {
-    if (pendingUpload) {
-      saveExtractedData(pendingUpload.docType, pendingUpload.data, pendingUpload.fileName);
-    }
-  };
-
-  const handleCancelOverride = () => {
-    setPendingUpload(null);
   };
 
   const handleFileUpload = async (file) => {
@@ -214,7 +162,6 @@ export default function App() {
     }
 
     setIsProcessing(true);
-    setPendingUpload(null);
     localStorage.setItem('extrkt_timestamp', Date.now().toString());
 
     try {
@@ -241,16 +188,7 @@ export default function App() {
       }
 
       if (parsedData) {
-        const isMostlyNA = checkIsMostlyNA(activeDocType, parsedData);
-        if (isMostlyNA) {
-          setPendingUpload({
-            docType: activeDocType,
-            fileName: file.name,
-            data: parsedData
-          });
-        } else {
-          saveExtractedData(activeDocType, parsedData, file.name);
-        }
+        saveExtractedData(activeDocType, parsedData, file.name);
       }
     } catch (err) {
       console.error('File parsing error:', err);
@@ -263,7 +201,6 @@ export default function App() {
     if (!text || typeof text !== 'string') return;
 
     setIsProcessing(true);
-    setPendingUpload(null);
     localStorage.setItem('extrkt_timestamp', Date.now().toString());
 
     try {
@@ -277,16 +214,7 @@ export default function App() {
       }
 
       if (parsedData) {
-        const isMostlyNA = checkIsMostlyNA(activeDocType, parsedData);
-        if (isMostlyNA) {
-          setPendingUpload({
-            docType: activeDocType,
-            fileName: 'Pasted Content',
-            data: parsedData
-          });
-        } else {
-          saveExtractedData(activeDocType, parsedData, 'Pasted Content');
-        }
+        saveExtractedData(activeDocType, parsedData, 'Pasted Content');
       }
     } catch (err) {
       console.error('Clipboard paste parsing error:', err);
@@ -408,41 +336,7 @@ export default function App() {
           <CaseConverter />
         ) : (
           <>
-            {/* Warning Override Prompt (for mostly N/A uploads) */}
-            {warningData && (
-              <div className={`warning-prompt-container ${isWarningVisible ? 'visible' : ''}`}>
-                <div 
-                  className="independent-row-card py-3"
-                  style={{ backgroundColor: '#fffdf0', borderColor: '#fef08a' }}
-                >
-                  <div className="flex flex-col sm:flex-row items-center justify-between w-full gap-3">
-                    <span className="text-[11px] font-extrabold text-slate-800 uppercase tracking-wider text-center sm:text-left">
-                      override document upload?
-                    </span>
-                    <div className="flex items-center gap-3 pr-2">
-                      <button
-                        onClick={handleConfirmOverride}
-                        className="text-[10px] font-extrabold uppercase tracking-wider transition-colors cursor-pointer select-none"
-                        style={{ background: 'none', border: 'none', color: '#0f172a', padding: '4px 8px', outline: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = '#64748b'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = '#0f172a'}
-                      >
-                        yes
-                      </button>
-                      <button
-                        onClick={handleCancelOverride}
-                        className="text-[10px] font-extrabold uppercase tracking-wider transition-colors cursor-pointer select-none"
-                        style={{ background: 'none', border: 'none', color: '#ef4444', padding: '4px 8px', outline: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = '#f87171'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = '#ef4444'}
-                      >
-                        no
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+
 
             {/* Upload Card Box Component */}
             <FileUpload
