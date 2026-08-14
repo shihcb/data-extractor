@@ -1,9 +1,15 @@
 @import "tailwindcss";
 
-/* Scale the entire tab switcher pill on mobile — slightly smaller than full size but still readable */
-@media (max-width: 640px) {
+/* Responsive scale for the pill switcher on mobile — two breakpoints to stay unclipped */
+@media (max-width: 390px) {
   .modern-tab-switch {
-    transform: scale(0.86);
+    transform: scale(0.82);
+    transform-origin: center bottom;
+  }
+}
+@media (min-width: 391px) and (max-width: 640px) {
+  .modern-tab-switch {
+    transform: scale(0.90);
     transform-origin: center bottom;
   }
 }
@@ -199,8 +205,8 @@ button {
   background: #ffffff;
   border-radius: 9999px;
   /* Both transform and width use identical duration + easing to prevent boundary jitter */
-  transition: transform 0.24s cubic-bezier(0.25, 1, 0.5, 1),
-              width 0.24s cubic-bezier(0.25, 1, 0.5, 1);
+  transition: transform 0.16s cubic-bezier(0.25, 1, 0.5, 1),
+              width 0.16s cubic-bezier(0.25, 1, 0.5, 1);
   z-index: 1;
 }
 
@@ -289,12 +295,19 @@ button {
   cursor: default;
 }
 
-/* Paste button — filled black, always enabled */
+/* Paste button — filled black by default, turns green on confirm, always enabled */
 .case-btn-paste {
   gap: 6px;
   background: #000000;
   border-color: #000000;
   color: #ffffff;
+}
+
+/* Green confirm overrides the black default state */
+.case-btn-paste.case-btn-copied {
+  background: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
+  color: #059669 !important;
 }
 
 @media (hover: hover) and (pointer: fine) {

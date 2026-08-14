@@ -3,6 +3,7 @@ import { ClipboardPaste } from 'lucide-react';
 
 export default function CaseConverter() {
   const [text, setText] = useState('');
+  const [pastedConfirm, setPastedConfirm] = useState(false);
   const [copiedLower, setCopiedLower] = useState(false);
   const [copiedUpper, setCopiedUpper] = useState(false);
   const textareaRef = useRef(null);
@@ -11,9 +12,12 @@ export default function CaseConverter() {
     e.currentTarget.blur();
     try {
       const clipText = await navigator.clipboard.readText();
-      if (clipText) setText(clipText);
+      if (clipText) {
+        setText(clipText);
+        setPastedConfirm(true);
+        setTimeout(() => setPastedConfirm(false), 1800);
+      }
     } catch {
-      // Fallback: focus textarea and let the browser handle paste
       if (textareaRef.current) {
         textareaRef.current.focus();
         document.execCommand('paste');
@@ -56,13 +60,12 @@ export default function CaseConverter() {
         autoCapitalize="off"
       />
       <div className="case-converter-actions">
-        {/* Paste button — fills textarea from clipboard */}
         <button
-          className="case-btn case-btn-paste"
+          className={`case-btn case-btn-paste ${pastedConfirm ? 'case-btn-copied' : ''}`}
           onClick={handlePaste}
         >
-          <ClipboardPaste size={13} />
-          paste
+          {!pastedConfirm && <ClipboardPaste size={13} />}
+          {pastedConfirm ? 'pasted!' : 'paste'}
         </button>
 
         <button

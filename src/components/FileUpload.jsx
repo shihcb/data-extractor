@@ -24,7 +24,7 @@ export default function FileUpload({
   if (isProcessing) {
     return (
       <div className="independent-row-card uploader-card justify-start py-[15px]">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-1.5">
           <Loader2 size={16} className="text-black animate-spin shrink-0" />
           <span className="font-extrabold text-xs text-slate-800 tracking-wider">
             extracting data..
