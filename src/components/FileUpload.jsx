@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { Upload, Loader2, FileText, RefreshCw } from 'lucide-react';
 
-export default function FileUpload({ onFileUpload, isProcessing, fileName, onClear }) {
+export default function FileUpload({ onFileUpload, isProcessing, fileName, onClear, uploadText = 'UPLOAD STATEMENT' }) {
   const fileInputRef = useRef(null);
 
   const handleClick = () => {
@@ -19,12 +19,26 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
   }
 
   // If a file is uploaded, show the horizontal card style with file name
+  // The entire box is clickable to select a new file and override the current one directly!
   if (fileName) {
     return (
       <div
-        className="independent-row-card uploader-card animate-fade-in"
-        title="File uploaded"
+        onClick={handleClick}
+        className="independent-row-card uploader-card cursor-pointer hover:border-indigo-500 animate-fade-in"
+        title="Click to change file"
       >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/pdf,image/png,image/jpeg,image/webp,text/plain,text/csv"
+          onChange={(e) => {
+            if (e.target.files && e.target.files[0]) {
+              onFileUpload(e.target.files[0]);
+            }
+          }}
+          className="hidden"
+        />
+
         <div className="min-w-0 flex-1 text-left">
           <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-0.5">
             Uploaded Statement
@@ -39,7 +53,7 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
         <button
           type="button"
           onClick={(e) => {
-            e.stopPropagation();
+            e.stopPropagation(); // Avoid triggering file selection trigger on clear click
             onClear();
           }}
           className="icon-copy-btn shrink-0"
@@ -52,14 +66,12 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
   }
 
   // When no file is uploaded, keep the SAME horizontal card appearance:
-  // "UPLOAD STATEMENT" with the plus symbol next to it
   return (
     <div
       onClick={handleClick}
       className="independent-row-card cursor-pointer uploader-card hover:border-indigo-500 animate-fade-in"
       title="Upload Statement"
     >
-      {/* Explicitly accept fixed image formats instead of wildcard image/* to remove the mobile "Take Photo" (camera capture) OS picker option */}
       <input
         ref={fileInputRef}
         type="file"
@@ -75,7 +87,7 @@ export default function FileUpload({ onFileUpload, isProcessing, fileName, onCle
       <div className="flex items-center gap-2.5 min-w-0 flex-1 text-left">
         <Upload size={16} className="text-slate-800 shrink-0" />
         <span className="font-extrabold text-xs sm:text-sm text-slate-800 tracking-wider">
-          UPLOAD STATEMENT
+          {uploadText}
         </span>
       </div>
 

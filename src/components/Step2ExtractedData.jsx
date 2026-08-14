@@ -121,12 +121,6 @@ export default function Step2ExtractedData({ data, docType, isCompleted, onCopyF
             onCopy={onCopyField}
             forceLowercaseCopy={false}
           />
-          <CopyableRow
-            label="MERCHANT"
-            value={displayData.merchant}
-            onCopy={onCopyField}
-            forceLowercaseCopy={true}
-          />
         </>
       )}
     </div>

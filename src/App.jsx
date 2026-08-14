@@ -187,8 +187,7 @@ export default function App() {
         const parsedTx = extractTransactionData(extractedRawText);
         const hasAllTxInfo = 
           parsedTx.amount !== 'Not Found' && 
-          parsedTx.dateTime !== 'Not Found' && 
-          parsedTx.merchant !== 'Not Found';
+          parsedTx.dateTime !== 'Not Found';
 
         if (hasAllTxInfo) {
           setTransactionData(parsedTx);
@@ -239,8 +238,7 @@ export default function App() {
         const parsedTx = extractTransactionData(text);
         const hasAllTxInfo = 
           parsedTx.amount !== 'Not Found' && 
-          parsedTx.dateTime !== 'Not Found' && 
-          parsedTx.merchant !== 'Not Found';
+          parsedTx.dateTime !== 'Not Found';
 
         if (hasAllTxInfo) {
           setTransactionData(parsedTx);
@@ -342,6 +340,7 @@ export default function App() {
           isProcessing={isProcessing}
           fileName={activeFileName}
           onClear={handleClearFile}
+          uploadText={activeDocType === 'transaction' ? 'UPLOAD TRANSACTION' : 'UPLOAD STATEMENT'}
         />
 
         {/* Extracted Value Cards with Unique Prefix Key */}
