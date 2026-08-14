@@ -38,7 +38,11 @@ export default function FileUpload({
   // RefreshCw is a <label> so iOS activates the input on the first tap
   if (fileName) {
     return (
-      <div className="independent-row-card uploader-card">
+      <div 
+        className="independent-row-card uploader-card"
+        onDoubleClick={onClear}
+        title="Double-click to remove file"
+      >
         <input
           id={inputId}
           type="file"
