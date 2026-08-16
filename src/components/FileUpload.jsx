@@ -276,12 +276,12 @@ export default function FileUpload({
       {/* Archive Submenu Drawer */}
       <div
         className={`archive-panel ${isArchiveOpen ? 'open' : 'closed'}`}
-        style={isArchiveOpen && panelHeight !== null
-          ? { height: `${panelHeight + 48}px` }  /* 48px = header row height + mb-4 */
-          : undefined}
+        style={isArchiveOpen
+          ? { height: panelHeight !== null ? `${panelHeight}px` : 'auto' }
+          : { height: '0px' }}
       >
         {/* Inner content wrapper — measured by ResizeObserver */}
-        <div ref={contentRef}>
+        <div ref={contentRef} className="py-4">
           <div className="flex items-center justify-between mb-4">
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex-1 min-w-0">
               Archived Documents ({archiveItems.length})
@@ -310,13 +310,14 @@ export default function FileUpload({
               return (
               <div
                 key={item.id}
-                className="flex items-center justify-between py-0.5"
+                className="flex items-center justify-between"
                 style={{
+                  maxHeight: isDeleting || !isVisible ? '0px' : '40px',
+                  paddingTop: isDeleting || !isVisible ? '0px' : '2px',
+                  paddingBottom: isDeleting || !isVisible ? '0px' : '2px',
                   opacity: isDeleting || !isVisible ? 0 : 1,
-                  transform: !isVisible ? 'translateY(8px)' : 'translateY(0)',
-                  transition: isDeleting
-                    ? 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1)'
-                    : 'opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                  overflow: 'hidden',
+                  transition: 'max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), padding 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
                 }}
               >
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
