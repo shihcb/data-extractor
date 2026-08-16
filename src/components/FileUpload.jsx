@@ -281,8 +281,8 @@ export default function FileUpload({
           : { height: '0px' }}
       >
         {/* Inner content wrapper — measured by ResizeObserver */}
-        <div ref={contentRef} className="py-4">
-          <div className="flex items-center justify-between mb-4">
+        <div ref={contentRef} className="pt-6 pb-6">
+          <div className={`flex items-center justify-between ${archiveItems.length > 0 ? 'mb-4' : 'mb-0'}`}>
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex-1 min-w-0">
               Archived Documents ({archiveItems.length})
             </span>
