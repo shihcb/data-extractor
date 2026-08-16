@@ -36,9 +36,27 @@ export default function FileUpload({
     () => new Set(archiveItems.map(i => i.id))
   );
 
+  const contentRef = React.useRef(null);
+  const [panelHeight, setPanelHeight] = React.useState(0);
+
   React.useEffect(() => {
     localStorage.setItem('extrkt_archive_open', isArchiveOpen);
   }, [isArchiveOpen]);
+
+  // ResizeObserver: measure the inner content and animate the panel height
+  React.useLayoutEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setPanelHeight(entry.target.getBoundingClientRect().height);
+      }
+    });
+    ro.observe(el);
+    // Set initial height immediately
+    setPanelHeight(el.getBoundingClientRect().height);
+    return () => ro.disconnect();
+  }, []);
 
   // Compute new IDs during render (not in effect) so the first paint is at opacity 0
   const currentIds = archiveItems.map(i => i.id);
@@ -256,74 +274,81 @@ export default function FileUpload({
       </div>
 
       {/* Archive Submenu Drawer */}
-      <div className={`archive-panel ${isArchiveOpen ? 'open' : 'closed'}`}>
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex-1 min-w-0">
-            Archived Documents ({archiveItems.length})
-          </span>
-          {archiveItems.length > 0 && (
-            <div className="flex items-center gap-0.5 shrink-0 ml-3 w-[36px] justify-center pl-[11px]">
-              <button
-                type="button"
-                onClick={handleClearWithFade}
-                className="text-[10px] font-extrabold text-red-500 uppercase tracking-wider cursor-pointer whitespace-nowrap"
-              >
-                Clear
-              </button>
-            </div>
-          )}
-        </div>
+      <div 
+        className={`archive-panel ${isArchiveOpen ? 'open' : 'closed'}`}
+        style={isArchiveOpen
+          ? { height: panelHeight !== null ? `${panelHeight}px` : 'auto' }
+          : { height: '0px' }}
+      >
+        <div ref={contentRef} className="py-4">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex-1 min-w-0">
+              Archived Documents ({archiveItems.length})
+            </span>
+            {archiveItems.length > 0 && (
+              <div className="flex items-center gap-0.5 shrink-0 ml-3 w-[36px] justify-center pl-[11px]">
+                <button
+                  type="button"
+                  onClick={handleClearWithFade}
+                  className="text-[10px] font-extrabold text-red-500 uppercase tracking-wider cursor-pointer whitespace-nowrap"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
+          </div>
 
-        <div
-          className="archive-list pr-1 flex flex-col gap-0"
-          style={{ opacity: isClearingAll ? 0 : 1, transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1)' }}
-        >
-          {archiveItems.length > 0 && (
-            archiveItems.map((item) => {
-              const isVisible = visibleIds.has(item.id);
-              const isDeleting = deletingId === item.id;
-              return (
-              <div
-                key={item.id}
-                className="flex items-center justify-between py-0.5"
-                style={{
-                  opacity: isDeleting || !isVisible ? 0 : 1,
-                  transform: !isVisible ? 'translateY(8px)' : 'translateY(0)',
-                  transition: isDeleting
-                    ? 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1)'
-                    : 'opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-                }}
-              >
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  <FileText size={14} className="text-slate-400 shrink-0" />
-                  <div className="font-bold text-xs sm:text-sm text-slate-700 truncate" title={item.name}>
-                    {item.name}
+          <div
+            className="archive-list pr-1 flex flex-col gap-0"
+            style={{ opacity: isClearingAll ? 0 : 1, transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1)' }}
+          >
+            {archiveItems.length > 0 && (
+              archiveItems.map((item) => {
+                const isVisible = visibleIds.has(item.id);
+                const isDeleting = deletingId === item.id;
+                return (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between py-0.5"
+                  style={{
+                    opacity: isDeleting || !isVisible ? 0 : 1,
+                    transform: !isVisible ? 'translateY(8px)' : 'translateY(0)',
+                    transition: isDeleting
+                      ? 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1)'
+                      : 'opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                  }}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <FileText size={14} className="text-slate-400 shrink-0" />
+                    <div className="font-bold text-xs sm:text-sm text-slate-700 truncate" title={item.name}>
+                      {item.name}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-0.5 shrink-0 ml-3">
+                    <button
+                      type="button"
+                      onClick={() => onLoadArchive(item)}
+                      className="icon-copy-btn cursor-pointer w-[17px] h-[17px]"
+                      title="Load document"
+                    >
+                      <Upload size={12} />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteWithFade(item.id)}
+                      className="icon-clear-btn cursor-pointer w-[17px] h-[17px]"
+                      title="Delete from archive"
+                    >
+                      <Trash2 size={12} />
+                    </button>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-0.5 shrink-0 ml-3">
-                  <button
-                    type="button"
-                    onClick={() => onLoadArchive(item)}
-                    className="icon-copy-btn cursor-pointer w-[17px] h-[17px]"
-                    title="Load document"
-                  >
-                    <Upload size={12} />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteWithFade(item.id)}
-                    className="icon-clear-btn cursor-pointer w-[17px] h-[17px]"
-                    title="Delete from archive"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </div>
-              </div>
-            );
-            })
-          )}
+              );
+              })
+            )}
+          </div>
         </div>
       </div>
     </div>
