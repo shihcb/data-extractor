@@ -478,23 +478,25 @@ button {
   border-radius: 16px;
   width: 100%;
   box-sizing: border-box;
-  border: 1px solid transparent;
-  padding: 0 24px;
-  margin-bottom: 0;
-  height: 0;
+  
+  /* Collapsible Transitions */
+  max-height: 0;
   opacity: 0;
+  padding: 0 24px;
+  border: 0 solid var(--border-subtle);
   overflow: hidden;
-  transition: height 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+  margin-bottom: 0;
+  transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1),
               opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1),
-              margin-bottom 0.45s cubic-bezier(0.4, 0, 0.2, 1),
-              border-color 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+              padding 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              margin-bottom 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .archive-panel.open {
-  /* height is set inline by JS — only set fallback here */
-  height: auto;
+  max-height: 140px; /* Safe bounds to display 3 items + header */
   opacity: 1;
-  border-color: var(--border-subtle);
+  padding: 16px 24px;
+  border: 1px solid var(--border-subtle);
   margin-bottom: 16px;
 }
 

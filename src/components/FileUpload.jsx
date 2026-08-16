@@ -35,26 +35,10 @@ export default function FileUpload({
   const [visibleIds, setVisibleIds] = React.useState(
     () => new Set(archiveItems.map(i => i.id))
   );
-  // Animated height for the archive panel inner content
-  const contentRef = React.useRef(null);
-  const [panelHeight, setPanelHeight] = React.useState(null);
 
   React.useEffect(() => {
     localStorage.setItem('extrkt_archive_open', isArchiveOpen);
   }, [isArchiveOpen]);
-
-  // ResizeObserver: measure the inner content and animate the panel height
-  React.useLayoutEffect(() => {
-    const el = contentRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => {
-      setPanelHeight(el.getBoundingClientRect().height);
-    });
-    ro.observe(el);
-    // Set initial height immediately
-    setPanelHeight(el.getBoundingClientRect().height);
-    return () => ro.disconnect();
-  }, []);
 
   // Compute new IDs during render (not in effect) so the first paint is at opacity 0
   const currentIds = archiveItems.map(i => i.id);
@@ -272,35 +256,28 @@ export default function FileUpload({
       </div>
 
       {/* Archive Submenu Drawer */}
-      <div
-        className={`archive-panel ${isArchiveOpen ? 'open' : 'closed'}`}
-        style={isArchiveOpen
-          ? { height: panelHeight !== null ? `${panelHeight}px` : 'auto' }
-          : { height: '0px' }}
-      >
-        {/* Inner content wrapper — measured by ResizeObserver */}
-        <div ref={contentRef} className="pt-6 pb-6">
-          <div className={`flex items-center justify-between ${archiveItems.length > 0 ? 'mb-4' : 'mb-0'}`}>
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex-1 min-w-0">
-              Archived Documents ({archiveItems.length})
-            </span>
-            {archiveItems.length > 0 && (
-              <div className="flex items-center gap-0.5 shrink-0 ml-3 w-[36px] justify-center pl-[11px]">
-                <button
-                  type="button"
-                  onClick={handleClearWithFade}
-                  className="text-[10px] font-extrabold text-red-500 uppercase tracking-wider cursor-pointer whitespace-nowrap"
-                >
-                  Clear
-                </button>
-              </div>
-            )}
-          </div>
+      <div className={`archive-panel ${isArchiveOpen ? 'open' : 'closed'}`}>
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex-1 min-w-0">
+            Archived Documents ({archiveItems.length})
+          </span>
+          {archiveItems.length > 0 && (
+            <div className="flex items-center gap-0.5 shrink-0 ml-3 w-[36px] justify-center pl-[11px]">
+              <button
+                type="button"
+                onClick={handleClearWithFade}
+                className="text-[10px] font-extrabold text-red-500 uppercase tracking-wider cursor-pointer whitespace-nowrap"
+              >
+                Clear
+              </button>
+            </div>
+          )}
+        </div>
 
-          <div
-            className="archive-list pr-1 flex flex-col gap-0"
-            style={{ opacity: isClearingAll ? 0 : 1, transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1)' }}
-          >
+        <div
+          className="archive-list pr-1 flex flex-col gap-0"
+          style={{ opacity: isClearingAll ? 0 : 1, transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1)' }}
+        >
           {archiveItems.length > 0 && (
             archiveItems.map((item) => {
               const isVisible = visibleIds.has(item.id);
@@ -308,14 +285,13 @@ export default function FileUpload({
               return (
               <div
                 key={item.id}
-                className="flex items-center justify-between"
+                className="flex items-center justify-between py-0.5"
                 style={{
-                  maxHeight: isDeleting || !isVisible ? '0px' : '40px',
-                  paddingTop: isDeleting || !isVisible ? '0px' : '2px',
-                  paddingBottom: isDeleting || !isVisible ? '0px' : '2px',
                   opacity: isDeleting || !isVisible ? 0 : 1,
-                  overflow: 'hidden',
-                  transition: 'max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), padding 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
+                  transform: !isVisible ? 'translateY(8px)' : 'translateY(0)',
+                  transition: isDeleting
+                    ? 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1)'
+                    : 'opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
                 }}
               >
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -348,9 +324,8 @@ export default function FileUpload({
             );
             })
           )}
-        </div>  {/* archive-list */}
-        </div>  {/* contentRef inner wrapper */}
-      </div>  {/* archive-panel */}
+        </div>
+      </div>
     </div>
   );
 }

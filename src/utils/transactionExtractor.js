@@ -27,19 +27,38 @@ export function extractTransactionData(text) {
   }
 
   // 2. Extract Date & Time
-  // Support both "Date: August 7, 2026 at 10:00 PM" and standalone "August 7, 2026 at 10:00 PM"
+  // Priority 1: Full named-month format — "August 7, 2026 at 10:00 PM"
   const standaloneDateRegex = /([A-Za-z]+\s+\d{1,2},\s*\d{4}\s+at\s+\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?)/i;
   const dateLineRegex = /Date:\s*(.*)/i;
 
+  // Priority 2: Apple compact format — "8/7/26, 3:56 PM" or "8/7/2026, 3:56 PM"
+  // Seen in Apple Card / Apple Pay transaction screenshots
+  const appleCompactRegex = /\b(\d{1,2})\/(\d{1,2})\/(\d{2,4}),?\s+(\d{1,2}:\d{2}\s*(?:AM|PM|am|pm))/i;
+
+  const MONTH_NAMES = [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December'
+  ];
+
   const standaloneMatch = cleanText.match(standaloneDateRegex);
-  const dateLineMatch = cleanText.match(dateLineRegex);
+  const dateLineMatch   = cleanText.match(dateLineRegex);
+  const appleMatch      = cleanText.match(appleCompactRegex);
 
   if (standaloneMatch) {
     dateTime = standaloneMatch[1].trim();
+  } else if (appleMatch) {
+    // Convert "8/7/26, 3:56 PM" → "August 7, 2026 at 3:56 PM"
+    const month   = parseInt(appleMatch[1], 10);
+    const day     = parseInt(appleMatch[2], 10);
+    let   year    = parseInt(appleMatch[3], 10);
+    const timePart = appleMatch[4].trim().toUpperCase();
+    if (year < 100) year += 2000;                        // 2-digit year → 4-digit
+    const monthName = MONTH_NAMES[(month - 1)] || String(month);
+    dateTime = `${monthName} ${day}, ${year} at ${timePart}`;
   } else if (dateLineMatch) {
     dateTime = dateLineMatch[1].trim();
   } else {
-    // Fallback: search lines for month names and years
+    // Fallback: scan lines for any named month + year
     for (const line of lines) {
       if (line.match(/[A-Za-z]+\s+\d{1,2},\s*\d{4}/)) {
         dateTime = line.replace(/Date:\s*/i, '').trim();
@@ -53,7 +72,7 @@ export function extractTransactionData(text) {
     dateTime = dateTime
       .replace(/(\d{1,2}:\d{2})\s*(AM|PM|am|pm)?/i, (match, p1, p2) => {
         const suffix = p2 ? p2.toUpperCase() : '';
-        return `${p1} ${suffix}`;
+        return `${p1}${suffix ? ' ' + suffix : ''}`;
       })
       .replace(/\s+/g, ' ')
       .trim();
