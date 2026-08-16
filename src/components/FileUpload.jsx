@@ -280,7 +280,7 @@ export default function FileUpload({
           ? { height: panelHeight !== null ? `${panelHeight}px` : 'auto' }
           : { height: '0px' }}
       >
-        <div ref={contentRef} className="py-4">
+        <div ref={contentRef} className="pt-6 pb-4">
           <div className="flex items-center justify-between mb-4">
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex-1 min-w-0">
               Archived Documents ({archiveItems.length})
