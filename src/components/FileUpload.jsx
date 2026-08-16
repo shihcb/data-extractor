@@ -47,10 +47,8 @@ export default function FileUpload({
   React.useLayoutEffect(() => {
     const el = contentRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(entries => {
-      for (const entry of entries) {
-        setPanelHeight(entry.contentRect.height);
-      }
+    const ro = new ResizeObserver(() => {
+      setPanelHeight(el.getBoundingClientRect().height);
     });
     ro.observe(el);
     // Set initial height immediately
