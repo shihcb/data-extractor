@@ -37,7 +37,7 @@ export default function FileUpload({
   );
 
   const contentRef = React.useRef(null);
-  const [panelHeight, setPanelHeight] = React.useState(0);
+  const [panelHeight, setPanelHeight] = React.useState(null);
 
   React.useEffect(() => {
     localStorage.setItem('extrkt_archive_open', isArchiveOpen);
