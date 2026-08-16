@@ -28,6 +28,8 @@ export default function FileUpload({
   const [isArchiveOpen, setIsArchiveOpen] = React.useState(() => {
     return localStorage.getItem('extrkt_archive_open') === 'true';
   });
+  const [isToggling, setIsToggling] = React.useState(false);
+  const toggleTimeoutRef = React.useRef(null);
   const [isClearingAll, setIsClearingAll] = React.useState(false);
   const [deletingId, setDeletingId] = React.useState(null);
   // visibleIds: IDs that have completed their fade-in and are at opacity 1.
@@ -35,6 +37,21 @@ export default function FileUpload({
   const [visibleIds, setVisibleIds] = React.useState(
     () => new Set(archiveItems.map(i => i.id))
   );
+
+  const handleToggleArchive = () => {
+    if (toggleTimeoutRef.current) clearTimeout(toggleTimeoutRef.current);
+    setIsToggling(true);
+    setIsArchiveOpen(prev => !prev);
+    toggleTimeoutRef.current = setTimeout(() => {
+      setIsToggling(false);
+    }, 600);
+  };
+
+  React.useEffect(() => {
+    return () => {
+      if (toggleTimeoutRef.current) clearTimeout(toggleTimeoutRef.current);
+    };
+  }, []);
 
   const contentRef = React.useRef(null);
   const [panelHeight, setPanelHeight] = React.useState(null);
@@ -98,7 +115,7 @@ export default function FileUpload({
     setTimeout(() => {
       onDeleteArchive(id);
       setDeletingId(null);
-    }, 480);
+    }, 500);
   };
 
   const handleClearWithFade = () => {
@@ -106,7 +123,7 @@ export default function FileUpload({
     setTimeout(() => {
       onClearAllArchives();
       setIsClearingAll(false);
-    }, 480);
+    }, 500);
   };
 
   // Sync state changes
@@ -234,7 +251,7 @@ export default function FileUpload({
 
                 <button
                   type="button"
-                  onClick={() => setIsArchiveOpen(!isArchiveOpen)}
+                  onClick={handleToggleArchive}
                   className={`icon-copy-btn shrink-0 cursor-pointer ${isArchiveOpen ? 'archive-active' : ''}`}
                   title="Toggle Archive"
                 >
@@ -263,7 +280,7 @@ export default function FileUpload({
 
                 <button
                   type="button"
-                  onClick={() => setIsArchiveOpen(!isArchiveOpen)}
+                  onClick={handleToggleArchive}
                   className={`icon-copy-btn shrink-0 cursor-pointer ${isArchiveOpen ? 'archive-active' : ''}`}
                   title="Toggle Archive"
                 >
@@ -275,12 +292,20 @@ export default function FileUpload({
         </div>
       </div>
 
-      {/* Archive Submenu Drawer */}
       <div 
         className={`archive-panel ${isArchiveOpen ? 'open' : 'closed'}`}
         style={isArchiveOpen
-          ? { height: panelHeight !== null ? `${panelHeight}px` : 'auto' }
-          : { height: '0px' }}
+          ? { 
+              height: panelHeight !== null ? `${panelHeight}px` : 'auto',
+              transition: isToggling 
+                ? 'height 0.5s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s cubic-bezier(0.25, 1, 0.5, 1), margin-bottom 0.5s cubic-bezier(0.25, 1, 0.5, 1)' 
+                : 'opacity 0.4s cubic-bezier(0.25, 1, 0.5, 1)'
+            }
+          : { 
+              height: '0px',
+              transition: 'height 0.5s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s cubic-bezier(0.25, 1, 0.5, 1), margin-bottom 0.5s cubic-bezier(0.25, 1, 0.5, 1)'
+            }
+        }
       >
         <div ref={contentRef} className="py-4">
           <div className="flex items-center justify-between mb-4">
@@ -302,7 +327,12 @@ export default function FileUpload({
 
           <div
             className="archive-list pr-1 flex flex-col gap-0"
-            style={{ opacity: isClearingAll ? 0 : 1, transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1)' }}
+            style={{
+              opacity: isClearingAll ? 0 : 1,
+              maxHeight: isClearingAll ? '0px' : '72px',
+              overflow: 'hidden',
+              transition: 'opacity 0.5s cubic-bezier(0.25, 1, 0.5, 1), max-height 0.5s cubic-bezier(0.25, 1, 0.5, 1)',
+            }}
           >
             {archiveItems.length > 0 && (
               archiveItems.map((item) => {
@@ -311,13 +341,15 @@ export default function FileUpload({
                 return (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between py-0.5"
+                  className="flex items-center justify-between"
                   style={{
                     opacity: isDeleting || !isVisible ? 0 : 1,
-                    transform: !isVisible ? 'translateY(8px)' : 'translateY(0)',
-                    transition: isDeleting
-                      ? 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1)'
-                      : 'opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transform: !isVisible ? 'translateY(-8px)' : (isDeleting ? 'translateY(-8px)' : 'translateY(0)'),
+                    maxHeight: isDeleting || !isVisible ? '0px' : '28px',
+                    paddingTop: isDeleting || !isVisible ? '0px' : '2px',
+                    paddingBottom: isDeleting || !isVisible ? '0px' : '2px',
+                    overflow: 'hidden',
+                    transition: 'opacity 0.5s cubic-bezier(0.25, 1, 0.5, 1), transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), max-height 0.5s cubic-bezier(0.25, 1, 0.5, 1), padding 0.5s cubic-bezier(0.25, 1, 0.5, 1)',
                   }}
                 >
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
