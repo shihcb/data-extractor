@@ -45,6 +45,8 @@ export default function FileUpload({
 
   // ResizeObserver: measure the inner content and animate the panel height
   React.useLayoutEffect(() => {
+    if (!isArchiveOpen) return;
+    
     const el = contentRef.current;
     if (!el) return;
     const ro = new ResizeObserver((entries) => {
@@ -56,7 +58,7 @@ export default function FileUpload({
     // Set initial height immediately
     setPanelHeight(el.getBoundingClientRect().height);
     return () => ro.disconnect();
-  }, []);
+  }, [isArchiveOpen]);
 
   // Compute new IDs during render (not in effect) so the first paint is at opacity 0
   const currentIds = archiveItems.map(i => i.id);
