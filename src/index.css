@@ -551,3 +551,141 @@ button {
   outline: none !important;
   box-shadow: none !important;
 }
+
+/* ── Document Q&A AI Component ────────────────────────────── */
+
+.qa-card {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  margin-top: 12px;
+}
+
+.qa-card:hover {
+  border-color: #cbd5e1;
+}
+
+/* Chat Input Styling */
+.qa-chat-input {
+  transition: border-color 0.18s ease, background-color 0.18s ease;
+  -webkit-user-select: text !important;
+  user-select: text !important;
+}
+
+.qa-chat-input:focus {
+  border-color: #94a3b8;
+  background-color: #ffffff;
+}
+
+/* API Key Input */
+.qa-key-input {
+  transition: border-color 0.18s ease;
+  -webkit-user-select: text !important;
+  user-select: text !important;
+}
+
+.qa-key-input:focus {
+  border-color: #94a3b8;
+}
+
+/* Action Buttons */
+.qa-action-btn {
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+  cursor: pointer;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .qa-action-btn:hover {
+    background: #000000 !important;
+    color: #ffffff !important;
+    border-color: #000000 !important;
+  }
+}
+
+.qa-cancel-btn {
+  transition: background-color 0.18s ease, color 0.18s ease;
+  cursor: pointer;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .qa-cancel-btn:hover {
+    background: #cbd5e1 !important;
+    color: #0f172a !important;
+  }
+}
+
+/* Scroll area for Chat Messages */
+.qa-chat-area {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.qa-chat-area::-webkit-scrollbar {
+  width: 4px;
+}
+
+.qa-chat-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.qa-chat-area::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 9999px;
+}
+
+/* Suggestion Chips */
+.qa-chip {
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .qa-chip:hover {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+    border-color: #000000 !important;
+    transform: translateY(-1px);
+  }
+}
+
+.qa-chip:active {
+  transform: translateY(0);
+}
+
+/* Message bubble styling overrides to ensure text is selectable */
+.qa-msg-bubble {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+}
+
+/* Icon Buttons for Settings and Delete */
+.qa-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: transparent;
+  color: #64748b;
+  transition: all 0.18s ease;
+  cursor: pointer;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .qa-icon-btn:hover {
+    background: #f1f5f9;
+  }
+}
+
+.animate-spin-hover {
+  transition: transform 0.2s ease;
+}
+
+.animate-spin-hover:hover {
+  transform: rotate(45deg);
+}
+
+.qa-send-btn {
+  cursor: pointer;
+}
+

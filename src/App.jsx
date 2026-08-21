@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import FileUpload from './components/FileUpload';
 import Step2ExtractedData from './components/Step2ExtractedData';
 import CaseConverter from './components/CaseConverter';
+import DocumentQA from './components/DocumentQA';
 
 import { parsePdfText } from './utils/pdfParser';
 import { parseImageText } from './utils/imageParser';
 import { extractPaycheckData } from './utils/paycheckExtractor';
 import { extractCardStatementData } from './utils/cardStatementExtractor';
 import { extractTransactionData } from './utils/transactionExtractor';
+import { extractDataWithAI } from './utils/aiExtractor';
 
 export default function App() {
   // Check 30-minute expiration before loading initial states
@@ -57,6 +59,31 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
 
+  // Independent Raw Text per View
+  const [paycheckRawText, setPaycheckRawText] = useState(() => {
+    return localStorage.getItem('extrkt_paycheck_raw_text') || '';
+  });
+
+  const [cardRawText, setCardRawText] = useState(() => {
+    return localStorage.getItem('extrkt_card_raw_text') || '';
+  });
+
+  const [transactionRawText, setTransactionRawText] = useState(() => {
+    return localStorage.getItem('extrkt_transaction_raw_text') || '';
+  });
+
+  const [paycheckMethod, setPaycheckMethod] = useState(() => {
+    return localStorage.getItem('extrkt_paycheck_method') || 'local';
+  });
+
+  const [cardMethod, setCardMethod] = useState(() => {
+    return localStorage.getItem('extrkt_card_method') || 'local';
+  });
+
+  const [transactionMethod, setTransactionMethod] = useState(() => {
+    return localStorage.getItem('extrkt_transaction_method') || 'local';
+  });
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -101,6 +128,42 @@ export default function App() {
     }
   }, [transactionData]);
 
+  useEffect(() => {
+    if (paycheckRawText) {
+      localStorage.setItem('extrkt_paycheck_raw_text', paycheckRawText);
+    } else {
+      localStorage.removeItem('extrkt_paycheck_raw_text');
+    }
+  }, [paycheckRawText]);
+
+  useEffect(() => {
+    if (cardRawText) {
+      localStorage.setItem('extrkt_card_raw_text', cardRawText);
+    } else {
+      localStorage.removeItem('extrkt_card_raw_text');
+    }
+  }, [cardRawText]);
+
+  useEffect(() => {
+    if (transactionRawText) {
+      localStorage.setItem('extrkt_transaction_raw_text', transactionRawText);
+    } else {
+      localStorage.removeItem('extrkt_transaction_raw_text');
+    }
+  }, [transactionRawText]);
+
+  useEffect(() => {
+    localStorage.setItem('extrkt_paycheck_method', paycheckMethod);
+  }, [paycheckMethod]);
+
+  useEffect(() => {
+    localStorage.setItem('extrkt_card_method', cardMethod);
+  }, [cardMethod]);
+
+  useEffect(() => {
+    localStorage.setItem('extrkt_transaction_method', transactionMethod);
+  }, [transactionMethod]);
+
   // Handle initial page load timings
   useEffect(() => {
     setIsMounted(true);
@@ -127,18 +190,30 @@ export default function App() {
     if (activeDocType === 'paycheck') {
       setPaycheckFileName('');
       setPaycheckData(null);
+      setPaycheckRawText('');
+      setPaycheckMethod('local');
       localStorage.removeItem('extrkt_paycheck_file_name');
       localStorage.removeItem('extrkt_paycheck_data');
+      localStorage.removeItem('extrkt_paycheck_raw_text');
+      localStorage.removeItem('extrkt_paycheck_method');
     } else if (activeDocType === 'card') {
       setCardFileName('');
       setCardData(null);
+      setCardRawText('');
+      setCardMethod('local');
       localStorage.removeItem('extrkt_card_file_name');
       localStorage.removeItem('extrkt_card_data');
+      localStorage.removeItem('extrkt_card_raw_text');
+      localStorage.removeItem('extrkt_card_method');
     } else {
       setTransactionFileName('');
       setTransactionData(null);
+      setTransactionRawText('');
+      setTransactionMethod('local');
       localStorage.removeItem('extrkt_transaction_file_name');
       localStorage.removeItem('extrkt_transaction_data');
+      localStorage.removeItem('extrkt_transaction_raw_text');
+      localStorage.removeItem('extrkt_transaction_method');
     }
 
     if (!paycheckFileName && !cardFileName && !transactionFileName) {
@@ -147,16 +222,22 @@ export default function App() {
   };
 
   // Helper to save data state for a confirmed file
-  const saveExtractedData = (type, data, fileName) => {
+  const saveExtractedData = (type, data, fileName, rawText, method = 'local') => {
     if (type === 'paycheck') {
       setPaycheckData(data);
       setPaycheckFileName(fileName);
+      setPaycheckRawText(rawText || '');
+      setPaycheckMethod(method);
     } else if (type === 'card') {
       setCardData(data);
       setCardFileName(fileName);
+      setCardRawText(rawText || '');
+      setCardMethod(method);
     } else if (type === 'transaction') {
       setTransactionData(data);
       setTransactionFileName(fileName);
+      setTransactionRawText(rawText || '');
+      setTransactionMethod(method);
     }
 
     // Append to archive items
@@ -168,6 +249,8 @@ export default function App() {
           name: fileName,
           docType: type,
           data: data,
+          rawText: rawText || '',
+          method: method,
           timestamp: Date.now()
         },
         ...filtered
@@ -180,12 +263,18 @@ export default function App() {
     if (item.docType === 'paycheck') {
       setPaycheckData(item.data);
       setPaycheckFileName(item.name);
+      setPaycheckRawText(item.rawText || '');
+      setPaycheckMethod(item.method || 'local');
     } else if (item.docType === 'card') {
       setCardData(item.data);
       setCardFileName(item.name);
+      setCardRawText(item.rawText || '');
+      setCardMethod(item.method || 'local');
     } else if (item.docType === 'transaction') {
       setTransactionData(item.data);
       setTransactionFileName(item.name);
+      setTransactionRawText(item.rawText || '');
+      setTransactionMethod(item.method || 'local');
     }
   };
 
@@ -219,16 +308,30 @@ export default function App() {
       }
 
       let parsedData = null;
-      if (activeDocType === 'paycheck') {
-        parsedData = extractPaycheckData(extractedRawText);
-      } else if (activeDocType === 'card') {
-        parsedData = extractCardStatementData(extractedRawText);
-      } else if (activeDocType === 'transaction') {
-        parsedData = extractTransactionData(extractedRawText);
+      let method = 'local';
+      const apiKey = localStorage.getItem('extrkt_gemini_api_key');
+      if (apiKey) {
+        try {
+          parsedData = await extractDataWithAI(activeDocType, extractedRawText, apiKey);
+          method = 'ai';
+        } catch (err) {
+          console.warn('AI extraction failed, falling back to regex extraction:', err);
+          method = 'error';
+        }
+      }
+
+      if (!parsedData) {
+        if (activeDocType === 'paycheck') {
+          parsedData = extractPaycheckData(extractedRawText);
+        } else if (activeDocType === 'card') {
+          parsedData = extractCardStatementData(extractedRawText);
+        } else if (activeDocType === 'transaction') {
+          parsedData = extractTransactionData(extractedRawText);
+        }
       }
 
       if (parsedData) {
-        saveExtractedData(activeDocType, parsedData, file.name);
+        saveExtractedData(activeDocType, parsedData, file.name, extractedRawText, method);
       }
     } catch (err) {
       console.error('File parsing error:', err);
@@ -245,16 +348,30 @@ export default function App() {
 
     try {
       let parsedData = null;
-      if (activeDocType === 'paycheck') {
-        parsedData = extractPaycheckData(text);
-      } else if (activeDocType === 'card') {
-        parsedData = extractCardStatementData(text);
-      } else if (activeDocType === 'transaction') {
-        parsedData = extractTransactionData(text);
+      let method = 'local';
+      const apiKey = localStorage.getItem('extrkt_gemini_api_key');
+      if (apiKey) {
+        try {
+          parsedData = await extractDataWithAI(activeDocType, text, apiKey);
+          method = 'ai';
+        } catch (err) {
+          console.warn('AI extraction failed, falling back to regex extraction:', err);
+          method = 'error';
+        }
+      }
+
+      if (!parsedData) {
+        if (activeDocType === 'paycheck') {
+          parsedData = extractPaycheckData(text);
+        } else if (activeDocType === 'card') {
+          parsedData = extractCardStatementData(text);
+        } else if (activeDocType === 'transaction') {
+          parsedData = extractTransactionData(text);
+        }
       }
 
       if (parsedData) {
-        saveExtractedData(activeDocType, parsedData, 'Pasted Content');
+        saveExtractedData(activeDocType, parsedData, 'Pasted Content', text, method);
       }
     } catch (err) {
       console.error('Clipboard paste parsing error:', err);
@@ -312,6 +429,16 @@ export default function App() {
     activeDocType === 'paycheck' ? paycheckData : 
     activeDocType === 'card' ? cardData : 
     transactionData;
+
+  const activeRawText = 
+    activeDocType === 'paycheck' ? paycheckRawText : 
+    activeDocType === 'card' ? cardRawText : 
+    transactionRawText;
+
+  const activeMethod = 
+    activeDocType === 'paycheck' ? paycheckMethod : 
+    activeDocType === 'card' ? cardMethod : 
+    transactionMethod;
 
 
   // Tab definitions
@@ -420,8 +547,20 @@ export default function App() {
                 key={activeDocType}
                 data={activeData}
                 docType={activeDocType}
+                method={activeMethod}
               />
             </div>
+
+            {/* AI Q&A Panel */}
+            {activeFileName && (
+              <div className="w-full mt-3">
+                <DocumentQA
+                  docType={activeDocType}
+                  fileName={activeFileName}
+                  rawText={activeRawText}
+                />
+              </div>
+            )}
           </>
         )}
       </div>
