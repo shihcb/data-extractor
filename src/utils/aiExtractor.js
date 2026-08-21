@@ -48,19 +48,39 @@ Instructions:
 Document Text:
 ${rawText}`;
   } else {
-    promptText = `Extract information from the transaction email or receipt below.
+    promptText = `You are a high-precision data extraction assistant.
+Extract transaction details from the receipt or email below.
+You are provided with BOTH:
+1. The raw extracted text of the document.
+2. A high-resolution page image of the document (use this to read headers, tables, and visual sections that might be missing or garbled in the raw text).
+
 Instructions:
-1. Scan the ENTIRE document text AND the provided page image to find all required fields.
-2. For emails, the transaction date and time is often listed in the headers at the top (e.g., 'Date: August 18, 2026 at 9:42:20 AM'). Since these headers are sometimes only drawn visually at the top of the page, check both the text and the page image. Extract this exact date and time (e.g., 'August 18, 2026 at 9:42 AM').
-3. Return a JSON object with the following schema:
+1. Scan the ENTIRE document text AND the provided page image to find the required fields.
+2. For "amount" (transaction price):
+   - Look for keywords like "price", "total", "order total", "charge", "amount", or "$" in the text and image.
+   - If multiple amounts are listed, identify the final total charge (e.g. after tax and fees).
+   - If there are no clear keywords, make the best educated guess of the final transaction amount from the context (e.g. the main highlighted number, or the value next to the merchant).
+3. For "dateTime" (date and time of transaction):
+   - Scan the ENTIRE document text and page image (especially the headers at the top of the page).
+   - In printed emails, the transaction date and time is often the email receipt header date (e.g. "Date: Aug 18, 2026 at 9:42:20 AM" or "Sent: Tuesday, August 18, 2026, 9:42 AM").
+   - These email headers are often rendered visually at the very top of the page image but might be missing in the raw text. Read them from the image!
+   - Extract the full date AND the specific time if present (e.g., "August 18, 2026 at 9:42 AM").
+   - If you only find a date without a time (e.g. "Aug 18, 2026" at the bottom), search again for any time next to it or in the headers. If no time exists anywhere, return just the date.
+4. For "merchant":
+   - Identify the merchant or seller name.
+   - Format the merchant name in UPPERCASE (e.g. "AMAZON MARKETPLACE", "STARBUCKS").
+
+Return a JSON object with the following schema:
 {
-  "amount": "string (the transaction amount, e.g. '$25.50', or 'N/A')",
-  "dateTime": "string (the date and time of the transaction, e.g. 'August 21, 2026 at 4:30 PM', or 'N/A')",
-  "merchant": "string (merchant name in UPPERCASE, e.g. 'STARBUCKS', or 'N/A')"
+  "amount": "string (e.g. '$511.70', or 'N/A')",
+  "dateTime": "string (e.g. 'August 18, 2026 at 9:42 AM', or 'N/A')",
+  "merchant": "string (e.g. 'AMAZON', or 'N/A')"
 }
 
-Document Text:
-${rawText}`;
+Document Extracted Text:
+"""
+${rawText}
+"""`;
   }
 
   const response = await fetch(
