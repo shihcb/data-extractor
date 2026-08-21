@@ -136,26 +136,6 @@ export default function Step2ExtractedData({ data, docType, onCopyField, method 
 
   return (
     <div className="space-y-4">
-      {hasData && (
-        <div className="flex items-center justify-between mb-1 px-1 select-none">
-          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
-            Extracted Results
-          </span>
-          <span className={`text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
-            method === 'ai' 
-              ? 'bg-indigo-50 border-indigo-100 text-indigo-600' 
-              : method === 'error'
-              ? 'bg-red-50 border-red-100 text-red-600'
-              : 'bg-amber-50 border-amber-100 text-amber-600'
-          }`}>
-            {method === 'ai' 
-              ? '🤖 AI Extraction' 
-              : method === 'error'
-              ? '⚠️ AI Failed (Fallback)'
-              : '⚡ Local Parsing'}
-          </span>
-        </div>
-      )}
 
       {isPaycheck && (
         <>
