@@ -2,7 +2,7 @@
  * Utility to extract structured document information using Gemini AI
  */
 
-export async function extractDataWithAI(docType, rawText, apiKey) {
+export async function extractDataWithAI(docType, rawText, apiKey, base64Image = null, mimeType = 'image/jpeg') {
   if (!apiKey || !rawText) {
     throw new Error('Missing API Key or raw text content.');
   }
@@ -48,10 +48,10 @@ Instructions:
 Document Text:
 ${rawText}`;
   } else {
-    promptText = `Extract information from the transaction email or receipt text below.
+    promptText = `Extract information from the transaction email or receipt below.
 Instructions:
-1. Scan the ENTIRE document text to find the transaction details.
-2. For emails, the transaction date and time is often the date/time the email was received, which is listed in the email headers (e.g., 'Date:', 'Sent:') at the very beginning of the document. If present, extract that date and time.
+1. Scan the ENTIRE document text AND the provided page image to find all required fields.
+2. For emails, the transaction date and time is often listed in the headers at the top (e.g., 'Date: August 18, 2026 at 9:42:20 AM'). Since these headers are sometimes only drawn visually at the top of the page, check both the text and the page image. Extract this exact date and time (e.g., 'August 18, 2026 at 9:42 AM').
 3. Return a JSON object with the following schema:
 {
   "amount": "string (the transaction amount, e.g. '$25.50', or 'N/A')",
@@ -74,7 +74,15 @@ ${rawText}`;
         contents: [
           {
             role: 'user',
-            parts: [{ text: promptText }],
+            parts: [
+              { text: promptText },
+              ...(base64Image ? [{
+                inlineData: {
+                  mimeType: mimeType,
+                  data: base64Image
+                }
+              }] : [])
+            ],
           },
         ],
         generationConfig: {

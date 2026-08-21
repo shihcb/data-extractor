@@ -3,12 +3,24 @@ import FileUpload from './components/FileUpload';
 import Step2ExtractedData from './components/Step2ExtractedData';
 import CaseConverter from './components/CaseConverter';
 
-import { parsePdfText } from './utils/pdfParser';
+import { parsePdfText, renderPdfPageToImage } from './utils/pdfParser';
 import { parseImageText } from './utils/imageParser';
 import { extractPaycheckData } from './utils/paycheckExtractor';
 import { extractCardStatementData } from './utils/cardStatementExtractor';
 import { extractTransactionData } from './utils/transactionExtractor';
 import { extractDataWithAI } from './utils/aiExtractor';
+
+const getFileBase64 = (file) => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+};
 
 export default function App() {
   // Check 30-minute expiration before loading initial states
@@ -232,14 +244,19 @@ export default function App() {
 
     try {
       let extractedRawText = '';
+      let base64Image = null;
+      let mimeType = 'image/jpeg';
       const fileExt = file.name.split('.').pop().toLowerCase();
 
       if (fileExt === 'pdf') {
         const arrayBuffer = await file.arrayBuffer();
         const pdfResult = await parsePdfText(arrayBuffer);
         extractedRawText = pdfResult.fullText;
+        base64Image = await renderPdfPageToImage(arrayBuffer);
       } else if (['png', 'jpg', 'jpeg', 'webp'].includes(fileExt)) {
         extractedRawText = await parseImageText(file);
+        base64Image = await getFileBase64(file);
+        mimeType = file.type || 'image/jpeg';
       } else {
         extractedRawText = await file.text();
       }
@@ -249,7 +266,7 @@ export default function App() {
       const apiKey = localStorage.getItem('extrkt_gemini_api_key');
       if (apiKey) {
         try {
-          parsedData = await extractDataWithAI(activeDocType, extractedRawText, apiKey);
+          parsedData = await extractDataWithAI(activeDocType, extractedRawText, apiKey, base64Image, mimeType);
           method = 'ai';
         } catch (err) {
           console.warn('AI extraction failed, falling back to regex extraction:', err);

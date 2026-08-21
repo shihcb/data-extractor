@@ -38,3 +38,31 @@ export async function parsePdfText(arrayBuffer) {
     throw new Error('Failed to parse PDF document: ' + (error.message || 'Unknown error'));
   }
 }
+
+/**
+ * Renders the first page of a PDF to a base64 JPEG string
+ * @param {ArrayBuffer} arrayBuffer
+ * @returns {Promise<string|null>} base64 image data
+ */
+export async function renderPdfPageToImage(arrayBuffer) {
+  try {
+    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+    const pdfDocument = await loadingTask.promise;
+    if (pdfDocument.numPages === 0) return null;
+    
+    const page = await pdfDocument.getPage(1);
+    const viewport = page.getViewport({ scale: 1.5 });
+    
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+    
+    await page.render({ canvasContext: context, viewport }).promise;
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    return dataUrl.split(',')[1];
+  } catch (error) {
+    console.warn('PDF page rendering failed:', error);
+    return null;
+  }
+}
