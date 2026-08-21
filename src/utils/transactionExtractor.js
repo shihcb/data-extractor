@@ -17,29 +17,28 @@ export function extractTransactionData(text) {
   // 1. Extract Amount
   // Prioritize page 1 text for amount matching since the primary receipt total is on page 1
   const page1Text = text.split('\n\n')[0] || cleanText;
-  let foundAmount = '';
-  const page1Lines = page1Text.split('\n').map(l => l.trim()).filter(Boolean);
 
-  // Look for lines containing "Total", "Grand Total", "Order Total", "Price", "Charge" on page 1
-  for (const line of page1Lines) {
-    if (/(?:grand\s+)?total|price|charge/i.test(line) && !/subtotal|sub-total/i.test(line)) {
-      const match = line.match(/\$[0-9,]+(?:\.[0-9]{2})?/);
-      if (match) {
-        foundAmount = match[0];
-        break; // Take the first one on page 1 (which is the main total summary)
-      }
+  const totalRegexes = [
+    /\b(?:grand\s+)?total\b(?:[ \t]+amount)?\s*:?\s*(\$[0-9,]+(?:\.[0-9]{2})?)/i,
+    /\b(?:amount\s+charged|charge|price)\b\s*:?\s*(\$[0-9,]+(?:\.[0-9]{2})?)/i
+  ];
+
+  let foundAmount = '';
+  for (const regex of totalRegexes) {
+    const match = page1Text.match(regex);
+    if (match) {
+      foundAmount = match[1];
+      break; // Take the first matched total/charge on page 1 (which represents the global summary)
     }
   }
 
   if (!foundAmount) {
-    // Fallback to checking the whole text for specific Total/Charge/Price lines
-    for (const line of lines) {
-      if (/(?:grand\s+)?total|price|charge/i.test(line) && !/subtotal|sub-total/i.test(line)) {
-        const match = line.match(/\$[0-9,]+(?:\.[0-9]{2})?/);
-        if (match) {
-          foundAmount = match[0];
-          break;
-        }
+    // Fallback to checking the whole text for specific Total/Charge/Price phrases
+    for (const regex of totalRegexes) {
+      const match = cleanText.match(regex);
+      if (match) {
+        foundAmount = match[1];
+        break;
       }
     }
   }
