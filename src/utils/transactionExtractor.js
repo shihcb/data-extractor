@@ -68,8 +68,8 @@ export function extractTransactionData(text) {
   }
 
   // 2. Extract Date & Time
-  // Try to find email receipt header date (Date: or Sent:)
-  const emailHeaderRegex = /^(?:Date|Sent):[ \t]*(.*)/i;
+  // Try to find email receipt header date (Date: or Sent:) anywhere in the text
+  const emailHeaderRegex = /\b(?:Date|Sent):[ \t]*(.*?)(?=\b(?:To|Subject|From|Cc|Bcc|Reply-To):|$)/i;
   let rawDateTime = '';
 
   for (const line of lines) {
@@ -86,9 +86,9 @@ export function extractTransactionData(text) {
 
   // If no email header date, look for other matches in full text
   if (!rawDateTime) {
-    const standaloneDateRegex = /([A-Za-z]+[ \t]+\d{1,2},[ \t]*\d{4}[ \t]+at[ \t]+\d{1,2}:\d{2}[ \t]*(?:AM|PM|am|pm)?)/i;
-    const appleCompactRegex = /\b(\d{1,2})\/(\d{1,2})\/(\d{2,4}),?[ \t]+(\d{1,2}:\d{2}[ \t]*(?:AM|PM|am|pm))/i;
-    const dateLineRegex = /Date:[ \t]*(.*)/i;
+    const standaloneDateRegex = /([A-Za-z]+[ \t]+\d{1,2},[ \t]*\d{4}[ \t]+at[ \t]+\d{1,2}:\d{2}(?::\d{2})?[ \t]*(?:AM|PM|am|pm)?)/i;
+    const appleCompactRegex = /\b(\d{1,2})\/(\d{1,2})\/(\d{2,4}),?[ \t]+(\d{1,2}:\d{2}(?::\d{2})?[ \t]*(?:AM|PM|am|pm))/i;
+    const dateLineRegex = /Date:[ \t]*(.*?)(?=\b(?:To|Subject|From|Cc|Bcc|Reply-To):|$)/i;
 
     const standaloneMatch = cleanText.match(standaloneDateRegex);
     const appleMatch      = cleanText.match(appleCompactRegex);
@@ -101,7 +101,7 @@ export function extractTransactionData(text) {
       const day     = appleMatch[2];
       const year    = appleMatch[3];
       const timePart = appleMatch[4].trim();
-      rawDateTime = `${month}/${day}/${year} ${timePart}`;
+      rawDateTime = `${month}/${day}/${year} at ${timePart}`;
     } else if (dateLineMatch) {
       rawDateTime = dateLineMatch[1].trim();
     } else {
