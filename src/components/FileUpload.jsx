@@ -1,5 +1,5 @@
 import React, { useId } from 'react';
-import { Upload, FileText, RefreshCw, X, Archive, Trash2 } from 'lucide-react';
+import { Upload, FileText, RefreshCw, X } from 'lucide-react';
 
 export default function FileUpload({ 
   onFileUpload, 
@@ -8,11 +8,7 @@ export default function FileUpload({
   onClear, 
   uploadText = 'UPLOAD STATEMENT',
   uploadedLabel = 'Uploaded Statement',
-  docType,
-  archiveItems = [],
-  onLoadArchive,
-  onDeleteArchive,
-  onClearAllArchives
+  docType
 }) {
   const inputId = useId();
 
@@ -25,106 +21,6 @@ export default function FileUpload({
   const [displayUploadedLabel, setDisplayUploadedLabel] = React.useState(uploadedLabel);
   const [isPlaceholder, setIsPlaceholder] = React.useState(!fileName);
   const [isAnimating, setIsAnimating] = React.useState(false);
-  const [isArchiveOpen, setIsArchiveOpen] = React.useState(() => {
-    return localStorage.getItem('extrkt_archive_open') === 'true';
-  });
-  const [isToggling, setIsToggling] = React.useState(false);
-  const toggleTimeoutRef = React.useRef(null);
-  const [isClearingAll, setIsClearingAll] = React.useState(false);
-  const [deletingId, setDeletingId] = React.useState(null);
-  // visibleIds: IDs that have completed their fade-in and are at opacity 1.
-  // New items are NOT in this set on first render → start at opacity 0.
-  const [visibleIds, setVisibleIds] = React.useState(
-    () => new Set(archiveItems.map(i => i.id))
-  );
-
-  const handleToggleArchive = () => {
-    if (toggleTimeoutRef.current) clearTimeout(toggleTimeoutRef.current);
-    setIsToggling(true);
-    setIsArchiveOpen(prev => !prev);
-    toggleTimeoutRef.current = setTimeout(() => {
-      setIsToggling(false);
-    }, 600);
-  };
-
-  React.useEffect(() => {
-    return () => {
-      if (toggleTimeoutRef.current) clearTimeout(toggleTimeoutRef.current);
-    };
-  }, []);
-
-  const contentRef = React.useRef(null);
-  const [panelHeight, setPanelHeight] = React.useState(null);
-
-  React.useEffect(() => {
-    localStorage.setItem('extrkt_archive_open', isArchiveOpen);
-  }, [isArchiveOpen]);
-
-  // ResizeObserver: measure the inner content and animate the panel height
-  React.useLayoutEffect(() => {
-    if (!isArchiveOpen) return;
-    
-    const el = contentRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setPanelHeight(entry.target.getBoundingClientRect().height);
-      }
-    });
-    ro.observe(el);
-    // Set initial height immediately
-    setPanelHeight(el.getBoundingClientRect().height);
-    return () => ro.disconnect();
-  }, [isArchiveOpen]);
-
-  // Compute new IDs during render (not in effect) so the first paint is at opacity 0
-  const currentIds = archiveItems.map(i => i.id);
-  const newIds = currentIds.filter(id => !visibleIds.has(id));
-  const newIdsKey = newIds.join(',');
-
-  // useLayoutEffect fires before browser paint → schedules rAF to flip visible
-  // This guarantees: paint1=opacity0, paint2=opacity1 (real CSS transition)
-  React.useLayoutEffect(() => {
-    if (!newIdsKey) return;
-    const ids = newIdsKey.split(',').filter(Boolean);
-    const raf = requestAnimationFrame(() => {
-      setVisibleIds(prev => {
-        const next = new Set(prev);
-        ids.forEach(id => next.add(id));
-        return next;
-      });
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [newIdsKey]);
-
-  // Clean up removed IDs from visibleIds after deletion
-  React.useEffect(() => {
-    const currentIdSet = new Set(archiveItems.map(i => i.id));
-    setVisibleIds(prev => {
-      let changed = false;
-      const next = new Set(prev);
-      for (const id of prev) {
-        if (!currentIdSet.has(id)) { next.delete(id); changed = true; }
-      }
-      return changed ? next : prev;
-    });
-  }, [archiveItems]);
-
-  const handleDeleteWithFade = (id) => {
-    setDeletingId(id);
-    setTimeout(() => {
-      onDeleteArchive(id);
-      setDeletingId(null);
-    }, 500);
-  };
-
-  const handleClearWithFade = () => {
-    setIsClearingAll(true);
-    setTimeout(() => {
-      onClearAllArchives();
-      setIsClearingAll(false);
-    }, 500);
-  };
 
   // Sync state changes
   React.useEffect(() => {
@@ -248,15 +144,6 @@ export default function FileUpload({
                 >
                   <RefreshCw size={14} />
                 </label>
-
-                <button
-                  type="button"
-                  onClick={handleToggleArchive}
-                  className={`icon-copy-btn shrink-0 cursor-pointer ${isArchiveOpen ? 'archive-active' : ''}`}
-                  title="Toggle Archive"
-                >
-                  <Archive size={14} />
-                </button>
               </div>
             </div>
           ) : (
@@ -277,112 +164,9 @@ export default function FileUpload({
                 >
                   +
                 </label>
-
-                <button
-                  type="button"
-                  onClick={handleToggleArchive}
-                  className={`icon-copy-btn shrink-0 cursor-pointer ${isArchiveOpen ? 'archive-active' : ''}`}
-                  title="Toggle Archive"
-                >
-                  <Archive size={14} />
-                </button>
               </div>
             </div>
           )}
-        </div>
-      </div>
-
-      <div 
-        className={`archive-panel ${isArchiveOpen ? 'open' : 'closed'}`}
-        style={isArchiveOpen
-          ? { 
-              height: panelHeight !== null ? `${panelHeight}px` : 'auto',
-              transition: isToggling 
-                ? 'height 0.5s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s cubic-bezier(0.25, 1, 0.5, 1), margin-bottom 0.5s cubic-bezier(0.25, 1, 0.5, 1)' 
-                : 'opacity 0.4s cubic-bezier(0.25, 1, 0.5, 1)'
-            }
-          : { 
-              height: '0px',
-              transition: 'height 0.5s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s cubic-bezier(0.25, 1, 0.5, 1), margin-bottom 0.5s cubic-bezier(0.25, 1, 0.5, 1)'
-            }
-        }
-      >
-        <div ref={contentRef} className="py-4">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex-1 min-w-0">
-              Archived Documents ({archiveItems.length})
-            </span>
-            {archiveItems.length > 0 && (
-              <div className="flex items-center gap-0.5 shrink-0 ml-3 w-[36px] justify-center pl-[11px]">
-                <button
-                  type="button"
-                  onClick={handleClearWithFade}
-                  className="text-[10px] font-extrabold text-red-500 uppercase tracking-wider cursor-pointer whitespace-nowrap"
-                >
-                  Clear
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div
-            className="archive-list pr-1 flex flex-col gap-0"
-            style={{
-              opacity: isClearingAll ? 0 : 1,
-              maxHeight: isClearingAll ? '0px' : '72px',
-              overflow: 'hidden',
-              transition: 'opacity 0.5s cubic-bezier(0.25, 1, 0.5, 1), max-height 0.5s cubic-bezier(0.25, 1, 0.5, 1)',
-            }}
-          >
-            {archiveItems.length > 0 && (
-              archiveItems.map((item) => {
-                const isVisible = visibleIds.has(item.id);
-                const isDeleting = deletingId === item.id;
-                return (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between"
-                  style={{
-                    opacity: isDeleting || !isVisible ? 0 : 1,
-                    transform: !isVisible ? 'translateY(-8px)' : (isDeleting ? 'translateY(-8px)' : 'translateY(0)'),
-                    maxHeight: isDeleting || !isVisible ? '0px' : '28px',
-                    paddingTop: isDeleting || !isVisible ? '0px' : '2px',
-                    paddingBottom: isDeleting || !isVisible ? '0px' : '2px',
-                    overflow: 'hidden',
-                    transition: 'opacity 0.5s cubic-bezier(0.25, 1, 0.5, 1), transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), max-height 0.5s cubic-bezier(0.25, 1, 0.5, 1), padding 0.5s cubic-bezier(0.25, 1, 0.5, 1)',
-                  }}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <FileText size={14} className="text-slate-400 shrink-0" />
-                    <div className="font-bold text-xs sm:text-sm text-slate-700 truncate" title={item.name}>
-                      {item.name}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-0.5 shrink-0 ml-3">
-                    <button
-                      type="button"
-                      onClick={() => onLoadArchive(item)}
-                      className="icon-copy-btn cursor-pointer w-[17px] h-[17px]"
-                      title="Load document"
-                    >
-                      <Upload size={12} />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteWithFade(item.id)}
-                      className="icon-clear-btn cursor-pointer w-[17px] h-[17px]"
-                      title="Delete from archive"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                </div>
-              );
-              })
-            )}
-          </div>
         </div>
       </div>
     </div>

@@ -168,23 +168,6 @@ export default function App() {
     setIsMounted(true);
   }, []);
 
-  // Archive state and sync
-  const [archiveItems, setArchiveItems] = useState(() => {
-    const saved = localStorage.getItem('extrkt_archive');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return [];
-      }
-    }
-    return [];
-  });
-
-  useEffect(() => {
-    localStorage.setItem('extrkt_archive', JSON.stringify(archiveItems));
-  }, [archiveItems]);
-
   const handleClearFile = () => {
     if (activeDocType === 'paycheck') {
       setPaycheckFileName('');
@@ -238,51 +221,6 @@ export default function App() {
       setTransactionRawText(rawText || '');
       setTransactionMethod(method);
     }
-
-    // Append to archive items
-    setArchiveItems(prev => {
-      const filtered = prev.filter(item => !(item.name === fileName && item.docType === type));
-      return [
-        {
-          id: Date.now().toString() + Math.random().toString(36).substring(2, 7),
-          name: fileName,
-          docType: type,
-          data: data,
-          rawText: rawText || '',
-          method: method,
-          timestamp: Date.now()
-        },
-        ...filtered
-      ];
-    });
-  };
-
-  const handleLoadFromArchive = (item) => {
-    setActiveDocType(item.docType);
-    if (item.docType === 'paycheck') {
-      setPaycheckData(item.data);
-      setPaycheckFileName(item.name);
-      setPaycheckRawText(item.rawText || '');
-      setPaycheckMethod(item.method || 'local');
-    } else if (item.docType === 'card') {
-      setCardData(item.data);
-      setCardFileName(item.name);
-      setCardRawText(item.rawText || '');
-      setCardMethod(item.method || 'local');
-    } else if (item.docType === 'transaction') {
-      setTransactionData(item.data);
-      setTransactionFileName(item.name);
-      setTransactionRawText(item.rawText || '');
-      setTransactionMethod(item.method || 'local');
-    }
-  };
-
-  const handleDeleteFromArchive = (id) => {
-    setArchiveItems(prev => prev.filter(item => item.id !== id));
-  };
-
-  const handleClearAllArchives = () => {
-    setArchiveItems([]);
   };
 
   const handleFileUpload = async (file) => {
@@ -524,7 +462,6 @@ export default function App() {
           <>
 
 
-            {/* Upload Card Box Component */}
             <FileUpload
               key="global-file-uploader"
               docType={activeDocType}
@@ -534,10 +471,6 @@ export default function App() {
               onClear={handleClearFile}
               uploadText={activeDocType === 'transaction' ? 'UPLOAD TRANSACTION' : 'UPLOAD STATEMENT'}
               uploadedLabel={activeDocType === 'transaction' ? 'Uploaded Transaction' : 'Uploaded Statement'}
-              archiveItems={archiveItems}
-              onLoadArchive={handleLoadFromArchive}
-              onDeleteArchive={handleDeleteFromArchive}
-              onClearAllArchives={handleClearAllArchives}
             />
 
             {/* Extracted Value Cards */}
