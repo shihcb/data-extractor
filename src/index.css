@@ -555,39 +555,39 @@ button {
 /* ── Document Q&A AI Component ────────────────────────────── */
 
 .qa-card {
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   margin-top: 12px;
-}
-
-.qa-card:hover {
-  border-color: #cbd5e1;
 }
 
 /* Chat Input Styling */
 .qa-chat-input {
+  border: 1px solid var(--border-subtle);
   transition: border-color 0.18s ease, background-color 0.18s ease;
   -webkit-user-select: text !important;
   user-select: text !important;
 }
 
 .qa-chat-input:focus {
-  border-color: #94a3b8;
+  border-color: #000000;
   background-color: #ffffff;
 }
 
 /* API Key Input */
 .qa-key-input {
+  border: 1px solid var(--border-subtle);
   transition: border-color 0.18s ease;
   -webkit-user-select: text !important;
   user-select: text !important;
 }
 
 .qa-key-input:focus {
-  border-color: #94a3b8;
+  border-color: #000000;
 }
 
 /* Action Buttons */
 .qa-action-btn {
+  background: #ffffff;
+  border: 1.5px solid #000000;
+  color: #000000;
   transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
   cursor: pointer;
 }
@@ -601,7 +601,10 @@ button {
 }
 
 .qa-cancel-btn {
-  transition: background-color 0.18s ease, color 0.18s ease;
+  background: #f1f0ec;
+  border: 1.5px solid #cbd5e1;
+  color: #64748b;
+  transition: all 0.18s ease;
   cursor: pointer;
 }
 
@@ -609,6 +612,7 @@ button {
   .qa-cancel-btn:hover {
     background: #cbd5e1 !important;
     color: #0f172a !important;
+    border-color: #cbd5e1 !important;
   }
 }
 
@@ -635,6 +639,15 @@ button {
 .qa-chip {
   cursor: pointer;
   user-select: none;
+  background: #ffffff;
+  border: 1.5px solid #000000;
+  color: #000000;
+  border-radius: 9999px;
+  padding: 6px 14px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -655,6 +668,7 @@ button {
 .qa-msg-bubble {
   -webkit-user-select: text !important;
   user-select: text !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.02);
 }
 
 /* Icon Buttons for Settings and Delete */
@@ -685,7 +699,31 @@ button {
   transform: rotate(45deg);
 }
 
+/* Send Button matching the "+" button layout */
 .qa-send-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1.5px solid #000000;
+  color: #000000;
+  transition: all 0.18s ease;
   cursor: pointer;
+  flex-shrink: 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .qa-send-btn:hover:not(:disabled) {
+    background: #000000;
+    color: #ffffff;
+  }
+}
+
+.qa-send-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
 }
 

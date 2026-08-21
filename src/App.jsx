@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import FileUpload from './components/FileUpload';
 import Step2ExtractedData from './components/Step2ExtractedData';
 import CaseConverter from './components/CaseConverter';
-import DocumentQA from './components/DocumentQA';
 
 import { parsePdfText } from './utils/pdfParser';
 import { parseImageText } from './utils/imageParser';
@@ -551,16 +550,6 @@ export default function App() {
               />
             </div>
 
-            {/* AI Q&A Panel */}
-            {activeFileName && (
-              <div className="w-full mt-3">
-                <DocumentQA
-                  docType={activeDocType}
-                  fileName={activeFileName}
-                  rawText={activeRawText}
-                />
-              </div>
-            )}
           </>
         )}
       </div>
