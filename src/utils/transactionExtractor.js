@@ -15,14 +15,56 @@ export function extractTransactionData(text) {
   let merchant = 'N/A';
 
   // 1. Extract Amount
-  // Search for any dollar pattern, e.g. $1.00, $1, $1.00*
-  const amountMatches = cleanText.match(/\$[0-9,]+(?:\.[0-9]{2})?[\*#]?/g);
-  if (amountMatches && amountMatches.length > 0) {
-    let rawAmount = amountMatches[amountMatches.length - 1].replace(/[\*#]/g, '');
-    if (rawAmount === '$1.00') {
+  // Prioritize page 1 text for amount matching since the primary receipt total is on page 1
+  const page1Text = text.split('\n\n')[0] || cleanText;
+  let foundAmount = '';
+  const page1Lines = page1Text.split('\n').map(l => l.trim()).filter(Boolean);
+
+  // Look for lines containing "Total", "Grand Total", "Order Total", "Price", "Charge" on page 1
+  for (const line of page1Lines) {
+    if (/(?:grand\s+)?total|price|charge/i.test(line) && !/subtotal|sub-total/i.test(line)) {
+      const match = line.match(/\$[0-9,]+(?:\.[0-9]{2})?/);
+      if (match) {
+        foundAmount = match[0];
+        break; // Take the first one on page 1 (which is the main total summary)
+      }
+    }
+  }
+
+  if (!foundAmount) {
+    // Fallback to checking the whole text for specific Total/Charge/Price lines
+    for (const line of lines) {
+      if (/(?:grand\s+)?total|price|charge/i.test(line) && !/subtotal|sub-total/i.test(line)) {
+        const match = line.match(/\$[0-9,]+(?:\.[0-9]{2})?/);
+        if (match) {
+          foundAmount = match[0];
+          break;
+        }
+      }
+    }
+  }
+
+  if (!foundAmount) {
+    // If no explicit total lines, fall back to the last dollar amount in page 1
+    const page1Matches = page1Text.match(/\$[0-9,]+(?:\.[0-9]{2})?[\*#]?/g);
+    if (page1Matches && page1Matches.length > 0) {
+      foundAmount = page1Matches[page1Matches.length - 1].replace(/[\*#]/g, '');
+    }
+  }
+
+  if (!foundAmount) {
+    // Final fallback to the last dollar amount in the entire document
+    const amountMatches = cleanText.match(/\$[0-9,]+(?:\.[0-9]{2})?[\*#]?/g);
+    if (amountMatches && amountMatches.length > 0) {
+      foundAmount = amountMatches[amountMatches.length - 1].replace(/[\*#]/g, '');
+    }
+  }
+
+  if (foundAmount) {
+    if (foundAmount === '$1.00') {
       amount = '$1';
     } else {
-      amount = rawAmount;
+      amount = foundAmount;
     }
   }
 

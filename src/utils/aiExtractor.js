@@ -58,23 +58,23 @@ Instructions:
 1. Scan the ENTIRE document text AND the provided page image to find the required fields.
 2. For "amount" (transaction price):
    - Look for keywords like "price", "total", "order total", "charge", "amount", or "$" in the text and image.
-   - If multiple amounts are listed, identify the final total charge (e.g. after tax and fees).
-   - If there are no clear keywords, make the best educated guess of the final transaction amount from the context (e.g. the main highlighted number, or the value next to the merchant).
+   - If multiple amounts are listed, identify the absolute global total amount of the entire transaction. Look for the main "Total" or "Grand Total" that represents the entire purchase. Do NOT return sub-totals, partial order totals (like "Order 1 Total", "Order 2 Total", "Order 1 Summary", "Order 2 Summary"), or individual item prices if a global overall total is listed. For example, in a multi-order summary, look for the combined total representing all orders (e.g. if the summary shows Order 1 $108.86, Order 2 $250.39, and Total $359.25, the amount should be '$359.25').
+   - If there are no clear keywords, make the best educated guess of the final overall transaction amount from the context (e.g. the main highlighted number, or the value next to the merchant).
 3. For "dateTime" (date and time of transaction):
    - Scan the ENTIRE document text and page image (especially the headers at the top of the page).
-   - In printed emails, the transaction date and time is often the email receipt header date (e.g. "Date: Aug 18, 2026 at 9:42:20 AM" or "Sent: Tuesday, August 18, 2026, 9:42 AM").
+   - In printed emails, the transaction date and time is often the email receipt header date (e.g. "Date: October 26, 2025 at 5:01 PM" or "Sent: Tuesday, August 18, 2026, 9:42 AM").
    - These email headers are often rendered visually at the very top of the page image but might be missing in the raw text. Read them from the image!
-   - Extract the full date AND the specific time if present (e.g., "August 18, 2026 at 9:42 AM").
-   - If you only find a date without a time (e.g. "Aug 18, 2026" at the bottom), search again for any time next to it or in the headers. If no time exists anywhere, return just the date.
+   - Extract the full date AND the specific time if present (e.g., "October 26, 2025 at 5:01 PM").
+   - If you only find a date without a time (e.g. "Oct 26, 2025" at the bottom), search again for any time next to it or in the headers. If no time exists anywhere, return just the date.
 4. For "merchant":
    - Identify the merchant or seller name.
    - Format the merchant name in UPPERCASE (e.g. "AMAZON MARKETPLACE", "STARBUCKS").
 
 Return a JSON object with the following schema:
 {
-  "amount": "string (e.g. '$511.70', or 'N/A')",
-  "dateTime": "string (e.g. 'August 18, 2026 at 9:42 AM', or 'N/A')",
-  "merchant": "string (e.g. 'AMAZON', or 'N/A')"
+  "amount": "string (e.g. '$359.25', or 'N/A')",
+  "dateTime": "string (e.g. 'October 26, 2025 at 5:01 PM', or 'N/A')",
+  "merchant": "string (e.g. 'BEST BUY', or 'N/A')"
 }
 
 Document Extracted Text:
