@@ -20,7 +20,7 @@ export function extractTransactionData(text) {
 
   const totalRegexes = [
     /\b(?:grand\s+)?total\b(?:[ \t]+amount)?\s*:?\s*(\$[0-9,]+(?:\.[0-9]{2})?)/i,
-    /\b(?:amount\s+charged|charge|price)\b\s*:?\s*(\$[0-9,]+(?:\.[0-9]{2})?)/i
+    /\b(?:amount\s+charged|amount|charge|price)\b\s*:?\s*(\$[0-9,]+(?:\.[0-9]{2})?)/i
   ];
 
   let foundAmount = '';
