@@ -796,34 +796,17 @@ kbd {
 
 /* ── Image converter ──────────────────────────────────────────── */
 
-.file-list .motion-item {
-  padding-bottom: 8px;
-}
-
-.file-row {
+/* An image card's name, size and x, under its picture */
+.image-card-foot {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 10px 8px 8px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: border-color var(--motion-duration) var(--motion-easing),
-              background-color var(--motion-duration) var(--motion-easing);
+  gap: 6px;
 }
 
-.file-row.selected {
-  border-color: var(--text-main);
-}
-
-.file-thumb {
-  width: 40px;
-  height: 40px;
+.image-card-foot .btn {
   flex-shrink: 0;
-  object-fit: cover;
-  border-radius: 8px;
-  background: var(--bg-inset);
+  padding: 4px 8px;
+  border-radius: 7px;
 }
 
 .file-info {
@@ -835,7 +818,7 @@ kbd {
 }
 
 .file-name {
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -843,13 +826,12 @@ kbd {
 }
 
 .file-meta {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
-}
-
-.file-list:empty {
-  display: none;
 }
 
 .options-collapse {
@@ -881,13 +863,18 @@ kbd {
   /* A fixed size that fills the screen below the tabs, above the meta line
      and buttons (about 340px together): the page stays still and the pages
      scroll inside the box */
-  height: calc(100vh - 340px);
-  height: calc(100dvh - 340px);
+  height: calc(100vh - var(--box-room, 340px));
+  height: calc(100dvh - var(--box-room, 340px));
   min-height: 260px;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+}
+
+/* The image converter's settings take more room below its box */
+.image-drop {
+  --box-room: 380px;
 }
 
 /* Empty, the hint sits in the middle of the whole box */

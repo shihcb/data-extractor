@@ -30,7 +30,7 @@ export function loadImage(url) {
 // A small copy for the file row (80px, sharp on 2x screens): drawing the
 // full image at 40px on every frame of the row's slide made it stutter
 export async function makeThumb(img) {
-  const s = Math.min(1, 80 / Math.min(img.naturalWidth, img.naturalHeight)); // fills the square row icon
+  const s = Math.min(1, 320 / Math.max(img.naturalWidth, img.naturalHeight)); // a card's picture, sharp at 2×
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.round(img.naturalWidth * s));
   canvas.height = Math.max(1, Math.round(img.naturalHeight * s));

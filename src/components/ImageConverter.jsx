@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Copy, Download, ImageUp, X } from 'lucide-react';
 import { zipSync } from 'fflate';
 import { IMAGE_FORMATS, encodeImage, estimateImage, jpegsToPdf, loadImage, makeThumb, targetSize } from '../imageConvert';
@@ -7,7 +7,6 @@ import { MOTION_MS } from '../motion';
 import { useToast } from '../toastContext';
 import TabSwitcher from './TabSwitcher';
 import MotionList from './MotionList';
-import PopImage from './PopImage';
 import Collapse from './Collapse';
 import Count from './Count';
 import AutoHeight from './AutoHeight';
@@ -15,13 +14,6 @@ import FadeText from './FadeText';
 import FlipRow from './FlipRow';
 import SlideText from './SlideText';
 import SlideSwap from './SlideSwap';
-import { animateTo } from '../engine';
-
-// Box padding (matches .drop-box) and the smallest it shrinks to
-const PAD_X = 24;
-const PAD_Y = 18;
-const MIN_IMAGE_BOX = 200;
-const emptyBoxHeight = () => Math.max(320, window.innerHeight * 0.6);
 
 const RESIZE_MODES = [
   { key: 'percent', label: 'scale %' },
@@ -48,10 +40,21 @@ export default function ImageConverter({ active }) {
   const [estimate, setEstimate] = useState(null); // { width, height, size, ext, fellBack }
   const [busy, setBusy] = useState('');
   const [dragging, setDragging] = useState(false);
-  const initialBoxStyle = useRef({ height: `${emptyBoxHeight()}px` }).current;
   const [done, flagDone] = useDoneFlags();
   const inputRef = useRef(null);
   const boxRef = useRef(null);
+  // The last images leaving: the box's content holds its height while they
+  // pop out where they are, then the box goes back to empty (as in PDF tools)
+  const [hold, setHold] = useState(0);
+  const holdTimer = useRef(null);
+  const holdWhileLeaving = () => {
+    const inner = boxRef.current?.firstElementChild;
+    if (!inner) return;
+    setHold(inner.offsetHeight);
+    clearTimeout(holdTimer.current);
+    holdTimer.current = setTimeout(() => setHold(0), MOTION_MS + 100);
+  };
+  useEffect(() => () => clearTimeout(holdTimer.current), []);
   const itemsRef = useRef(items);
   itemsRef.current = items;
   const toast = useToast();
@@ -84,6 +87,8 @@ export default function ImageConverter({ active }) {
     }));
     const ok = loaded.filter(Boolean);
     if (!ok.length) return;
+    clearTimeout(holdTimer.current);
+    setHold(0);
     setItems(prev => [...prev, ...ok]);
     setSelectedId(ok[0].id);
     // A width to start from: the first image's own
@@ -97,14 +102,16 @@ export default function ImageConverter({ active }) {
     const item = items[index];
     if (!item) return;
     const rest = items.filter(i => i.id !== id);
+    if (!rest.length) holdWhileLeaving();
     setItems(rest);
     if (selected?.id === id) setSelectedId(rest[Math.min(index, rest.length - 1)]?.id ?? null);
-    // After its row has slid out (it still shows the thumbnail until then)
+    // After its card has left (it still shows the picture until then)
     setTimeout(() => releaseItem(item), MOTION_MS + 300);
   };
 
   const clearAll = () => {
     const old = items;
+    holdWhileLeaving();
     setItems([]);
     setSelectedId(null);
     setWidthPx('');
@@ -112,27 +119,6 @@ export default function ImageConverter({ active }) {
   };
 
   useEffect(() => () => itemsRef.current.forEach(releaseItem), []);
-
-  // The box fits the selected image's shape (up to the empty box's height),
-  // easing there on the motion engine.
-  useLayoutEffect(() => {
-    const fit = () => {
-      const maxH = emptyBoxHeight();
-      const box = boxRef.current;
-      if (!box) return;
-      let h = maxH;
-      if (selected) {
-        const innerW = box.clientWidth - PAD_X * 2;
-        const fitted = innerW * (selected.h / selected.w) + PAD_Y * 2;
-        h = Math.round(Math.min(maxH, Math.max(MIN_IMAGE_BOX, fitted)));
-      }
-      // The engine holds it at this height once there
-      animateTo(box, 'height', h, { from: box.offsetHeight, keep: true });
-    };
-    fit();
-    window.addEventListener('resize', fit);
-    return () => window.removeEventListener('resize', fit);
-  }, [selected]);
 
   // What the selected image comes out as with these settings (encoded for
   // real, a moment after the last change). A newly picked image waits until
@@ -237,11 +223,13 @@ export default function ImageConverter({ active }) {
 
   return (
     <div className="tool">
+      {/* The same box as PDF tools: a fixed size that scrolls inside, the
+          images as cards that pop in and out */}
       <div
         ref={boxRef}
-        className={`tool-box drop-box ${dragging ? 'dragging' : ''}`}
-        style={initialBoxStyle}
-        onClick={() => inputRef.current?.click()}
+        className={`tool-box pdf-drop image-drop ${items.length ? 'has-pages' : ''} ${dragging ? 'dragging' : ''}`}
+        // Empty: anywhere opens the picker; with images, only the space around them
+        onClick={(e) => { if (!items.length || e.target === e.currentTarget || e.target.classList.contains('pdf-drop-inner')) inputRef.current?.click(); }}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={onDragLeave}
         onDrop={(e) => {
@@ -249,51 +237,58 @@ export default function ImageConverter({ active }) {
           setDragging(false);
           addFiles(e.dataTransfer?.files || []);
         }}
-        role="button"
-        tabIndex={0}
         aria-label="Add images"
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inputRef.current?.click(); } }}
       >
-        {/* The picture pops in and out (and swaps with the pop when another is picked) */}
-        <PopImage id={selected?.id ?? null} src={selected?.url} alt={selected?.file.name} className="drop-preview" />
-        <FadeText k={selected ? '' : 'hint'} className="tool-hint">{selected ? null : 'drop, paste or click to add images'}</FadeText>
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          hidden
-          onChange={(e) => { addFiles(e.target.files || []); e.target.value = ''; }}
-        />
+        <div
+          className={`pdf-drop-inner ${items.length || hold ? 'full' : 'drop-box-empty'}`}
+          style={hold ? { minHeight: `${hold}px` } : undefined}
+        >
+          <FadeText k={!items.length && !hold ? 'hint' : ''} quiet={items.length > 0} className="tool-hint">{!items.length && !hold ? 'drop, paste or click to add images' : null}</FadeText>
+          <MotionList
+            items={items}
+            getKey={item => item.id}
+            variant="grid"
+            className="page-grid"
+            renderItem={(item) => {
+              const isSel = selected?.id === item.id;
+              return (
+                <div className={`page-card ${isSel ? 'selected' : ''}`}>
+                  <button
+                    className="page-thumb"
+                    onClick={(e) => { e.currentTarget.blur(); setSelectedId(item.id); }}
+                    aria-pressed={isSel}
+                    title="Show this image's size"
+                  >
+                    <img src={item.thumb} alt={item.file.name || 'pasted image'} decoding="async" draggable={false} />
+                  </button>
+                  <div className="image-card-foot">
+                    <div className="file-info">
+                      <span className="file-name">{item.file.name || 'pasted image'}</span>
+                      <span className="file-meta">{item.w} × {item.h} · {formatBytes(item.file.size)}</span>
+                    </div>
+                    <button
+                      className="btn btn-sm btn-icon"
+                      onClick={(e) => { e.currentTarget.blur(); removeItem(item.id); }}
+                      title="Remove"
+                      aria-label={`Remove ${item.file.name}`}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                </div>
+              );
+            }}
+          />
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            hidden
+            onChange={(e) => { addFiles(e.target.files || []); e.target.value = ''; }}
+          />
+        </div>
       </div>
-
-      <MotionList
-        items={items}
-        getKey={item => item.id}
-        // The rows pop in and out like the PDF pages (the others sliding along)
-        motion="pop"
-        className="file-list"
-        renderItem={(item) => (
-          <div
-            className={`file-row ${selected?.id === item.id ? 'selected' : ''}`}
-            onClick={() => setSelectedId(item.id)}
-          >
-            <img src={item.thumb} alt="" className="file-thumb" decoding="async" />
-            <div className="file-info">
-              <span className="file-name">{item.file.name || 'pasted image'}</span>
-              <span className="file-meta">{item.w} × {item.h} · {formatBytes(item.file.size)}</span>
-            </div>
-            <button
-              className="btn btn-sm btn-icon file-remove"
-              onClick={(e) => { e.stopPropagation(); e.currentTarget.blur(); removeItem(item.id); }}
-              title="Remove"
-              aria-label={`Remove ${item.file.name}`}
-            >
-              <X size={13} />
-            </button>
-          </div>
-        )}
-      />
 
       <Collapse open={items.length > 0} className="options-collapse">
         <div className="options-panel">
