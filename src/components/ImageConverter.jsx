@@ -270,6 +270,8 @@ export default function ImageConverter({ active }) {
       <MotionList
         items={items}
         getKey={item => item.id}
+        // The rows pop in and out like the PDF pages (the others sliding along)
+        motion="pop"
         className="file-list"
         renderItem={(item) => (
           <div
