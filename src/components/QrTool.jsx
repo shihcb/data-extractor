@@ -8,6 +8,8 @@ import { fadeIn, flashOutline } from '../motion';
 import { useToast } from '../toastContext';
 import TabSwitcher from './TabSwitcher';
 import TabPanes from './TabPanes';
+import AutoHeight from './AutoHeight';
+import Collapse from './Collapse';
 
 const MODES = [
   { key: 'make', label: 'make' },
@@ -58,7 +60,6 @@ function MakeQr() {
   const [error, setError] = useState('');
   const [done, flagDone] = useDoneFlags();
   const canvasRef = useRef(null);
-  const boxRef = useRef(null);
   const hadCode = useRef(false);
   const toast = useToast();
   const hasCode = !!text && !error;
@@ -129,10 +130,10 @@ function MakeQr() {
       <p className="tool-meta">
         {error || (text ? 'higher levels still scan when part of the code is covered or damaged' : 'the code updates as you type')}
       </p>
-      <div ref={boxRef} className={`tool-box qr-box ${hasCode ? '' : 'qr-box-empty'}`}>
+      <AutoHeight className="tool-box qr-box-outer" innerClassName={`qr-box ${hasCode ? '' : 'qr-box-empty'}`}>
         <canvas ref={canvasRef} className="qr-canvas" style={{ display: hasCode ? undefined : 'none' }} aria-label="QR code" />
         {!hasCode && <span className="tool-hint">your QR code shows here</span>}
-      </div>
+      </AutoHeight>
       <div className="tool-actions">
         <button className={`btn btn-primary ${done.png ? 'btn-done' : ''}`} onClick={downloadPng} disabled={!hasCode}>
           <Download size={14} /> PNG
@@ -150,6 +151,7 @@ function MakeQr() {
 
 function ScanQr({ active }) {
   const [result, setResult] = useState(null); // { text } | { none: true }
+  const [lastResult, setLastResult] = useState(null);
   const [camera, setCamera] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [done, flagDone] = useDoneFlags();
@@ -160,9 +162,13 @@ function ScanQr({ active }) {
   const toast = useToast();
 
   const show = (text) => {
-    setResult(text ? { text } : { none: true });
+    const wasOpen = !!resultRef.current?.closest('.motion-collapse')?.offsetHeight;
+    const next = text ? { text } : { none: true };
+    setResult(next);
+    setLastResult(next);
     requestAnimationFrame(() => {
-      fadeIn(resultRef.current);
+      // Opening, the panel's own fade shows it; a new result in an open one fades in
+      if (wasOpen) fadeIn(resultRef.current);
       if (text) flashOutline(resultRef.current);
     });
   };
@@ -228,12 +234,15 @@ function ScanQr({ active }) {
   useEffect(() => { if (!active) stopCamera(); }, [active, stopCamera]);
   useEffect(() => stopCamera, [stopCamera]);
 
-  const link = result?.text ? asWebLink(result.text) : null;
+  // What the result box shows (the last result, while it closes)
+  const shown = result || lastResult;
+  const link = shown?.text ? asWebLink(shown.text) : null;
 
   return (
     <div className="tool">
-      <div
-        className={`tool-box drop-box qr-scan-box ${dragging ? 'dragging' : ''}`}
+      <AutoHeight
+        className={`tool-box qr-scan-outer ${dragging ? 'dragging' : ''}`}
+        innerClassName="drop-box qr-scan-box"
         onClick={() => { if (!camera) inputRef.current?.click(); }}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false); }}
@@ -255,7 +264,7 @@ function ScanQr({ active }) {
           hidden
           onChange={(e) => { scanFiles(e.target.files || []); e.target.value = ''; }}
         />
-      </div>
+      </AutoHeight>
 
       <div className="tool-actions">
         <button className="btn btn-icon" onClick={(e) => { e.currentTarget.blur(); inputRef.current?.click(); }} title="Choose an image" aria-label="Choose an image">
@@ -268,19 +277,20 @@ function ScanQr({ active }) {
         )}
       </div>
 
-      {result && (
-        <div ref={resultRef} className="tool-box qr-result">
-          {result.none ? (
+      {/* Grows in from nothing; keeps showing the last result while it closes */}
+      <Collapse open={!!result} className="qr-result-collapse">
+        <AutoHeight boxRef={resultRef} className="tool-box qr-result-box" innerClassName="qr-result">
+          {!shown ? null : shown.none ? (
             <p className="tool-hint">no QR code found — try a sharper or closer picture</p>
           ) : (
             <>
-              <p className="qr-result-text selectable">{result.text}</p>
+              <p className="qr-result-text selectable">{shown.text}</p>
               <div className="tool-actions">
                 <button
                   className={`btn ${done.copy ? 'btn-done' : ''}`}
                   onClick={async (e) => {
                     e.currentTarget.blur();
-                    if (await copyText(result.text)) flagDone('copy');
+                    if (await copyText(shown.text)) flagDone('copy');
                     else toast("couldn't copy — select the text and copy it", { warn: true });
                   }}
                 >
@@ -294,8 +304,8 @@ function ScanQr({ active }) {
               </div>
             </>
           )}
-        </div>
-      )}
+        </AutoHeight>
+      </Collapse>
     </div>
   );
 }

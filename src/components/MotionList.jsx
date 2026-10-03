@@ -1,5 +1,6 @@
 import React, { useLayoutEffect, useReducer, useRef } from 'react';
-import { MOTION, POP_HIDDEN, POP_SHOWN, animateHeightFrom, canAnimate } from '../motion';
+import { MOTION, POP_HIDDEN, POP_SHOWN, canAnimate } from '../motion';
+import AutoHeight from './AutoHeight';
 
 // Ported from instagram-follower-checker's list 3 row engine, on the same
 // 450ms curve:
@@ -8,7 +9,7 @@ import { MOTION, POP_HIDDEN, POP_SHOWN, animateHeightFrom, canAnimate } from '..
 //    a row leaving does the same in reverse.
 //  - 'grid': items pop in/out like the app's pop-ups (14px down, 95%).
 // Either way the items around it slide from where they were drawn to their
-// new places (FLIP), and the list's height eases to its new size. Changes
+// new places (FLIP), and the list's height eases to its new size (AutoHeight). Changes
 // mid-slide carry on from where everything is drawn right now.
 export default function MotionList({ items, getKey, renderItem, variant = 'rows', className = '', itemClassName = '' }) {
   const containerRef = useRef(null);
@@ -16,7 +17,6 @@ export default function MotionList({ items, getKey, renderItem, variant = 'rows'
   const positions = useRef(new Map()); // key -> { top, left, width, height } (layout, last commit)
   const prevKeys = useRef(null);
   const prevItems = useRef(new Map()); // key -> item (last commit)
-  const prevHeight = useRef(0);
   const exiting = useRef(new Map());   // key -> { item, pos, index }
   const [, rerender] = useReducer(x => x + 1, 0);
   // The effect reads these through a ref: it should run when the items change, not on every render
@@ -80,16 +80,12 @@ export default function MotionList({ items, getKey, renderItem, variant = 'rows'
       ], MOTION);
     });
 
-    // The list's own height eases to its new size
-    if (animate) animateHeightFrom(container, prevHeight.current);
-
     positions.current = new Map(keys.map(key => {
       const el = nodes.current.get(key);
       return [key, el ? measure(el) : null];
     }).filter(([, p]) => p));
     prevKeys.current = keys;
     prevItems.current = new Map(items.map(item => [getKey(item), item]));
-    prevHeight.current = container.offsetHeight;
 
     if (exiting.current.size) rerender();
   }, [items]);
@@ -99,9 +95,7 @@ export default function MotionList({ items, getKey, renderItem, variant = 'rows'
     const container = containerRef.current;
     if (typeof ResizeObserver !== 'function') return;
     const ro = new ResizeObserver(() => {
-      if (container._heightAnim) return; // mid-resize: the next commit measures
       nodes.current.forEach((el, key) => positions.current.set(key, measure(el)));
-      prevHeight.current = container.offsetHeight;
     });
     ro.observe(container);
     return () => ro.disconnect();
@@ -134,35 +128,37 @@ export default function MotionList({ items, getKey, renderItem, variant = 'rows'
     });
 
   return (
-    <div ref={containerRef} className={`motion-list motion-list-${variant} ${className}`}>
-      {rendered.map(({ key, item, leaving }) => (
-        <div
-          key={key}
-          className={`motion-item ${itemClassName} ${leaving ? 'motion-item-leaving' : ''}`}
-          aria-hidden={leaving ? true : undefined}
-          style={leaving ? {
-            position: 'absolute',
-            top: `${leaving.pos.top}px`,
-            left: `${leaving.pos.left}px`,
-            width: `${leaving.pos.width}px`,
-            height: `${leaving.pos.height}px`,
-            margin: 0,
-            pointerEvents: 'none',
-            zIndex: 0,
-          } : undefined}
-          ref={el => {
-            if (leaving) {
-              playExit(leaving.key, el);
-            } else if (el) {
-              nodes.current.set(key, el);
-            } else {
-              nodes.current.delete(key);
-            }
-          }}
-        >
-          {renderItem(item, { leaving: !!leaving })}
-        </div>
-      ))}
-    </div>
+    <AutoHeight className="motion-list-box">
+      <div ref={containerRef} className={`motion-list motion-list-${variant} ${className}`}>
+        {rendered.map(({ key, item, leaving }) => (
+          <div
+            key={key}
+            className={`motion-item ${itemClassName} ${leaving ? 'motion-item-leaving' : ''}`}
+            aria-hidden={leaving ? true : undefined}
+            style={leaving ? {
+              position: 'absolute',
+              top: `${leaving.pos.top}px`,
+              left: `${leaving.pos.left}px`,
+              width: `${leaving.pos.width}px`,
+              height: `${leaving.pos.height}px`,
+              margin: 0,
+              pointerEvents: 'none',
+              zIndex: 0,
+            } : undefined}
+            ref={el => {
+              if (leaving) {
+                playExit(leaving.key, el);
+              } else if (el) {
+                nodes.current.set(key, el);
+              } else {
+                nodes.current.delete(key);
+              }
+            }}
+          >
+            {renderItem(item, { leaving: !!leaving })}
+          </div>
+        ))}
+      </div>
+    </AutoHeight>
   );
 }

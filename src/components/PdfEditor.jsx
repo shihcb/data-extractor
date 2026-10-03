@@ -5,6 +5,7 @@ import { baseName, canvasToBlob, downloadBlob, isPdfFile, useDoneFlags, usePaste
 import { fadeIn } from '../motion';
 import { useToast } from '../toastContext';
 import Count from './Count';
+import AutoHeight from './AutoHeight';
 
 // Changing text in a PDF the reliable way (what browser PDF editors do):
 // the old words are covered with a patch the colour of the paper behind
@@ -290,82 +291,84 @@ export default function PdfEditor({ active }) {
 
   return (
     <div className="tool">
-      {!doc ? (
-        <div
-          className={`tool-box drop-box drop-box-empty ${dragging ? 'dragging' : ''}`}
-          onClick={() => inputRef.current?.click()}
-          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-          onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false); }}
-          onDrop={(e) => { e.preventDefault(); setDragging(false); openFile(e.dataTransfer?.files || []); }}
-          role="button"
-          tabIndex={0}
-          aria-label="Open a PDF"
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inputRef.current?.click(); } }}
-        >
-          {loading ? <span className="spinner" aria-label="loading" /> : <span className="tool-hint">drop, paste or click to open a PDF</span>}
-        </div>
-      ) : (
-        <div ref={pagesRef} className="pdf-pages">
-          {doc.pages.map(p => (
-            <div key={p.num} className="tool-box pdf-page" style={{ aspectRatio: `${p.width} / ${p.height}` }}>
-              <img
-                ref={el => { imgRefs.current[p.num - 1] = el; }}
-                src={p.url}
-                alt={`Page ${p.num}`}
-                className="pdf-page-img"
-                draggable={false}
-              />
-              <div className="pdf-text-layer">
-                {p.items.map(item => {
-                  const edit = edits[item.id];
-                  const pos = {
-                    left: `${item.box.left}%`,
-                    top: `${item.box.top}%`,
-                    minWidth: `${item.box.width}%`,
-                    height: `${item.box.height}%`,
-                    '--fs': item.box.fontSize,
-                    ...cssFont(item.font),
-                  };
-                  if (editing === item.id && draftColors) {
-                    const colors = draftColors;
+      <AutoHeight className="editor-area">
+        {!doc ? (
+          <div
+            className={`tool-box drop-box drop-box-empty ${dragging ? 'dragging' : ''}`}
+            onClick={() => inputRef.current?.click()}
+            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false); }}
+            onDrop={(e) => { e.preventDefault(); setDragging(false); openFile(e.dataTransfer?.files || []); }}
+            role="button"
+            tabIndex={0}
+            aria-label="Open a PDF"
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inputRef.current?.click(); } }}
+          >
+            {loading ? <span className="spinner" aria-label="loading" /> : <span className="tool-hint">drop, paste or click to open a PDF</span>}
+          </div>
+        ) : (
+          <div ref={pagesRef} className="pdf-pages">
+            {doc.pages.map(p => (
+              <div key={p.num} className="tool-box pdf-page" style={{ aspectRatio: `${p.width} / ${p.height}` }}>
+                <img
+                  ref={el => { imgRefs.current[p.num - 1] = el; }}
+                  src={p.url}
+                  alt={`Page ${p.num}`}
+                  className="pdf-page-img"
+                  draggable={false}
+                />
+                <div className="pdf-text-layer">
+                  {p.items.map(item => {
+                    const edit = edits[item.id];
+                    const pos = {
+                      left: `${item.box.left}%`,
+                      top: `${item.box.top}%`,
+                      minWidth: `${item.box.width}%`,
+                      height: `${item.box.height}%`,
+                      '--fs': item.box.fontSize,
+                      ...cssFont(item.font),
+                    };
+                    if (editing === item.id && draftColors) {
+                      const colors = draftColors;
+                      return (
+                        <input
+                          key={item.id}
+                          className="pdf-text-input"
+                          style={{ ...pos, background: rgbCss(colors.bg), color: rgbCss(colors.ink), width: `${Math.max(draft.length, 1) * 0.62}em` }}
+                          value={draft}
+                          autoFocus
+                          onChange={(e) => setDraft(e.target.value)}
+                          onBlur={() => commit(item)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') e.currentTarget.blur();
+                            if (e.key === 'Escape') {
+                              cancelled.current = true;
+                              setEditing(null);
+                            }
+                          }}
+                          aria-label="Change text"
+                          spellCheck={false}
+                        />
+                      );
+                    }
                     return (
-                      <input
+                      <button
                         key={item.id}
-                        className="pdf-text-input"
-                        style={{ ...pos, background: rgbCss(colors.bg), color: rgbCss(colors.ink), width: `${Math.max(draft.length, 1) * 0.62}em` }}
-                        value={draft}
-                        autoFocus
-                        onChange={(e) => setDraft(e.target.value)}
-                        onBlur={() => commit(item)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') e.currentTarget.blur();
-                          if (e.key === 'Escape') {
-                            cancelled.current = true;
-                            setEditing(null);
-                          }
-                        }}
-                        aria-label="Change text"
-                        spellCheck={false}
-                      />
+                        className={`pdf-text-item ${edit ? 'edited' : ''}`}
+                        style={edit ? { ...pos, background: rgbCss(edit.bg), color: rgbCss(edit.ink) } : pos}
+                        onClick={() => startEdit(item)}
+                        title={edit ? `was: ${item.str}` : 'Change this text'}
+                      >
+                        {edit ? edit.text : ''}
+                      </button>
                     );
-                  }
-                  return (
-                    <button
-                      key={item.id}
-                      className={`pdf-text-item ${edit ? 'edited' : ''}`}
-                      style={edit ? { ...pos, background: rgbCss(edit.bg), color: rgbCss(edit.ink) } : pos}
-                      onClick={() => startEdit(item)}
-                      title={edit ? `was: ${item.str}` : 'Change this text'}
-                    >
-                      {edit ? edit.text : ''}
-                    </button>
-                  );
-                })}
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </AutoHeight>
       <input
         ref={inputRef}
         type="file"

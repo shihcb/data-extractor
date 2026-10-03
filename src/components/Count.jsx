@@ -1,12 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { MOTION_MS, motionEase, prefersReducedMotion } from '../motion';
+import { MOTION, MOTION_MS, canAnimate, motionEase, prefersReducedMotion } from '../motion';
 
-// A number that counts to its new value on the app's curve (the source
-// repo's setCountBadge). A change mid-count carries on from what's shown.
+// A number that counts to its new value on the app's curve, while its
+// width eases from the old number's to the new one's so the words beside
+// it slide rather than jump (the source repo's setCountBadge). A change
+// mid-count carries on from what's shown.
 export default function Count({ value, format = (n) => n.toLocaleString() }) {
   const [shown, setShown] = useState(value);
   const shownRef = useRef(value);
+  const boxRef = useRef(null);
   const raf = useRef(null);
+  const widthAnim = useRef(null);
+  const fmt = useRef(format);
+  fmt.current = format;
 
   useEffect(() => {
     cancelAnimationFrame(raf.current);
@@ -14,8 +20,26 @@ export default function Count({ value, format = (n) => n.toLocaleString() }) {
     if (from === value || prefersReducedMotion()) {
       shownRef.current = value;
       setShown(value);
-      return;
+      return undefined;
     }
+
+    // Width: from what's drawn now to the final number's
+    const box = boxRef.current;
+    if (box && canAnimate(box)) {
+      const startW = box.getBoundingClientRect().width;
+      const probe = document.createElement('span');
+      probe.className = box.className;
+      probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;';
+      probe.textContent = fmt.current(value);
+      box.parentNode.appendChild(probe);
+      const endW = probe.getBoundingClientRect().width;
+      probe.remove();
+      widthAnim.current?.cancel();
+      if (Math.abs(endW - startW) > 0.5) {
+        widthAnim.current = box.animate([{ width: `${startW}px` }, { width: `${endW}px` }], MOTION);
+      }
+    }
+
     const t0 = performance.now();
     const step = (now) => {
       const t = Math.min(1, (now - t0) / MOTION_MS);
@@ -28,5 +52,7 @@ export default function Count({ value, format = (n) => n.toLocaleString() }) {
     return () => cancelAnimationFrame(raf.current);
   }, [value]);
 
-  return <span className="count-num">{format(shown)}</span>;
+  useEffect(() => () => widthAnim.current?.cancel(), []);
+
+  return <span ref={boxRef} className="count-num">{format(shown)}</span>;
 }

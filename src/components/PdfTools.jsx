@@ -6,6 +6,7 @@ import { baseName, canvasToBlob, downloadBlob, isPdfFile, uniqueNamer, useDoneFl
 import { MOTION_MS } from '../motion';
 import { useToast } from '../toastContext';
 import MotionList from './MotionList';
+import AutoHeight from './AutoHeight';
 import Count from './Count';
 
 const THUMB_CSS_WIDTH = 160;
@@ -208,9 +209,11 @@ export default function PdfTools({ active }) {
 
   return (
     <div className="tool">
-      <div
-        className={`tool-box drop-box pdf-drop ${pages.length ? 'pdf-drop-full' : 'drop-box-empty'} ${dragging ? 'dragging' : ''}`}
-        onClick={(e) => { if (e.target === e.currentTarget || !pages.length) inputRef.current?.click(); }}
+      <AutoHeight
+        className={`tool-box pdf-drop ${pages.length ? 'has-pages' : ''} ${dragging ? 'dragging' : ''}`}
+        innerClassName={`pdf-drop-inner ${pages.length ? 'full' : 'drop-box-empty'}`}
+        // Empty: anywhere opens the picker; with pages, only the space around them
+        onClick={(e) => { if (!pages.length || e.target === e.currentTarget || e.target.classList.contains('pdf-drop-inner')) inputRef.current?.click(); }}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false); }}
         onDrop={(e) => { e.preventDefault(); setDragging(false); addFiles(e.dataTransfer?.files || []); }}
@@ -258,7 +261,7 @@ export default function PdfTools({ active }) {
           hidden
           onChange={(e) => { addFiles(e.target.files || []); e.target.value = ''; }}
         />
-      </div>
+      </AutoHeight>
 
       <p className="tool-meta" aria-live="polite">
         {loading ? `loading ${loading}` : pages.length ? (

@@ -4,6 +4,8 @@ import { diffChars, diffLines, diffWordsWithSpace } from 'diff';
 import { fadeIn } from '../motion';
 import TabSwitcher from './TabSwitcher';
 import Count from './Count';
+import AutoHeight from './AutoHeight';
+import Collapse from './Collapse';
 
 const MODES = [
   { key: 'lines', label: 'lines' },
@@ -70,6 +72,13 @@ export default function TextDiff() {
   const same = result && !empty && !result.changed;
   const status = empty ? 'empty' : !result ? 'slow' : same ? 'same' : 'diff';
 
+  const hasOutput = !!result && !empty;
+  const [lastView, setLastView] = useState(null);
+  useEffect(() => {
+    if (hasOutput) setLastView({ result, mode });
+  }, [hasOutput, result, mode]);
+  const view = hasOutput ? { result, mode } : lastView;
+
   // The status text fades to its new words
   const prevStatus = useRef(status);
   useEffect(() => {
@@ -129,17 +138,22 @@ export default function TextDiff() {
         </span>
       </p>
 
-      {result && !empty && (
-        <div className={`tool-box diff-output selectable ${mode === 'lines' ? 'diff-output-lines' : ''}`}>
-          {mode === 'lines'
-            ? <LineRows parts={result.parts} />
-            : result.parts.map((p, i) => (
+      {/* Grows in from nothing, eases to each new size, and keeps showing
+          the last comparison while it closes */}
+      <Collapse open={hasOutput} className="diff-collapse">
+        <AutoHeight
+          className="tool-box diff-output-box"
+          innerClassName={`diff-output selectable ${view?.mode === 'lines' ? 'diff-output-lines' : ''}`}
+        >
+          {!view ? null : view.mode === 'lines'
+            ? <LineRows parts={view.result.parts} />
+            : view.result.parts.map((p, i) => (
               p.added ? <ins key={i} className="diff-ins">{p.value}</ins>
                 : p.removed ? <del key={i} className="diff-del">{p.value}</del>
                 : <span key={i}>{p.value}</span>
             ))}
-        </div>
-      )}
+        </AutoHeight>
+      </Collapse>
     </div>
   );
 }

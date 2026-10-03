@@ -1,48 +1,46 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { MOTION_MS } from '../motion';
 import { ToastContext } from '../toastContext';
 
-// A small message at the bottom of the screen (the source repo's
-// feature-toast): comes in from 14px down at 95% scale, leaves the same way.
-const SHOW_MS = 2200;
+// A small message at the bottom of the screen, as instagram-follower-checker
+// does it: one toast that comes in from 14px down at 95% scale, stays 5
+// seconds, and leaves the same way. A new message while it's up just
+// changes the words (and restarts the 5 seconds).
+const SHOW_MS = 5000;
 
 export function ToastProvider({ children }) {
-  // { id, text, warn } — the one on screen (a new one replaces it)
-  const [toast, setToast] = useState(null);
+  const [toast, setToast] = useState({ text: '', warn: false });
   const [visible, setVisible] = useState(false);
-  const timers = useRef([]);
-
-  const clearTimers = () => {
-    timers.current.forEach(clearTimeout);
-    timers.current = [];
-  };
+  const hideTimer = useRef(null);
+  const showFrame = useRef(null);
 
   const show = useCallback((text, { warn = false } = {}) => {
-    clearTimers();
-    setToast({ id: Date.now() + Math.random(), text, warn });
-    setVisible(false);
-    // Drawn hidden first, then shown: showing it in the same frame it's
-    // added lets Safari skip straight to the end of the transition.
-    timers.current.push(setTimeout(() => setVisible(true), 20));
-    timers.current.push(setTimeout(() => setVisible(false), SHOW_MS));
-    timers.current.push(setTimeout(() => setToast(null), SHOW_MS + MOTION_MS + 50));
+    clearTimeout(hideTimer.current);
+    cancelAnimationFrame(showFrame.current);
+    setToast({ text, warn });
+    // Its hidden state is drawn first, then it's shown: showing it in the
+    // same frame lets Safari skip straight to the end
+    showFrame.current = requestAnimationFrame(() => {
+      showFrame.current = requestAnimationFrame(() => setVisible(true));
+    });
+    hideTimer.current = setTimeout(() => setVisible(false), SHOW_MS);
   }, []);
 
-  useEffect(() => clearTimers, []);
+  useEffect(() => () => {
+    clearTimeout(hideTimer.current);
+    cancelAnimationFrame(showFrame.current);
+  }, []);
 
   return (
     <ToastContext.Provider value={show}>
       {children}
-      {toast && (
-        <div
-          key={toast.id}
-          role="status"
-          aria-live="polite"
-          className={`feature-toast ${toast.warn ? 'warn' : ''} ${visible ? 'show' : ''}`}
-        >
-          <span className="feature-toast-text">{toast.text}</span>
-        </div>
-      )}
+      <div
+        role="status"
+        aria-live="polite"
+        className={`feature-toast ${toast.warn ? 'warn' : ''} ${visible ? 'show' : ''}`}
+        aria-hidden={!visible}
+      >
+        <span className="feature-toast-text">{toast.text}</span>
+      </div>
     </ToastContext.Provider>
   );
 }

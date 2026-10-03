@@ -432,6 +432,8 @@ button:disabled {
 }
 
 .count-num {
+  display: inline-block;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
@@ -591,6 +593,24 @@ button:disabled {
 @keyframes fadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
+}
+
+/* ── Auto height boxes ─────────────────────────────────────────── */
+
+/* The content inside an AutoHeight box; flow-root keeps children's margins
+   inside it, so its measured height is the real one */
+.auto-height-inner {
+  display: flow-root;
+}
+
+.motion-list-box,
+.motion-collapse,
+.editor-area {
+  width: 100%;
+}
+
+.tool-box.dragging {
+  border-color: var(--border-focus);
 }
 
 /* ── Motion list (the row engine) ─────────────────────────────── */
@@ -852,13 +872,29 @@ kbd {
 /* ── PDF tools ────────────────────────────────────────────────── */
 
 .pdf-drop {
-  flex-direction: column;
+  width: 100%;
+  cursor: pointer;
 }
 
-.pdf-drop.pdf-drop-full {
+.pdf-drop.has-pages {
+  cursor: default;
+}
+
+.pdf-drop.dragging {
+  border-color: var(--border-focus);
+}
+
+.pdf-drop-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 18px 24px;
+}
+
+.pdf-drop-inner.full {
   display: block;
   padding: 16px;
-  cursor: default;
 }
 
 .page-card {
