@@ -75,7 +75,7 @@ export default function App() {
     <ToastProvider>
       <div className="app-shell">
         <div className="app-container">
-          <div className="tab-switcher-row">
+          <div className="tab-switcher-row page-tabs">
             <TabSwitcher tabs={TABS} active={activeTab} onChange={setActiveTab} />
           </div>
           <TabPanes tabs={TABS} active={activeTab}>
