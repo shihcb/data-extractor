@@ -39,9 +39,11 @@ const ASSET_BASE = `${import.meta.env.BASE_URL}pdfjs/`;
 
 // Opens a PDF for reading/drawing. `data` is an ArrayBuffer; pdf.js takes
 // ownership of what it's given, so it gets its own copy.
-export async function openPdf(data, password) {
+// `options`: more pdf.js options (the editor keeps fonts' details).
+export async function openPdf(data, password, options = {}) {
   const pdfjs = await loadPdfjs();
   const task = pdfjs.getDocument({
+    ...options,
     data: new Uint8Array(data.slice(0)),
     password,
     cMapUrl: `${ASSET_BASE}cmaps/`,

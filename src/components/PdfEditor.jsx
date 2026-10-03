@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Download, FileUp, Redo2, Undo2, ZoomIn, ZoomOut } from 'lucide-react';
 import { closePdf, loadPdfLib, openPdf, renderPage, isPasswordError } from '../pdf';
-import { baseName, canvasToBlob, downloadBlob, isPdfFile, useDoneFlags, usePastedFiles } from '../utils';
+import { baseName, canvasToBlob, downloadBlob, isPdfFile, loadLibrary, useDoneFlags, usePastedFiles } from '../utils';
 import { MOTION_MS, motionEase, prefersReducedMotion } from '../motion';
 import { useToast } from '../toastContext';
+import { cssFont, cssWidthEm, fontInfoOf, originalGlyphs, squeezeFor, standardFontKey } from '../pdfFonts';
 import Count from './Count';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
@@ -22,35 +23,11 @@ const clampZoom = (z) => Math.min(ZOOM_MAX, Math.max(1, z));
 
 let nextDocId = 1;
 
-// Which standard PDF font is closest to the original
-function pickFont(realName = '', family = '') {
-  const n = `${realName} ${family}`.toLowerCase();
-  const bold = /bold|black|heavy|semibold|demi/.test(n);
-  const italic = /italic|oblique/.test(n);
-  let base = 'Helvetica';
-  if (/mono|courier|consol|menlo/.test(n)) base = 'Courier';
-  else if (/serif|times|georgia|garamond|roman|cambria|minion|book/.test(n) && !/sans/.test(n)) base = 'Times';
-  return { base, bold, italic };
-}
-
-function standardFontKey({ base, bold, italic }) {
-  if (base === 'Times') return bold && italic ? 'TimesRomanBoldItalic' : bold ? 'TimesRomanBold' : italic ? 'TimesRomanItalic' : 'TimesRoman';
-  const suffix = bold && italic ? 'BoldOblique' : bold ? 'Bold' : italic ? 'Oblique' : '';
-  return `${base}${suffix}`;
-}
-
-const cssFont = ({ base, bold, italic }) => ({
-  fontFamily: base === 'Times' ? '"Times New Roman", Times, serif' : base === 'Courier' ? '"Courier New", Courier, monospace' : 'Helvetica, Arial, sans-serif',
-  fontWeight: bold ? 700 : 400,
-  fontStyle: italic ? 'italic' : 'normal',
-});
-
 // Where a font's baseline sits in a line exactly one font size tall, as a
 // share of the font size (measured once per font): the text on screen is
 // placed so its baseline lands on the PDF's own, not centred in its box.
 const baselines = new Map();
-function baselineOf(font) {
-  const css = cssFont(font);
+function baselineOf(css) {
   const key = `${css.fontFamily}|${css.fontWeight}|${css.fontStyle}`;
   if (baselines.has(key)) return baselines.get(key);
   const probe = document.createElement('div');
@@ -136,7 +113,7 @@ function encodable(font, text) {
 // where it is in the PDF (for writing) and where it's drawn (for showing,
 // in % of the drawn page, with its angle on screen). Only text written top
 // to bottom is left out: the standard fonts can't write it.
-function itemsOf(page, content, viewport, n) {
+function itemsOf(page, content, viewport, n, fonts) {
   const items = [];
   content.items.forEach((item, i) => {
     if (!item.str || !item.str.trim() || item.dir === 'ttb') return;
@@ -160,12 +137,17 @@ function itemsOf(page, content, viewport, n) {
     const br = at(width, descent * size);
     const xs = [tl[0], tr[0], bl[0], br[0]];
     const ys = [tl[1], tr[1], bl[1], br[1]];
-    let realName = '';
-    try {
-      if (page.commonObjs.has(item.fontName)) realName = page.commonObjs.get(item.fontName)?.name || '';
-    } catch {
-      realName = '';
+    // The font as pdf.js read it (once per font): its own file and letters
+    if (!(item.fontName in fonts)) {
+      let font = null;
+      try {
+        if (page.commonObjs.has(item.fontName)) font = page.commonObjs.get(item.fontName);
+      } catch {
+        font = null;
+      }
+      fonts[item.fontName] = fontInfoOf(font, style.fontFamily);
     }
+    const info = fonts[item.fontName];
     items.push({
       id: `${n}-${i}`,
       page: n - 1,
@@ -188,7 +170,8 @@ function itemsOf(page, content, viewport, n) {
         },
         fontSize: ((size * viewport.scale) / viewport.width) * 100, // in cqw
       },
-      font: pickFont(realName, style.fontFamily),
+      fontKey: item.fontName,
+      font: info?.style || { base: 'Helvetica', bold: false, italic: false },
     });
   });
   return items;
@@ -384,7 +367,9 @@ export default function PdfEditor({ active }) {
       } catch (err) {
         throw new Error(/encrypt/i.test(err?.message || '') ? 'password' : 'broken');
       }
-      view = await openPdf(bytes);
+      // Keeping each font's file and letters, to write new words in it
+      view = await openPdf(bytes, undefined, { fontExtraProperties: true });
+      const fonts = {};
       const pages = [];
       for (let n = 1; n <= view.numPages; n++) {
         const page = await view.getPage(n);
@@ -393,7 +378,7 @@ export default function PdfEditor({ active }) {
         const px = canvas.width;
         canvas.width = canvas.height = 0;
         const content = await page.getTextContent();
-        const items = itemsOf(page, content, viewport, n);
+        const items = itemsOf(page, content, viewport, n, fonts);
         page.cleanup();
         pages.push({ num: n, url, px, items, width: viewport.width, height: viewport.height });
       }
@@ -409,7 +394,7 @@ export default function PdfEditor({ active }) {
       view = null;
       setDoc(prev => {
         if (prev) releaseLater(prev);
-        return { id, name: file.name, bytes, pages };
+        return { id, name: file.name, bytes, pages, fonts };
       });
       resetEdits();
       setEditing(null);
@@ -519,12 +504,30 @@ export default function PdfEditor({ active }) {
     if (!doc || busy) return;
     setBusy(true);
     try {
-      const { PDFDocument, StandardFonts, rgb, degrees } = await loadPdfLib();
+      const lib = await loadPdfLib();
+      const { PDFDocument, StandardFonts, rgb, degrees, pushGraphicsState, popGraphicsState, setCharacterSqueeze } = lib;
       const pdf = await PDFDocument.load(doc.bytes);
+      // Standard fonts, and the PDF's own fonts (written with fontkit), once each
       const fonts = new Map();
       const getFont = async (key) => {
         if (!fonts.has(key)) fonts.set(key, await pdf.embedFont(StandardFonts[key]));
         return fonts.get(key);
+      };
+      let fontkit = null;
+      const originals = new Map();
+      const getOriginal = async (key) => {
+        if (!originals.has(key)) {
+          let font = null;
+          try {
+            fontkit = fontkit || (await loadLibrary(() => import('@pdf-lib/fontkit'))).default;
+            pdf.registerFontkit(fontkit);
+            font = await pdf.embedFont(doc.fonts[key].data, { subset: false });
+          } catch {
+            font = null;
+          }
+          originals.set(key, font);
+        }
+        return originals.get(key);
       };
       const color = (c) => rgb(c[0] / 255, c[1] / 255, c[2] / 255);
       let lost = false;
@@ -533,14 +536,49 @@ export default function PdfEditor({ active }) {
         const edit = edits[item.id];
         if (!edit) continue;
         const page = pdf.getPage(item.page);
-        const font = await getFont(standardFontKey(item.font));
-        const safe = encodable(font, edit.text);
-        lost = lost || safe.lost;
         const { x, y, size, width, ascent, descent, angle = 0 } = item.pdf;
-        const newWidth = safe.text ? font.widthOfTextAtSize(safe.text, size) : 0;
-        const pad = size * PAD;
         const cos = Math.cos(angle);
         const sin = Math.sin(angle);
+        const turn = degrees((angle * 180) / Math.PI);
+        const at = (along) => ({ x: x + along * cos, y: y + along * sin });
+
+        // Best: the PDF's own font, when it has every letter
+        const info = doc.fonts?.[item.fontKey];
+        const glyphs = originalGlyphs(info, edit.text);
+        let original = glyphs ? await getOriginal(item.fontKey) : null;
+        const kit = original?.embedder?.font;
+        if (original && kit?.hasGlyphForCodePoint && glyphs.some(g => g != null && !kit.hasGlyphForCodePoint(g))) original = null;
+
+        let runs = []; // [{ text, along }] to write, and how wide it all is
+        let newWidth = 0;
+        let font;
+        let squeeze = 1;
+        if (original) {
+          // Word by word, in the font's own codes; the spaces are the PDF's own width
+          font = original;
+          const space = (info.spaceWidth || 0.278) * size;
+          let word = '';
+          const flush = () => {
+            if (!word) return;
+            runs.push({ text: word, along: newWidth });
+            newWidth += original.widthOfTextAtSize(word, size);
+            word = '';
+          };
+          glyphs.forEach((g) => {
+            if (g == null) { flush(); newWidth += space; } else word += String.fromCodePoint(g);
+          });
+          flush();
+        } else {
+          // Else the closest standard font, squeezed to the original's room
+          font = await getFont(standardFontKey(item.font));
+          const safe = encodable(font, edit.text);
+          lost = lost || safe.lost;
+          squeeze = squeezeFor(width, font.widthOfTextAtSize(item.str, size));
+          if (safe.text) runs = [{ text: safe.text, along: 0 }];
+          newWidth = safe.text ? font.widthOfTextAtSize(safe.text, size) * squeeze : 0;
+        }
+
+        const pad = size * PAD;
         // The patch's corner: back along the baseline and down from it, turned with the text
         const along = -pad;
         const up = descent * size - pad;
@@ -549,12 +587,31 @@ export default function PdfEditor({ active }) {
           y: y + along * sin + up * cos,
           width: Math.max(width, newWidth) + pad * 2,
           height: (ascent - descent) * size + pad * 2,
-          rotate: degrees((angle * 180) / Math.PI),
+          rotate: turn,
           color: color(edit.bg),
           borderWidth: 0,
         });
-        if (safe.text) page.drawText(safe.text, { x, y, size, font, color: color(edit.ink), rotate: degrees((angle * 180) / Math.PI) });
+        if (squeeze !== 1) page.pushOperators(pushGraphicsState(), setCharacterSqueeze(squeeze * 100));
+        runs.forEach((r) => page.drawText(r.text, { ...at(r.along), size, font, color: color(edit.ink), rotate: turn }));
+        if (squeeze !== 1) page.pushOperators(popGraphicsState());
       }
+      // Copying or searching the new words gives the real letters, not the
+      // font's own codes they were written with (the map a PDF reader uses
+      // for that is built from these when the file is saved)
+      originals.forEach((font, key) => {
+        const glyphs = font?.embedder?.glyphCache?.access?.();
+        if (!glyphs) return;
+        const info = doc.fonts[key];
+        const letterOf = new Map();
+        info.codeOf.forEach((code, letter) => {
+          const fc = info.fontChar[code];
+          if (typeof fc === 'number') letterOf.set(fc, letter);
+        });
+        glyphs.forEach((g) => {
+          const real = g?.codePoints?.map(cp => letterOf.get(cp));
+          if (real?.length && real.every(Boolean)) g.codePoints = [...real.join('')].map(c => c.codePointAt(0));
+        });
+      });
       const out = await pdf.save();
       downloadBlob(new Blob([out], { type: 'application/pdf' }), `${baseName(doc.name)}-edited.pdf`);
       flagDone('save');
@@ -564,6 +621,23 @@ export default function PdfEditor({ active }) {
     } finally {
       setBusy(false);
     }
+  };
+
+  // How words are shown: in the PDF's own font when it has every letter
+  // (written with that font's own codes), else in the closest standard font
+  // squeezed or stretched to take the original's room
+  const lookOf = (item, text, typing = false) => {
+    const stand = cssFont(item.font);
+    const info = doc?.fonts?.[item.fontKey];
+    const glyphs = typing ? null : originalGlyphs(info, text);
+    if (glyphs && info.loadedName) {
+      return {
+        css: { fontFamily: `"${info.loadedName}", ${stand.fontFamily}`, fontWeight: 400, fontStyle: 'normal' },
+        text: glyphs.map(g => (g == null ? ' ' : String.fromCodePoint(g))).join(''),
+        squeeze: 1,
+      };
+    }
+    return { css: stand, text, squeeze: squeezeFor(item.pdf.width / item.pdf.size, cssWidthEm(stand, item.str)) };
   };
 
   const editCount = Object.keys(edits).length;
@@ -619,13 +693,15 @@ export default function PdfEditor({ active }) {
                 <div className="pdf-text-layer">
                   {p.items.map(item => {
                     const edit = edits[item.id];
+                    const typing = editing === item.id && draftColors;
+                    const look = lookOf(item, typing ? draft : (edit ? edit.text : item.str), !!typing);
                     // The box runs from the PDF font's ascent to its descent; the
                     // text sits with its baseline on the PDF's (ascent below the
                     // top), however the stand-in font is proportioned
                     // (the text line is exactly 1em tall, moved down by padding
                     // or up by a shift)
                     const { ascent, descent } = item.pdf;
-                    const shift = ascent - baselineOf(item.font);
+                    const shift = ascent - baselineOf(look.css);
                     const padTop = Math.max(0, shift);
                     const padBottom = Math.max(0, ascent - descent - shift - 1);
                     const pos = {
@@ -638,10 +714,11 @@ export default function PdfEditor({ active }) {
                       '--fs': item.box.fontSize,
                       // Turned with the text (about its top-left corner)
                       // (the shift up goes along the text's own up, so after the turn)
-                      transform: `${item.box.turn ? `rotate(${item.box.turn}deg) ` : ''}translateY(${Math.min(0, shift)}em)`,
-                      ...cssFont(item.font),
+                      // (and squeezed to the original's room, when it's a stand-in)
+                      transform: `${item.box.turn ? `rotate(${item.box.turn}deg) ` : ''}translateY(${Math.min(0, shift)}em)${(edit || typing) && look.squeeze !== 1 ? ` scaleX(${look.squeeze})` : ''}`,
+                      ...look.css,
                     };
-                    if (editing === item.id && draftColors) {
+                    if (typing) {
                       const colors = draftColors;
                       return (
                         <input
@@ -672,7 +749,7 @@ export default function PdfEditor({ active }) {
                         onClick={() => startEdit(item)}
                         title={edit ? `was: ${item.str}` : 'Change this text'}
                       >
-                        {edit ? edit.text : ''}
+                        {edit ? look.text : ''}
                       </button>
                     );
                   })}

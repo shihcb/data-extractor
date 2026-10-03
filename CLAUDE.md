@@ -45,7 +45,10 @@ writing is left out) and writes edits back turned the same way. Its box zooms
 (buttons ease on the shared curve; pinch / ctrl + scroll follow the fingers)
 around the spot being zoomed, scrolling both ways inside the box; pages are
 redrawn sharper once a zoom settles. While zooming, easing boxes inside don't
-ease (`_heightMotion` on the scroller).
+ease (`_heightMotion` on the scroller). New words use the PDF's own font when
+it has every letter (pdf.js opened with `fontExtraProperties`; saved with
+fontkit, mapped back to real letters for copy/search), else the closest
+standard font squeezed to the original's width (`src/pdfFonts.js`).
 
 Buttons are always `--button-gap` (6px, the instagram repo's) apart: button
 rows, the settings row, the bulk bar, card buttons, the zoom controls.
