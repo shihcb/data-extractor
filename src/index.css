@@ -796,44 +796,6 @@ kbd {
 
 /* ── Image converter ──────────────────────────────────────────── */
 
-/* An image card's name, size and x, under its picture */
-.image-card-foot {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.image-card-foot .btn {
-  flex-shrink: 0;
-  padding: 4px 8px;
-  border-radius: 7px;
-}
-
-.file-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  flex: 1;
-}
-
-.file-name {
-  font-size: 0.78rem;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.file-meta {
-  font-size: 0.7rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
-
 .options-collapse {
   width: 100%;
 }
@@ -943,11 +905,6 @@ kbd {
   }
 }
 
-/* The image converter's settings take more room below its box */
-.image-drop {
-  --box-room: 380px;
-}
-
 /* Empty, the hint sits in the middle of the whole box */
 .pdf-drop > .pdf-drop-inner.drop-box-empty {
   min-height: 100%;
@@ -1034,6 +991,16 @@ kbd {
   font-weight: 600;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
+}
+
+.page-label > span:not(.page-src) {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* An image card's name: on the left like a page's number, cut short */
+.page-label > .page-name {
+  font-weight: 600;
 }
 
 .page-src {

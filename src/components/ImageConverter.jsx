@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Copy, Download, ImageUp, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, Download, ImageUp, X } from 'lucide-react';
 import { zipSync } from 'fflate';
 import { IMAGE_FORMATS, encodeImage, estimateImage, jpegsToPdf, loadImage, makeThumb, targetSize } from '../imageConvert';
 import { baseName, copyImageBlob, downloadBlob, formatBytes, isImageFile, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
@@ -12,6 +12,7 @@ import Count from './Count';
 import AutoHeight from './AutoHeight';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
+import BulkBar from './BulkBar';
 import SlideText from './SlideText';
 import SlideSwap from './SlideSwap';
 
@@ -31,7 +32,7 @@ function releaseItem(item) {
 
 export default function ImageConverter({ active }) {
   const [items, setItems] = useState([]); // { id, file, url, img, w, h }
-  const [selectedId, setSelectedId] = useState(null);
+  const [picked, setPicked] = useState(() => new Set()); // ids of the selected cards
   const [format, setFormat] = useState('png');
   const [resizeMode, setResizeMode] = useState('percent');
   const [percent, setPercent] = useState('100');
@@ -59,7 +60,9 @@ export default function ImageConverter({ active }) {
   itemsRef.current = items;
   const toast = useToast();
 
-  const selected = items.find(i => i.id === selectedId) || items[0] || null;
+  // The image the size line and copy are about: the first selected one
+  // (in order), else the first image
+  const selected = items.find(i => picked.has(i.id)) || items[0] || null;
   const fmt = IMAGE_FORMATS.find(f => f.key === format);
 
   const resize = useMemo(() => ({
@@ -90,30 +93,45 @@ export default function ImageConverter({ active }) {
     clearTimeout(holdTimer.current);
     setHold(0);
     setItems(prev => [...prev, ...ok]);
-    setSelectedId(ok[0].id);
     // A width to start from: the first image's own
     setWidthPx(w => w || String(ok[0].w));
   }, [toast]);
 
   usePastedFiles(active, isImageFile, addFiles);
 
-  const removeItem = (id) => {
-    const index = items.findIndex(i => i.id === id);
-    const item = items[index];
-    if (!item) return;
-    const rest = items.filter(i => i.id !== id);
+  const removeItems = (ids) => {
+    const gone = items.filter(i => ids.has(i.id));
+    if (!gone.length) return;
+    const rest = items.filter(i => !ids.has(i.id));
     if (!rest.length) holdWhileLeaving();
     setItems(rest);
-    if (selected?.id === id) setSelectedId(rest[Math.min(index, rest.length - 1)]?.id ?? null);
-    // After its card has left (it still shows the picture until then)
-    setTimeout(() => releaseItem(item), MOTION_MS + 300);
+    setPicked(sel => new Set([...sel].filter(id => !ids.has(id))));
+    if (!rest.length) setWidthPx('');
+    // After their cards have left (they still show the picture until then)
+    setTimeout(() => gone.forEach(releaseItem), MOTION_MS + 300);
   };
+
+  const move = (id, by) => setItems(prev => {
+    const i = prev.findIndex(p => p.id === id);
+    const j = i + by;
+    if (i < 0 || j < 0 || j >= prev.length) return prev;
+    const next = prev.slice();
+    [next[i], next[j]] = [next[j], next[i]];
+    return next;
+  });
+
+  const toggle = (id) => setPicked(sel => {
+    const next = new Set(sel);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    return next;
+  });
 
   const clearAll = () => {
     const old = items;
     holdWhileLeaving();
     setItems([]);
-    setSelectedId(null);
+    setPicked(new Set());
     setWidthPx('');
     setTimeout(() => old.forEach(releaseItem), MOTION_MS + 300);
   };
@@ -245,30 +263,28 @@ export default function ImageConverter({ active }) {
             variant="grid"
             className="page-grid"
             renderItem={(item) => {
-              const isSel = selected?.id === item.id;
+              const n = items.findIndex(q => q.id === item.id);
+              const isSel = picked.has(item.id);
+              const name = item.file.name || 'pasted image';
+              // The PDF page card: picture, a label row, a row of small buttons
               return (
                 <div className={`page-card ${isSel ? 'selected' : ''}`}>
                   <button
                     className="page-thumb"
-                    onClick={(e) => { e.currentTarget.blur(); setSelectedId(item.id); }}
+                    onClick={(e) => { e.currentTarget.blur(); toggle(item.id); }}
                     aria-pressed={isSel}
-                    title="Show this image's size"
+                    title={isSel ? 'Unselect image' : 'Select image'}
                   >
-                    <img src={item.thumb} alt={item.file.name || 'pasted image'} decoding="async" draggable={false} />
+                    <img src={item.thumb} alt={name} decoding="async" draggable={false} />
                   </button>
-                  <div className="image-card-foot">
-                    <div className="file-info">
-                      <span className="file-name">{item.file.name || 'pasted image'}</span>
-                      <span className="file-meta">{item.w} × {item.h} · {formatBytes(item.file.size)}</span>
-                    </div>
-                    <button
-                      className="btn btn-sm btn-icon"
-                      onClick={(e) => { e.currentTarget.blur(); removeItem(item.id); }}
-                      title="Remove"
-                      aria-label={`Remove ${item.file.name}`}
-                    >
-                      <X size={12} />
-                    </button>
+                  <div className="page-label">
+                    <span className="page-src page-name">{name}</span>
+                    <span>{item.w} × {item.h}</span>
+                  </div>
+                  <div className="page-buttons">
+                    <button className="btn btn-sm btn-icon" onClick={(e) => { e.currentTarget.blur(); move(item.id, -1); }} disabled={n <= 0} title="Move earlier" aria-label="Move earlier"><ChevronLeft size={12} /></button>
+                    <button className="btn btn-sm btn-icon" onClick={(e) => { e.currentTarget.blur(); move(item.id, 1); }} disabled={n < 0 || n >= items.length - 1} title="Move later" aria-label="Move later"><ChevronRight size={12} /></button>
+                    <button className="btn btn-sm btn-icon" onClick={(e) => { e.currentTarget.blur(); removeItems(new Set([item.id])); }} title="Remove" aria-label={`Remove ${name}`}><X size={12} /></button>
                   </div>
                 </div>
               );
@@ -359,15 +375,21 @@ export default function ImageConverter({ active }) {
           className={`btn ${done.copy ? 'btn-done' : ''}`}
           onClick={handleCopy}
           disabled={!selected}
-          title="Copy the selected image (as PNG)"
+          title="Copy the selected image (or the first one) as PNG"
         >
           <Copy size={14} />
           copy
         </button>
-        <button className="btn" onClick={(e) => { e.currentTarget.blur(); clearAll(); }} disabled={!items.length}>
-          clear
-        </button>
       </FlipRow>
+      {/* Selecting, deleting, clearing: the bulk bar (as in PDF tools) */}
+      <BulkBar
+        total={items.length}
+        selected={picked.size}
+        disabled={!items.length}
+        onSelectAll={(all) => setPicked(all ? new Set(items.map(i => i.id)) : new Set())}
+        onDelete={() => removeItems(new Set(picked))}
+        onClear={clearAll}
+      />
     </div>
   );
 }

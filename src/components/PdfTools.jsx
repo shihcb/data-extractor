@@ -11,8 +11,7 @@ import Count from './Count';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
 import SlideText from './SlideText';
-import SlideSwap from './SlideSwap';
-import Collapse from './Collapse';
+import BulkBar from './BulkBar';
 
 const THUMB_CSS_WIDTH = 160;
 const IMAGE_SCALE = 2; // pages to images: 144 dpi
@@ -356,27 +355,15 @@ export default function PdfTools({ active }) {
           pages to PNG
         </button>
       </FlipRow>
-      {/* Selecting and clearing: the instagram repo's bulk bar (the count
-          outlined, plain buttons, delete in red), popping in like the pages
-          once there's more than one page */}
-      <Collapse open={pages.length > 1} variant="pop" className="bulk-collapse">
-        <div className="bulk-bar">
-          <span className="bulk-count"><Count value={selected.size} />{'\u00a0selected'}</span>
-          <button
-            className="bulk-btn"
-            onClick={(e) => { e.currentTarget.blur(); setSelected(selected.size === pages.length ? new Set() : new Set(pages.map(p => p.id))); }}
-            disabled={none}
-          >
-            <SlideSwap text={selected.size === pages.length && pages.length ? 'select none' : 'select all'} />
-          </button>
-          <button className="bulk-btn bulk-delete" onClick={(e) => { e.currentTarget.blur(); removePages(new Set(selected)); }} disabled={none || !selected.size}>
-            delete
-          </button>
-          <button className="bulk-btn" onClick={(e) => { e.currentTarget.blur(); clearAll(); }} disabled={none}>
-            clear
-          </button>
-        </div>
-      </Collapse>
+      {/* Selecting, deleting, clearing: the bulk bar (shared with the image converter) */}
+      <BulkBar
+        total={pages.length}
+        selected={selected.size}
+        disabled={none}
+        onSelectAll={(all) => setSelected(all ? new Set(pages.map(p => p.id)) : new Set())}
+        onDelete={() => removePages(new Set(selected))}
+        onClear={clearAll}
+      />
     </div>
   );
 }
