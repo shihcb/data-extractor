@@ -1,5 +1,6 @@
 import React, { useLayoutEffect, useRef } from 'react';
-import { easeBoxHeight, isRunning, registerHeightBox } from '../heightMotion';
+import { registerHeightBox } from '../heightMotion';
+import { animateTo, isMoving, stop } from '../engine';
 
 // A box whose height eases to fit its content whenever the content changes
 // size — something added, removed, swapped or reflowed — on the app's one
@@ -28,27 +29,22 @@ export default function AutoHeight({ className = '', innerClassName = '', style,
       content,
       measure: () => content.offsetHeight + chrome(),
       last: 0,
-      running: () => isRunning(box._heightAnim),
+      running: () => isMoving(box, 'height'),
       animatesChanges: () => true,
       update(to, animate) {
-        // Where it's drawn: partway if it's mid-ease, else its old height (by
-        // now the box has already laid out at the new one)
-        const from = c.running() ? box.offsetHeight : c.last;
+        // From its old height (by now the box has already laid out at the
+        // new one); mid-ease, the change rides on what's moving
+        const from = c.last;
         c.last = to;
-        if (animate) {
-          easeBoxHeight(box, to, { from, prev: box._heightAnim });
-        } else {
-          box._heightAnim?.cancel();
-          box._heightAnim = null;
-          box.style.overflow = '';
-        }
+        if (animate) animateTo(box, 'height', to, { from });
+        else stop(box);
       },
     };
     c.last = c.measure();
     const unregister = registerHeightBox(c);
     return () => {
       unregister();
-      box._heightAnim?.cancel();
+      stop(box);
     };
   }, [boxRef]);
 

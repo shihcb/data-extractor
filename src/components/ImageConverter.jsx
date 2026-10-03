@@ -12,6 +12,7 @@ import Count from './Count';
 import AutoHeight from './AutoHeight';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
+import { animateTo } from '../engine';
 
 // Box padding (matches .drop-box) and the smallest it shrinks to
 const PAD_X = 24;
@@ -37,7 +38,7 @@ export default function ImageConverter({ active }) {
   const [estimate, setEstimate] = useState(null); // { width, height, size, ext, fellBack }
   const [busy, setBusy] = useState('');
   const [dragging, setDragging] = useState(false);
-  const [boxHeight, setBoxHeight] = useState(emptyBoxHeight);
+  const initialBoxStyle = useRef({ height: `${emptyBoxHeight()}px` }).current;
   const [done, flagDone] = useDoneFlags();
   const inputRef = useRef(null);
   const boxRef = useRef(null);
@@ -102,17 +103,20 @@ export default function ImageConverter({ active }) {
   useEffect(() => () => itemsRef.current.forEach(i => URL.revokeObjectURL(i.url)), []);
 
   // The box fits the selected image's shape (up to the empty box's height),
-  // easing there via .tool-box's height transition.
+  // easing there on the motion engine.
   useLayoutEffect(() => {
     const fit = () => {
       const maxH = emptyBoxHeight();
-      if (!selected || !boxRef.current) {
-        setBoxHeight(maxH);
-        return;
+      const box = boxRef.current;
+      if (!box) return;
+      let h = maxH;
+      if (selected) {
+        const innerW = box.clientWidth - PAD_X * 2;
+        const fitted = innerW * (selected.h / selected.w) + PAD_Y * 2;
+        h = Math.round(Math.min(maxH, Math.max(MIN_IMAGE_BOX, fitted)));
       }
-      const innerW = boxRef.current.clientWidth - PAD_X * 2;
-      const fitted = innerW * (selected.h / selected.w) + PAD_Y * 2;
-      setBoxHeight(Math.round(Math.min(maxH, Math.max(MIN_IMAGE_BOX, fitted))));
+      // The engine holds it at this height once there
+      animateTo(box, 'height', h, { from: box.offsetHeight, keep: true });
     };
     fit();
     window.addEventListener('resize', fit);
@@ -215,7 +219,7 @@ export default function ImageConverter({ active }) {
       <div
         ref={boxRef}
         className={`tool-box drop-box ${dragging ? 'dragging' : ''}`}
-        style={{ height: `${boxHeight}px` }}
+        style={initialBoxStyle}
         onClick={() => inputRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={onDragLeave}

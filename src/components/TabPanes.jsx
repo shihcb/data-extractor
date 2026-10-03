@@ -1,5 +1,6 @@
 import React, { useLayoutEffect, useRef } from 'react';
-import { MOTION_MS, MOTION_EASING, animateHeightFrom, canAnimate } from '../motion';
+import { MOTION_MS, MOTION_EASING, canAnimate } from '../motion';
+import { animateTo, naturalSize } from '../engine';
 
 // Ported from instagram-follower-checker's instructions steps: every pane
 // sits in the same spot (stacked) and stays mounted, so each tab keeps its
@@ -48,7 +49,7 @@ export default function TabPanes({ tabs, active, children }) {
       return;
     }
 
-    animateHeightFrom(container, fromHeight);
+    animateTo(container, 'height', naturalSize(container, 'height'), { from: fromHeight });
 
     const w = container.clientWidth;
     const dir = order(active) > order(oldKey) ? 1 : -1;

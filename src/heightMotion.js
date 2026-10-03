@@ -1,5 +1,3 @@
-import { MOTION, canAnimate } from './motion';
-
 // Height easing for boxes that hold other boxes (AutoHeight, Collapse).
 //
 // One ResizeObserver watches every box's content, so all the sizes that
@@ -59,27 +57,3 @@ export function registerHeightBox(c) {
     if (c.box._heightMotion === c) c.box._heightMotion = null;
   };
 }
-
-// Eases `box` from where it's drawn to `to` px; content is clipped only
-// while it moves. Returns the animation (or null when there's nothing to do).
-export function easeBoxHeight(box, to, { from = box.getBoundingClientRect().height, prev, onDone } = {}) {
-  prev?.cancel();
-  if (!canAnimate(box) || Math.abs(to - from) < 0.5) {
-    box.style.overflow = '';
-    onDone?.();
-    return null;
-  }
-  box.style.overflow = 'hidden';
-  const a = box.animate([{ height: `${from}px` }, { height: `${to}px` }], { ...MOTION, fill: 'forwards' });
-  a.onfinish = () => {
-    if (box._heightAnim !== a) return;
-    box._heightAnim = null;
-    onDone?.();
-    a.cancel(); // back to its natural height
-    box.style.overflow = '';
-  };
-  box._heightAnim = a;
-  return a;
-}
-
-export const isRunning = (a) => !!a && a.playState === 'running';

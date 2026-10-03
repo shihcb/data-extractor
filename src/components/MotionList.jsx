@@ -1,5 +1,6 @@
 import React, { useLayoutEffect, useReducer, useRef } from 'react';
-import { MOTION, POP_HIDDEN, POP_SHOWN, canAnimate } from '../motion';
+import { canAnimate } from '../motion';
+import { animateTo, shift, stop } from '../engine';
 import AutoHeight from './AutoHeight';
 
 // Ported from instagram-follower-checker's list 3 row engine, on the same
@@ -25,11 +26,6 @@ export default function MotionList({ items, getKey, renderItem, variant = 'rows'
 
   const measure = (el) => ({ top: el.offsetTop, left: el.offsetLeft, width: el.offsetWidth, height: el.offsetHeight });
 
-  // Where the element is drawn right now = its layout spot + any slide in flight
-  const drawnOffset = (el) => {
-    const m = new DOMMatrixReadOnly(getComputedStyle(el).transform);
-    return { x: m.m41 || 0, y: m.m42 || 0 };
-  };
 
   useLayoutEffect(() => {
     const { getKey, variant } = opts.current;
@@ -59,25 +55,22 @@ export default function MotionList({ items, getKey, renderItem, variant = 'rows'
       const before = positions.current.get(key);
       if (!animate) return;
       if (!before) {
-        const enter = variant === 'grid'
-          ? [POP_HIDDEN, POP_SHOWN]
-          : [
-              { transform: `translateY(${-now.height}px)`, clipPath: `inset(${now.height}px 0px 0px 0px)` },
-              { transform: 'translateY(0px)', clipPath: 'inset(0px 0px 0px 0px)' },
-            ];
-        el.getAnimations().forEach(a => a.cancel());
-        el.animate(enter, MOTION);
+        if (variant === 'grid') {
+          // Pops in like the app's pop-ups: from 14px down at 95%
+          animateTo(el, 'opacity', 1, { from: 0 });
+          animateTo(el, 'ty', 0, { from: 14 });
+          animateTo(el, 'scale', 1, { from: 0.95 });
+        } else {
+          // Slides down from under the row above, revealed from its top edge
+          animateTo(el, 'ty', 0, { from: -now.height });
+          animateTo(el, 'clip', 0, { from: now.height });
+        }
         return;
       }
-      const drawn = drawnOffset(el);
-      const dx = before.left + drawn.x - now.left;
-      const dy = before.top + drawn.y - now.top;
-      if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
-      el.getAnimations().forEach(a => a.cancel());
-      el.animate([
-        { transform: `translate(${dx}px, ${dy}px)` },
-        { transform: 'translate(0px, 0px)' },
-      ], MOTION);
+      // Its layout moved: drawn where it was, easing to the new spot, on top
+      // of anything already moving it
+      shift(el, 'tx', before.left - now.left);
+      shift(el, 'ty', before.top - now.top);
     });
 
     positions.current = new Map(keys.map(key => {
@@ -105,18 +98,24 @@ export default function MotionList({ items, getKey, renderItem, variant = 'rows'
     if (!el || el._exitStarted) return;
     el._exitStarted = true;
     const h = el.offsetHeight;
-    const frames = variant === 'grid'
-      ? [POP_SHOWN, POP_HIDDEN]
-      : [
-          { transform: 'translateY(0px)', clipPath: 'inset(0px 0px 0px 0px)' },
-          { transform: `translateY(${-h}px)`, clipPath: `inset(${h}px 0px 0px 0px)` },
-        ];
-    const anim = el.animate(frames, { ...MOTION, fill: 'forwards' });
     const done = () => {
+      stop(el);
       exiting.current.delete(key);
       rerender();
     };
-    anim.finished.then(done, done);
+    if (!canAnimate(el)) {
+      done();
+      return;
+    }
+    if (variant === 'grid') {
+      animateTo(el, 'opacity', 0, { from: 1 });
+      animateTo(el, 'scale', 0.95, { from: 1 });
+      animateTo(el, 'ty', 14, { from: 0, onSettle: done });
+    } else {
+      // Slides up under the row above, cut away from its top edge
+      animateTo(el, 'clip', h, { from: 0 });
+      animateTo(el, 'ty', -h, { from: 0, onSettle: done });
+    }
   };
 
   // Current items in order, with leaving copies slotted back in where they were

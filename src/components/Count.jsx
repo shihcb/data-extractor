@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { MOTION, MOTION_MS, canAnimate, motionEase, prefersReducedMotion } from '../motion';
+import { MOTION_MS, canAnimate, motionEase, prefersReducedMotion } from '../motion';
+import { animateTo } from '../engine';
 
 // A number that counts up when it appears, and to each new value after, on
 // the app's curve (instagram-follower-checker's stat boxes), while its
@@ -13,7 +14,6 @@ export default function Count({ value, format = (n) => n.toLocaleString() }) {
   const shownRef = useRef(start);
   const boxRef = useRef(null);
   const raf = useRef(null);
-  const widthAnim = useRef(null);
   const fmt = useRef(format);
   fmt.current = format;
 
@@ -37,10 +37,7 @@ export default function Count({ value, format = (n) => n.toLocaleString() }) {
       box.parentNode.appendChild(probe);
       const endW = probe.getBoundingClientRect().width;
       probe.remove();
-      widthAnim.current?.cancel();
-      if (Math.abs(endW - startW) > 0.5) {
-        widthAnim.current = box.animate([{ width: `${startW}px` }, { width: `${endW}px` }], MOTION);
-      }
+      if (Math.abs(endW - startW) > 0.5) animateTo(box, 'width', endW, { from: startW });
     }
 
     const t0 = performance.now();
@@ -54,8 +51,6 @@ export default function Count({ value, format = (n) => n.toLocaleString() }) {
     raf.current = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf.current);
   }, [value]);
-
-  useEffect(() => () => widthAnim.current?.cancel(), []);
 
   return <span ref={boxRef} className="count-num">{format(shown)}</span>;
 }

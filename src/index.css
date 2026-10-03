@@ -363,8 +363,7 @@ button:disabled {
   border-radius: 16px;
   box-shadow: var(--shadow-card);
   transition: border-color var(--motion-duration) var(--motion-easing),
-              background-color var(--motion-duration) var(--motion-easing),
-              height var(--motion-duration) var(--motion-easing);
+              background-color var(--motion-duration) var(--motion-easing);
 }
 
 .tool-textarea {
@@ -408,6 +407,9 @@ button:disabled {
 }
 
 .tool-actions {
+  /* Its buttons measure their spots against the row itself (FlipRow), so
+     the row moving with the boxes above it isn't mistaken for them moving */
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
@@ -1180,4 +1182,20 @@ a.btn {
 
 .tool-meta .fade-text {
   display: block;
+}
+
+/* A panel's share of the gap above it opens and closes with it: closed
+   (hidden) it takes no gap, and the gap comes in as part of its height
+   instead of appearing all at once */
+.tool > .motion-collapse {
+  margin-top: -20px;
+}
+.tool > .motion-collapse > .auto-height-inner {
+  padding-top: 20px;
+}
+.options-panel > .motion-collapse {
+  margin-top: -14px;
+}
+.options-panel > .motion-collapse > .auto-height-inner {
+  padding-top: 14px;
 }

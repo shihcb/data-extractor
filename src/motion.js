@@ -56,22 +56,5 @@ export function flashOutline(el) {
   el.addEventListener('animationend', done, { once: true });
 }
 
-// Animates an element's height from `fromPx` to whatever it is now. Used
-// where content changes size (tab panes, lists) so nothing snaps.
-export function animateHeightFrom(el, fromPx) {
-  if (!canAnimate(el)) return null;
-  // Drop a resize in flight first (the caller measured where it was drawn),
-  // so `to` is the real new height rather than a mid-animation one.
-  el._heightAnim?.cancel();
-  el._heightAnim = null;
-  const to = el.getBoundingClientRect().height;
-  if (!fromPx || Math.abs(to - fromPx) < 0.5) return null;
-  const anim = el.animate([{ height: `${fromPx}px` }, { height: `${to}px` }], MOTION);
-  el._heightAnim = anim;
-  const clear = () => { if (el._heightAnim === anim) el._heightAnim = null; };
-  anim.finished.then(clear, clear);
-  return anim;
-}
-
 // Current rendered height, including an in-flight height animation.
 export const currentHeight = (el) => (el ? el.getBoundingClientRect().height : 0);
