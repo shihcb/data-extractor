@@ -823,10 +823,10 @@ kbd {
   width: 100%;
   cursor: pointer;
   /* A fixed size that fills the screen below the tabs, above the meta line
-     and buttons (about 390px together, with the bulk bar open): the page stays still and the pages
+     and buttons, and the floating bulk bar below them (about 380px together): the page stays still and the pages
      scroll inside the box */
-  height: calc(100vh - var(--box-room, 390px));
-  height: calc(100dvh - var(--box-room, 390px));
+  height: calc(100vh - var(--box-room, 380px));
+  height: calc(100dvh - var(--box-room, 380px));
   min-height: 260px;
   overflow-x: hidden;
   overflow-y: auto;
@@ -836,27 +836,32 @@ kbd {
 
 /* The bulk bar (instagram-follower-checker's .row-select-bar): one bar,
    the count outlined, the buttons plain text; centered under clear */
+/* Where the instagram repo's bar sits: floating at the bottom of the
+   screen, centered */
+.bulk-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  z-index: 900;
+  display: flex;
+  justify-content: center;
+  padding: 0 12px;
+  pointer-events: none;
+}
+
 .bulk-bar {
   display: flex;
   align-items: center;
   gap: 6px;
   width: max-content;
   max-width: 100%;
-  margin: 0 auto;
+  pointer-events: auto;
   padding: 4px;
   border-radius: var(--radius);
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   box-shadow: 0 6px 18px -10px rgba(0, 0, 0, 0.22);
-}
-
-/* Room for the bar's shadow (and its pop from 14px down) inside the box
-   that eases open, which clips while it moves; the page keeps the same room */
-.tool > .bulk-collapse > .auto-height-inner {
-  padding-bottom: 16px;
-}
-.tool > .bulk-collapse {
-  margin-bottom: -16px;
 }
 
 .bulk-count,

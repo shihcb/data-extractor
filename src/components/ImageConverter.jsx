@@ -383,6 +383,7 @@ export default function ImageConverter({ active }) {
       </FlipRow>
       {/* Selecting, deleting, clearing: the bulk bar (as in PDF tools) */}
       <BulkBar
+        active={active}
         total={items.length}
         selected={picked.size}
         disabled={!items.length}

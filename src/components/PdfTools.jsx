@@ -357,6 +357,7 @@ export default function PdfTools({ active }) {
       </FlipRow>
       {/* Selecting, deleting, clearing: the bulk bar (shared with the image converter) */}
       <BulkBar
+        active={active}
         total={pages.length}
         selected={selected.size}
         disabled={none}
