@@ -126,12 +126,26 @@ export default function MotionList({ items, getKey, renderItem, variant = 'rows'
     }
   };
 
-  // Current items in order, with leaving copies slotted back in where they were
+  // Current items in order, with leaving copies slotted back in where they
+  // were. A leaving item keeps its own key, so it's the very same element
+  // that leaves: under a new key React built a fresh copy, whose pictures
+  // loaded and faded in again — the page flashed as it started to go.
+  // Spotted here, while rendering, not after: by then React has already
+  // taken the old element away.
+  if (prevKeys.current && containerRef.current && canAnimate(containerRef.current)) {
+    const keySet = new Set(items.map(getKey));
+    prevKeys.current.forEach((key, index) => {
+      if (keySet.has(key) || exiting.current.has(key)) return;
+      const pos = positions.current.get(key);
+      const item = prevItems.current.get(key);
+      if (pos && item !== undefined) exiting.current.set(key, { item, pos, index });
+    });
+  }
   const rendered = items.map(item => ({ key: getKey(item), item, leaving: null }));
   [...exiting.current.entries()]
     .sort((a, b) => a[1].index - b[1].index)
     .forEach(([key, info]) => {
-      rendered.splice(Math.min(info.index, rendered.length), 0, { key: `__exit_${key}`, item: info.item, leaving: { key, ...info } });
+      rendered.splice(Math.min(info.index, rendered.length), 0, { key, item: info.item, leaving: { key, ...info } });
     });
 
   return (
@@ -156,6 +170,12 @@ export default function MotionList({ items, getKey, renderItem, variant = 'rows'
               if (leaving) {
                 playExit(leaving.key, el);
               } else if (el) {
+                if (el._exitStarted) {
+                  // Back before it finished leaving: it comes in afresh
+                  el._exitStarted = false;
+                  stop(el);
+                  el.style.visibility = '';
+                }
                 nodes.current.set(key, el);
               } else {
                 nodes.current.delete(key);
