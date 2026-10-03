@@ -9,8 +9,8 @@ import { animateTo, isMoving, stop } from '../engine';
 // another easing box, only the outer one moves (see heightMotion.js).
 //
 // `className`/`style` go on the box (borders, padding, background);
-// `innerClassName` on the content inside it (its layout).
-export default function AutoHeight({ className = '', innerClassName = '', style, children, boxRef, ...rest }) {
+// `innerClassName`/`innerStyle` on the content inside it (its layout).
+export default function AutoHeight({ className = '', innerClassName = '', style, innerStyle, children, boxRef, ...rest }) {
   const outer = useRef(null);
   const inner = useRef(null);
 
@@ -50,7 +50,7 @@ export default function AutoHeight({ className = '', innerClassName = '', style,
 
   return (
     <div ref={outer} className={className} style={style} {...rest}>
-      <div ref={inner} className={`auto-height-inner ${innerClassName}`}>
+      <div ref={inner} className={`auto-height-inner ${innerClassName}`} style={innerStyle}>
         {children}
       </div>
     </div>

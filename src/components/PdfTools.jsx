@@ -32,6 +32,23 @@ export default function PdfTools({ active }) {
   const inputRef = useRef(null);
   const labels = useRef(new Map()); // page id -> { num, name } as last shown (a leaving card keeps its own)
   const removed = useRef(new Set()); // ids of pages deleted (a picture still being drawn is thrown away)
+  // The last pages leaving: the box holds its height while they fade out
+  // where they are (the way they came in, reversed), then eases shut
+  const dropBox = useRef(null);
+  const [hold, setHold] = useState(0);
+  const holdTimer = useRef(null);
+  const holdWhileLeaving = () => {
+    const inner = dropBox.current?.firstElementChild;
+    if (!inner) return;
+    setHold(inner.offsetHeight);
+    clearTimeout(holdTimer.current);
+    holdTimer.current = setTimeout(() => setHold(0), MOTION_MS);
+  };
+  const stopHolding = () => {
+    clearTimeout(holdTimer.current);
+    setHold(0);
+  };
+  useEffect(() => () => clearTimeout(holdTimer.current), []);
   const pagesRef = useRef(pages);
   pagesRef.current = pages;
   const toast = useToast();
@@ -40,6 +57,7 @@ export default function PdfTools({ active }) {
     const files = [...fileList].filter(isPdfFile);
     if (!files.length) return;
     setLoading('loading');
+    stopHolding();
     for (const file of files) {
       let view = null;
       let added = 0;
@@ -115,6 +133,7 @@ export default function PdfTools({ active }) {
     const gone = pages.filter(p => ids.has(p.id));
     const rest = pages.filter(p => !ids.has(p.id));
     ids.forEach(id => removed.current.add(id));
+    if (!rest.length) holdWhileLeaving();
     setPages(rest);
     setSelected(sel => new Set([...sel].filter(id => !ids.has(id))));
     releaseThumbs(gone);
@@ -124,6 +143,7 @@ export default function PdfTools({ active }) {
   const clearAll = () => {
     releaseThumbs(pages);
     pages.forEach(p => removed.current.add(p.id));
+    holdWhileLeaving();
     setPages([]);
     setSelected(new Set());
     if (!loading) dropUnusedSources([]);
@@ -234,7 +254,9 @@ export default function PdfTools({ active }) {
     <div className="tool">
       <AutoHeight
         className={`tool-box pdf-drop ${pages.length ? 'has-pages' : ''} ${dragging ? 'dragging' : ''}`}
-        innerClassName={`pdf-drop-inner ${pages.length ? 'full' : 'drop-box-empty'}`}
+        boxRef={dropBox}
+        innerClassName={`pdf-drop-inner ${pages.length || hold ? 'full' : 'drop-box-empty'}`}
+        innerStyle={hold ? { minHeight: `${hold}px` } : undefined}
         // Empty: anywhere opens the picker; with pages, only the space around them
         onClick={(e) => { if (!pages.length || e.target === e.currentTarget || e.target.classList.contains('pdf-drop-inner')) inputRef.current?.click(); }}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -242,7 +264,7 @@ export default function PdfTools({ active }) {
         onDrop={(e) => { e.preventDefault(); setDragging(false); addFiles(e.dataTransfer?.files || []); }}
       >
         {/* When pages come in, the hint just goes: its fading copy would sit over them */}
-        <FadeText k={!pages.length ? 'hint' : ''} quiet={pages.length > 0} className="tool-hint">{!pages.length ? 'drop, paste or click to add PDFs' : null}</FadeText>
+        <FadeText k={!pages.length && !hold ? 'hint' : ''} quiet={pages.length > 0} className="tool-hint">{!pages.length && !hold ? 'drop, paste or click to add PDFs' : null}</FadeText>
         <MotionList
           items={pages}
           getKey={p => p.id}

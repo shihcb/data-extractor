@@ -27,7 +27,8 @@ of restarting it. When the user names one of these, this is what they mean:
 | **the count** | numbers count to their new value (and up from 0 when they appear), their width easing | `Count` |
 | **the tab push** | switching tabs: the old pane slides out sideways as the new one slides in, the area easing to the new height; the tab outline slides along | `TabPanes`, `TabSwitcher` |
 | **the pop** | pop-ups and toasts come in from 14px down at 95% scale and leave the same way | `Modal`, `Toast` |
-| **the glide to top** | when deleting leaves blank room below the page, the page slides up with the content as it closes until the room is gone; when everything fits on screen again it glides back to the top and stops scrolling until it needs to | `App.jsx` |
+| **the glide to top** | a box easing shut: the page's bottom follows the content's bottom frame by frame, so no blank room opens below (a sudden shrink glides up instead); when everything fits on screen again it glides back to the top and stops scrolling until it needs to | `App.jsx` |
+| **the clear** | the last PDF pages leaving: they fade out in place while the box holds its height (adding, reversed), then the empty box eases shut | `PdfTools.jsx` |
 
 Rules that keep it smooth (each was a real bug):
 - A row/box measures positions against itself (`position: relative`), never

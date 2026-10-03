@@ -146,7 +146,19 @@ export default function App() {
         floor = Math.min(floor, window.scrollY + window.innerHeight);
       }
       apply();
-      if (window.scrollY > target() + 1) glideUp();
+      if (heightStillToCome() < -0.5 && !glide) {
+        // A box easing shut: the page's bottom follows the content's bottom
+        // frame by frame, so no blank room ever opens to be scrolled away
+        // afterwards (that late scroll was the jump)
+        const to = Math.max(0, natural - window.innerHeight);
+        if (window.scrollY > to + 0.5) {
+          window.scrollTo(0, to);
+          floor = Math.min(floor, to + window.innerHeight);
+          apply();
+        }
+      } else if (window.scrollY > target() + 1) {
+        glideUp();
+      }
       updateLock();
     };
     natural = naturalHeight();
