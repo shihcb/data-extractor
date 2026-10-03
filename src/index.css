@@ -1162,11 +1162,16 @@ kbd {
 .pdf-text-item,
 .pdf-text-input {
   position: absolute;
-  display: flex;
-  align-items: center;
-  padding: 0 0.06em;
+  display: block;
+  box-sizing: border-box;
+  /* No side padding and an outline rather than a border: either pushed the
+     words off the spot they're covering */
+  padding-left: 0;
+  padding-right: 0;
+  margin: 0;
   font-size: calc(var(--fs) * 1cqw);
   line-height: 1;
+  text-align: left;
   white-space: pre;
   border-radius: 2px;
   transform-origin: 0 0;
@@ -1174,25 +1179,29 @@ kbd {
 
 .pdf-text-item {
   background: transparent;
-  border: 1px dashed transparent;
+  border: 0;
+  outline: 1px dashed transparent;
+  outline-offset: 0;
   cursor: text;
-  transition: border-color var(--motion-duration) var(--motion-easing),
+  transition: outline-color var(--motion-duration) var(--motion-easing),
               background-color var(--motion-duration) var(--motion-easing);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .pdf-text-item:hover {
-    border-color: rgba(79, 70, 229, 0.7);
+    outline-color: rgba(79, 70, 229, 0.7);
     background-color: rgba(79, 70, 229, 0.06);
   }
 }
 
 .pdf-text-item.edited {
-  border-color: rgba(16, 185, 129, 0.55);
+  outline-color: rgba(16, 185, 129, 0.55);
 }
 
 .pdf-text-input {
-  border: 1px solid rgba(79, 70, 229, 0.9);
+  border: 0;
+  outline: 1px solid rgba(79, 70, 229, 0.9);
+  outline-offset: 0;
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
 }
 

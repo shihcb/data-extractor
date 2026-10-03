@@ -45,6 +45,31 @@ const cssFont = ({ base, bold, italic }) => ({
   fontStyle: italic ? 'italic' : 'normal',
 });
 
+// Where a font's baseline sits in a line exactly one font size tall, as a
+// share of the font size (measured once per font): the text on screen is
+// placed so its baseline lands on the PDF's own, not centred in its box.
+const baselines = new Map();
+function baselineOf(font) {
+  const css = cssFont(font);
+  const key = `${css.fontFamily}|${css.fontWeight}|${css.fontStyle}`;
+  if (baselines.has(key)) return baselines.get(key);
+  const probe = document.createElement('div');
+  Object.assign(probe.style, {
+    position: 'absolute', left: '-9999px', top: '0', visibility: 'hidden',
+    fontSize: '100px', lineHeight: '1', whiteSpace: 'nowrap', ...css,
+  });
+  probe.textContent = 'Hg';
+  const mark = document.createElement('span');
+  Object.assign(mark.style, { display: 'inline-block', width: '0', height: '0', verticalAlign: 'baseline' });
+  probe.appendChild(mark);
+  document.body.appendChild(probe);
+  const ratio = mark.offsetTop / 100;
+  probe.remove();
+  const value = ratio > 0 && ratio < 1.5 ? ratio : 0.8;
+  baselines.set(key, value);
+  return value;
+}
+
 // The paper colour around the words (most common colour along the box's
 // edge) and the ink colour (the pixel inside that differs most from it),
 // read from the drawn page.
@@ -594,14 +619,26 @@ export default function PdfEditor({ active }) {
                 <div className="pdf-text-layer">
                   {p.items.map(item => {
                     const edit = edits[item.id];
+                    // The box runs from the PDF font's ascent to its descent; the
+                    // text sits with its baseline on the PDF's (ascent below the
+                    // top), however the stand-in font is proportioned
+                    // (the text line is exactly 1em tall, moved down by padding
+                    // or up by a shift)
+                    const { ascent, descent } = item.pdf;
+                    const shift = ascent - baselineOf(item.font);
+                    const padTop = Math.max(0, shift);
+                    const padBottom = Math.max(0, ascent - descent - shift - 1);
                     const pos = {
                       left: `${item.box.left}%`,
                       top: `${item.box.top}%`,
                       minWidth: `${item.box.width}%`,
-                      height: `${item.box.height}%`,
+                      height: `${padTop + 1 + padBottom}em`,
+                      paddingTop: `${padTop}em`,
+                      paddingBottom: `${padBottom}em`,
                       '--fs': item.box.fontSize,
                       // Turned with the text (about its top-left corner)
-                      transform: item.box.turn ? `rotate(${item.box.turn}deg)` : undefined,
+                      // (the shift up goes along the text's own up, so after the turn)
+                      transform: `${item.box.turn ? `rotate(${item.box.turn}deg) ` : ''}translateY(${Math.min(0, shift)}em)`,
                       ...cssFont(item.font),
                     };
                     if (editing === item.id && draftColors) {
