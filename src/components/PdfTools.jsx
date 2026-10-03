@@ -42,7 +42,7 @@ export default function PdfTools({ active }) {
     if (!inner) return;
     setHold(inner.offsetHeight);
     clearTimeout(holdTimer.current);
-    holdTimer.current = setTimeout(() => setHold(0), MOTION_MS);
+    holdTimer.current = setTimeout(() => setHold(0), MOTION_MS + 100);
   };
   const stopHolding = () => {
     clearTimeout(holdTimer.current);
@@ -252,23 +252,27 @@ export default function PdfTools({ active }) {
 
   return (
     <div className="tool">
-      <AutoHeight
+      {/* A fixed-size box that scrolls inside: the page itself stays still */}
+      <div
+        ref={dropBox}
         className={`tool-box pdf-drop ${pages.length ? 'has-pages' : ''} ${dragging ? 'dragging' : ''}`}
-        boxRef={dropBox}
-        innerClassName={`pdf-drop-inner ${pages.length || hold ? 'full' : 'drop-box-empty'}`}
-        innerStyle={hold ? { minHeight: `${hold}px` } : undefined}
         // Empty: anywhere opens the picker; with pages, only the space around them
         onClick={(e) => { if (!pages.length || e.target === e.currentTarget || e.target.classList.contains('pdf-drop-inner')) inputRef.current?.click(); }}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false); }}
         onDrop={(e) => { e.preventDefault(); setDragging(false); addFiles(e.dataTransfer?.files || []); }}
       >
+        <div
+          className={`pdf-drop-inner ${pages.length || hold ? 'full' : 'drop-box-empty'}`}
+          style={hold ? { minHeight: `${hold}px` } : undefined}
+        >
         {/* When pages come in, the hint just goes: its fading copy would sit over them */}
         <FadeText k={!pages.length && !hold ? 'hint' : ''} quiet={pages.length > 0} className="tool-hint">{!pages.length && !hold ? 'drop, paste or click to add PDFs' : null}</FadeText>
         <MotionList
           items={pages}
           getKey={p => p.id}
           variant="grid"
+          motion="slide"
           className="page-grid"
           renderItem={(p, { leaving }) => {
             const n = pages.findIndex(q => q.id === p.id);
@@ -314,7 +318,8 @@ export default function PdfTools({ active }) {
           hidden
           onChange={(e) => { addFiles(e.target.files || []); e.target.value = ''; }}
         />
-      </AutoHeight>
+        </div>
+      </div>
 
       <AutoHeight className="tool-meta" aria-live="polite">
         {/* No per-page loading line: the cards show it, and a line changing

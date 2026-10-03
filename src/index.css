@@ -877,6 +877,21 @@ kbd {
 .pdf-drop {
   width: 100%;
   cursor: pointer;
+  /* A fixed size that fills the screen below the tabs, above the meta line
+     and buttons (about 340px together): the page stays still and the pages
+     scroll inside the box */
+  height: calc(100vh - 340px);
+  height: calc(100dvh - 340px);
+  min-height: 260px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Empty, the hint sits in the middle of the whole box */
+.pdf-drop > .pdf-drop-inner.drop-box-empty {
+  min-height: 100%;
 }
 
 .pdf-drop.has-pages {

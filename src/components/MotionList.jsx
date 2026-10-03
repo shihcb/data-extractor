@@ -8,11 +8,13 @@ import AutoHeight from './AutoHeight';
 //  - 'rows': a row arriving slides down from under the row above it (moved
 //    up by its height and clipped at its top edge, both easing to nothing);
 //    a row leaving does the same in reverse.
-//  - 'grid': items pop in/out like the app's pop-ups (14px down, 95%).
+//  - 'grid': laid out as a grid; items pop in/out like the app's pop-ups
+//    (14px down, 95%), or with motion="slide" slide in/out like rows.
 // Either way the items around it slide from where they were drawn to their
 // new places (FLIP), and the list's height eases to its new size (AutoHeight). Changes
 // mid-slide carry on from where everything is drawn right now.
-export default function MotionList({ items, getKey, renderItem, variant = 'rows', className = '', itemClassName = '' }) {
+export default function MotionList({ items, getKey, renderItem, variant = 'rows', motion, className = '', itemClassName = '' }) {
+  const pops = (motion || (variant === 'grid' ? 'pop' : 'slide')) === 'pop';
   const containerRef = useRef(null);
   const nodes = useRef(new Map());     // key -> element (current items)
   const positions = useRef(new Map()); // key -> { top, left, width, height } (layout, last commit)
@@ -21,14 +23,14 @@ export default function MotionList({ items, getKey, renderItem, variant = 'rows'
   const exiting = useRef(new Map());   // key -> { item, pos, index }
   const [, rerender] = useReducer(x => x + 1, 0);
   // The effect reads these through a ref: it should run when the items change, not on every render
-  const opts = useRef({ getKey, variant });
-  opts.current = { getKey, variant };
+  const opts = useRef({ getKey, pops });
+  opts.current = { getKey, pops };
 
   const measure = (el) => ({ top: el.offsetTop, left: el.offsetLeft, width: el.offsetWidth, height: el.offsetHeight });
 
 
   useLayoutEffect(() => {
-    const { getKey, variant } = opts.current;
+    const { getKey, pops } = opts.current;
     const container = containerRef.current;
     const keys = items.map(getKey);
     const first = prevKeys.current === null;
@@ -55,7 +57,7 @@ export default function MotionList({ items, getKey, renderItem, variant = 'rows'
       const before = positions.current.get(key);
       if (!animate) return;
       if (!before) {
-        if (variant === 'grid') {
+        if (pops) {
           // Pops in like the app's pop-ups: from 14px down at 95%
           animateTo(el, 'opacity', 1, { from: 0 });
           animateTo(el, 'ty', 0, { from: 14 });
@@ -111,7 +113,7 @@ export default function MotionList({ items, getKey, renderItem, variant = 'rows'
       done();
       return;
     }
-    if (variant === 'grid') {
+    if (pops) {
       animateTo(el, 'opacity', 0, { from: 1 });
       animateTo(el, 'scale', 0.95, { from: 1 });
       animateTo(el, 'ty', 14, { from: 0, onSettle: done });
