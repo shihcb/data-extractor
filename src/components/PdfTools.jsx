@@ -238,8 +238,7 @@ export default function PdfTools({ active }) {
         onDrop={(e) => { e.preventDefault(); setDragging(false); addFiles(e.dataTransfer?.files || []); }}
       >
         {/* When pages come in, the hint just goes: its fading copy would sit over them */}
-        <FadeText k={!pages.length && !loading ? 'hint' : ''} quiet={pages.length > 0} className="tool-hint">{!pages.length && !loading ? 'drop, paste or click to add PDFs' : null}</FadeText>
-        {!pages.length && loading && <span className="spinner" aria-label="loading" />}
+        <FadeText k={!pages.length ? 'hint' : ''} quiet={pages.length > 0} className="tool-hint">{!pages.length ? 'drop, paste or click to add PDFs' : null}</FadeText>
         <MotionList
           items={pages}
           getKey={p => p.id}

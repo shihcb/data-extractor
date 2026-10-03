@@ -23,7 +23,9 @@ function captureGhost(el) {
     top: '0px', left: '0px',
     width: `${r.width}px`, height: `${r.height}px`, boxSizing: 'border-box',
     display: cs.display === 'inline' ? 'inline-block' : cs.display,
-    whiteSpace: 'nowrap', textAlign: cs.textAlign, pointerEvents: 'none', zIndex: '3',
+    // A line that wrapped keeps wrapping the same way (forced onto one line
+    // it slid sideways and ran off the edge)
+    whiteSpace: cs.display === 'inline' ? 'nowrap' : cs.whiteSpace, textAlign: cs.textAlign, pointerEvents: 'none', zIndex: '3',
   });
   ghost.setAttribute('aria-hidden', 'true');
   return () => {

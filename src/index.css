@@ -900,6 +900,20 @@ kbd {
   padding: 16px;
 }
 
+/* Empty (the last pages leaving): the grid stays exactly where it was, at
+   its full size, so the cards leave from there instead of jumping to the
+   middle of the empty box first */
+.pdf-drop-inner {
+  position: relative;
+}
+.pdf-drop-inner:not(.full) > .motion-list-box {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  width: auto;
+}
+
 .page-card {
   display: flex;
   flex-direction: column;
@@ -1176,6 +1190,9 @@ a.btn {
 .tool-box,
 .tool-meta {
   position: relative;
+  /* Full width, not sized to its words: sized to them it jumped sideways
+     when the words changed, taking the old words' fading copy with it */
+  width: 100%;
 }
 
 .fade-text:empty {
