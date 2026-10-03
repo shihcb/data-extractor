@@ -213,11 +213,8 @@ export default function ImageConverter({ active }) {
     if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false);
   };
 
-  const downloadLabel = busy
-    ? `converting ${busy}`
-    : items.length > 1
-      ? (format === 'pdf' ? 'download pdf' : 'download zip')
-      : 'download';
+  // Always just "download" (it saves a zip or one PDF for several images)
+  const downloadLabel = busy ? `converting ${busy}` : 'download';
 
   const original = selected ? targetSize(selected.w, selected.h, { mode: 'percent', percent: 100 }) : null;
 
