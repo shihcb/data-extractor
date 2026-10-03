@@ -30,6 +30,7 @@ export default function PdfTools({ active }) {
   const [done, flagDone] = useDoneFlags();
   const sources = useRef(new Map()); // srcId -> { name, bytes, view (pdf.js), lib (pdf-lib) }
   const inputRef = useRef(null);
+  const labels = useRef(new Map()); // page id -> { num, name } as last shown (a leaving card keeps its own)
   const removed = useRef(new Set()); // ids of pages deleted (a picture still being drawn is thrown away)
   const pagesRef = useRef(pages);
   pagesRef.current = pages;
@@ -105,7 +106,10 @@ export default function PdfTools({ active }) {
     });
   };
 
-  const releaseThumbs = (list) => setTimeout(() => list.forEach(p => p.thumb && URL.revokeObjectURL(p.thumb)), MOTION_MS + 300);
+  const releaseThumbs = (list) => setTimeout(() => list.forEach(p => {
+    if (p.thumb) URL.revokeObjectURL(p.thumb);
+    labels.current.delete(p.id);
+  }), MOTION_MS + 300);
 
   const removePages = (ids) => {
     const gone = pages.filter(p => ids.has(p.id));
@@ -244,9 +248,16 @@ export default function PdfTools({ active }) {
           getKey={p => p.id}
           variant="grid"
           className="page-grid"
-          renderItem={(p) => {
+          renderItem={(p, { leaving }) => {
             const n = pages.findIndex(q => q.id === p.id);
             const isSel = selected.has(p.id);
+            // A card on its way out keeps the number and file name it had
+            // (gone, its label row emptied and the card shrank as it left)
+            let label = labels.current.get(p.id);
+            if (!leaving || !label) {
+              label = { num: n >= 0 ? n + 1 : '', name: fileCount > 1 ? baseName(sources.current.get(p.srcId)?.name) : '' };
+              labels.current.set(p.id, label);
+            }
             return (
               <div className={`page-card ${isSel ? 'selected' : ''}`}>
                 <button
@@ -255,11 +266,12 @@ export default function PdfTools({ active }) {
                   aria-pressed={isSel}
                   title={isSel ? 'Unselect page' : 'Select page'}
                 >
-                  {p.thumb && <img src={p.thumb} alt={`Page ${n + 1}`} style={{ transform: `rotate(${p.rotation}deg)` }} draggable={false} />}
+                  {p.thumb && <img src={p.thumb} alt={`Page ${label.num}`} style={{ transform: `rotate(${p.rotation}deg)` }} draggable={false} />}
                 </button>
                 <div className="page-label">
-                  <span>{n >= 0 ? n + 1 : ''}</span>
-                  {fileCount > 1 && <span className="page-src">{baseName(sources.current.get(p.srcId)?.name)}</span>}
+                  <span>{label.num}</span>
+                  {/* File names come and go with the text swap (a second file added, the others removed) */}
+                  <FadeText k={label.name} className="page-src">{label.name || null}</FadeText>
                 </div>
                 <div className="page-buttons">
                   <button className="btn btn-sm btn-icon" onClick={(e) => { e.currentTarget.blur(); rotate(p.id, -90); }} title="Rotate left" aria-label="Rotate left"><RotateCcw size={12} /></button>
