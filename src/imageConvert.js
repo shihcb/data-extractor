@@ -147,7 +147,11 @@ export async function estimateImage(item, { format, resize, quality }) {
     return { width: out.width, height: out.height, size: out.blob.size, ext: out.ext, fellBack: out.fellBack, clamped: out.clamped };
   }
   const size = targetSize(item.img.naturalWidth, item.img.naturalHeight, resize);
-  const bitmap = await createImageBitmap(item.file);
+  // The photo is decoded once per image and kept; each estimate sends the
+  // worker a quick copy of it (decoding a 24-megapixel photo again on every
+  // settings change was heavy work for a phone)
+  if (!item._bitmap) item._bitmap = createImageBitmap(item.file);
+  const bitmap = await createImageBitmap(await item._bitmap);
   const id = nextJob++;
   const res = await new Promise((resolve, reject) => {
     jobs.set(id, { resolve, reject });

@@ -29,6 +29,13 @@ const RESIZE_MODES = [
 
 let nextId = 1;
 
+// Frees what an image holds once it's gone: its links and its decoded copy
+function releaseItem(item) {
+  URL.revokeObjectURL(item.url);
+  URL.revokeObjectURL(item.thumb);
+  item._bitmap?.then(b => b.close(), () => {});
+}
+
 export default function ImageConverter({ active }) {
   const [items, setItems] = useState([]); // { id, file, url, img, w, h }
   const [selectedId, setSelectedId] = useState(null);
@@ -92,7 +99,7 @@ export default function ImageConverter({ active }) {
     setItems(rest);
     if (selected?.id === id) setSelectedId(rest[Math.min(index, rest.length - 1)]?.id ?? null);
     // After its row has slid out (it still shows the thumbnail until then)
-    setTimeout(() => { URL.revokeObjectURL(item.url); URL.revokeObjectURL(item.thumb); }, MOTION_MS + 300);
+    setTimeout(() => releaseItem(item), MOTION_MS + 300);
   };
 
   const clearAll = () => {
@@ -100,10 +107,10 @@ export default function ImageConverter({ active }) {
     setItems([]);
     setSelectedId(null);
     setWidthPx('');
-    setTimeout(() => old.forEach(i => { URL.revokeObjectURL(i.url); URL.revokeObjectURL(i.thumb); }), MOTION_MS + 300);
+    setTimeout(() => old.forEach(releaseItem), MOTION_MS + 300);
   };
 
-  useEffect(() => () => itemsRef.current.forEach(i => { URL.revokeObjectURL(i.url); URL.revokeObjectURL(i.thumb); }), []);
+  useEffect(() => () => itemsRef.current.forEach(releaseItem), []);
 
   // The box fits the selected image's shape (up to the empty box's height),
   // easing there on the motion engine.
@@ -149,7 +156,9 @@ export default function ImageConverter({ active }) {
       } catch {
         if (!cancelled) setEstimate(null);
       }
-    }, newImage ? MOTION_MS + 150 : 120);
+      // Always after the motion has finished: any heavy work while something
+      // moves can make it stutter on a phone
+    }, MOTION_MS + (newImage ? 150 : 60));
     return () => { cancelled = true; clearTimeout(t); };
   }, [selected, settings]);
 
