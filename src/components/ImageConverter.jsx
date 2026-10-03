@@ -11,6 +11,7 @@ import Collapse from './Collapse';
 import Count from './Count';
 import AutoHeight from './AutoHeight';
 import FadeText from './FadeText';
+import FlipRow from './FlipRow';
 
 // Box padding (matches .drop-box) and the smallest it shrinks to
 const PAD_X = 24;
@@ -333,7 +334,7 @@ export default function ImageConverter({ active }) {
       </FadeText>
       </AutoHeight>
 
-      <div className="tool-actions">
+      <FlipRow>
         <button
           className="btn btn-icon"
           onClick={(e) => { e.currentTarget.blur(); inputRef.current?.click(); }}
@@ -362,7 +363,7 @@ export default function ImageConverter({ active }) {
         <button className="btn" onClick={(e) => { e.currentTarget.blur(); clearAll(); }} disabled={!items.length}>
           clear
         </button>
-      </div>
+      </FlipRow>
     </div>
   );
 }
