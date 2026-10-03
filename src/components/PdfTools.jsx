@@ -325,12 +325,14 @@ export default function PdfTools({ active }) {
       <AutoHeight className="tool-meta" aria-live="polite">
         {/* No per-page loading line: the cards show it, and a line changing
             every page piled its fading copies on top of each other */}
-        <FadeText k={pages.length ? `pages-${selected.size > 0}` : 'empty'}>
+        <FadeText k={pages.length ? 'pages' : 'empty'}>
         {pages.length ? (
           <>
             <Count value={pages.length} /> {plural(pages.length, 'page')} from <Count value={fileCount} /> {plural(fileCount, 'file')}
-            <SlideText show={selected.size > 0}>{'\u00a0·\u00a0'}<Count value={selected.size} />{'\u00a0selected'}</SlideText>
-            {' · tap a page to select it'}
+            {' · '}
+            {/* The hint and the selection share one spot, with the word swap
+                (like "%" ↔ "px wide") */}
+            <SlideSwap text={selected.size ? `${selected.size} selected` : 'tap a page to select it'} />
           </>
         ) : 'merge, split, reorder, rotate, delete pages, or turn them into images'}
       </FadeText>

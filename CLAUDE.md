@@ -18,7 +18,7 @@ of restarting it. When the user names one of these, this is what they mean:
 | --- | --- | --- |
 | **the slide** | the shared 450ms curve itself ("same timing as everything") | `motion.js` |
 | **the word slide** | words that come and go inside a line ease their width open/shut while fading, so the rest of the line slides over ("per page", "· 2 selected") | `SlideText` |
-| **the word swap** | the word slide's swap form: one word changing to another inside a line ("%" ↔ "px wide") — both share one spot, the old fading out as the new fades in, while the space eases from one word's width to the other's | `SlideSwap` |
+| **the word swap** | the word slide's swap form: one word changing to another inside a line ("%" ↔ "px wide", PDF tools' "tap a page to select it" ↔ "2 selected") — both share one spot, the old fading out as the new fades in, while the space eases from one word's width to the other's | `SlideSwap` |
 | **the text swap** | text that changes: the old words fade out exactly where they were while the new ones fade in (the source repo's empty-text fade) | `FadeText` |
 | **the box ease** | a box whose content changes size eases to its new height; nested boxes: only the outermost moves | `AutoHeight`, `heightMotion.js` |
 | **the bulk bar** | PDF tools' select/delete/clear: the instagram repo's bulk bar (count outlined, plain buttons, delete red), centered, sliding down from under the buttons once there's more than one page (`Collapse variant="slide"`) | `PdfTools.jsx`, `Collapse` |
