@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Download, FileUp, Undo2 } from 'lucide-react';
+import { Download, FileUp, Undo2, ZoomIn, ZoomOut } from 'lucide-react';
 import { closePdf, loadPdfLib, openPdf, renderPage, isPasswordError } from '../pdf';
 import { baseName, canvasToBlob, downloadBlob, isPdfFile, useDoneFlags, usePastedFiles } from '../utils';
-import { MOTION_MS } from '../motion';
+import { MOTION_MS, motionEase, prefersReducedMotion } from '../motion';
 import { useToast } from '../toastContext';
 import Count from './Count';
 import FadeText from './FadeText';
@@ -16,6 +16,9 @@ import MotionList from './MotionList';
 
 const PAGE_CSS_WIDTH = 820;
 const PAD = 0.12; // patch margin, as a share of the font size
+const ZOOM_MAX = 5;
+const ZOOM_STEP = 1.5;
+const clampZoom = (z) => Math.min(ZOOM_MAX, Math.max(1, z));
 
 let nextDocId = 1;
 
@@ -104,6 +107,68 @@ function encodable(font, text) {
   return { text: out, lost };
 }
 
+// Every piece of text on a page, at any angle and on rotated pages too:
+// where it is in the PDF (for writing) and where it's drawn (for showing,
+// in % of the drawn page, with its angle on screen). Only text written top
+// to bottom is left out: the standard fonts can't write it.
+function itemsOf(page, content, viewport, n) {
+  const items = [];
+  content.items.forEach((item, i) => {
+    if (!item.str || !item.str.trim() || item.dir === 'ttb') return;
+    const [a, b, c, d, e, f] = item.transform;
+    // Mirrored text can't be retyped in place
+    if (a * d - b * c <= 0) return;
+    const style = content.styles[item.fontName] || {};
+    const size = Math.hypot(c, d); // the font's height
+    if (!(size > 0)) return;
+    const angle = Math.atan2(b, a); // its baseline's direction, in the PDF
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const ascent = style.ascent || 0.8;
+    const descent = style.descent || -0.2;
+    const width = item.width || size * item.str.length * 0.5;
+    // Its box's corners in the PDF: along the baseline, and up from it
+    const at = (along, up) => viewport.convertToViewportPoint(e + along * cos - up * sin, f + along * sin + up * cos);
+    const tl = at(0, ascent * size);
+    const tr = at(width, ascent * size);
+    const bl = at(0, descent * size);
+    const br = at(width, descent * size);
+    const xs = [tl[0], tr[0], bl[0], br[0]];
+    const ys = [tl[1], tr[1], bl[1], br[1]];
+    let realName = '';
+    try {
+      if (page.commonObjs.has(item.fontName)) realName = page.commonObjs.get(item.fontName)?.name || '';
+    } catch {
+      realName = '';
+    }
+    items.push({
+      id: `${n}-${i}`,
+      page: n - 1,
+      str: item.str,
+      // In PDF units, for writing
+      pdf: { x: e, y: f, size, width, ascent, descent, angle },
+      // In % of the drawn page, for showing (turned about its top-left corner)
+      box: {
+        left: (tl[0] / viewport.width) * 100,
+        top: (tl[1] / viewport.height) * 100,
+        width: (Math.hypot(tr[0] - tl[0], tr[1] - tl[1]) / viewport.width) * 100,
+        height: (Math.hypot(bl[0] - tl[0], bl[1] - tl[1]) / viewport.height) * 100,
+        turn: (Math.atan2(tr[1] - tl[1], tr[0] - tl[0]) * 180) / Math.PI,
+        // Straight around it, for reading the colours behind it
+        sample: {
+          left: (Math.min(...xs) / viewport.width) * 100,
+          top: (Math.min(...ys) / viewport.height) * 100,
+          width: ((Math.max(...xs) - Math.min(...xs)) / viewport.width) * 100,
+          height: ((Math.max(...ys) - Math.min(...ys)) / viewport.height) * 100,
+        },
+        fontSize: ((size * viewport.scale) / viewport.width) * 100, // in cqw
+      },
+      font: pickFont(realName, style.fontFamily),
+    });
+  });
+  return items;
+}
+
 export default function PdfEditor({ active }) {
   const [doc, setDoc] = useState(null); // { id, name, bytes, pages: [{ key, num, url, items, width, height }] }
   const [edits, setEdits] = useState({}); // item id -> { text, bg, ink }
@@ -118,10 +183,12 @@ export default function PdfEditor({ active }) {
   // Closing: the box's content holds its height while the pages pop out
   // where they are, then the box goes back to empty (PDF tools' clear)
   const dropBox = useRef(null);
+  const scrollRef = useRef(null); // what scrolls inside the box (both ways once zoomed)
+  const innerRef = useRef(null);
   const [hold, setHold] = useState(0);
   const holdTimer = useRef(null);
   const holdWhileLeaving = () => {
-    const inner = dropBox.current?.firstElementChild;
+    const inner = innerRef.current;
     if (!inner) return;
     setHold(inner.offsetHeight);
     clearTimeout(holdTimer.current);
@@ -135,6 +202,129 @@ export default function PdfEditor({ active }) {
   const release = (d) => d?.pages.forEach(p => URL.revokeObjectURL(p.url));
   // Once a document's pages have popped out (they show their pictures until then)
   const releaseLater = (d) => setTimeout(() => release(d), MOTION_MS + 300);
+
+  // The open document, kept for drawing pages sharper when zoomed in
+  const viewRef = useRef(null);
+  const dropView = () => {
+    closePdf(viewRef.current?.view);
+    viewRef.current = null;
+  };
+  useEffect(() => () => dropView(), []);
+
+  // Zoom: 1 = the page fits the box's width. Applied straight to the page
+  // (no re-render per frame), the spot under your fingers / the middle of
+  // the box staying where it is; the buttons ease it on the app's curve.
+  const [zoom, setZoomState] = useState(1); // where it's headed (the % shown)
+  const zoomNow = useRef(1); // where it's drawn
+  const zooming = useRef(false);
+  const zoomAnim = useRef(null);
+  const applyZoom = (z, ax, ay) => {
+    const sc = scrollRef.current;
+    const inner = innerRef.current;
+    if (!sc || !inner) return;
+    const k = z / zoomNow.current;
+    if (Math.abs(k - 1) < 1e-9) return;
+    const left = sc.scrollLeft;
+    const top = sc.scrollTop;
+    inner.style.setProperty('--zoom', String(z));
+    zoomNow.current = z;
+    sc.scrollLeft = (left + ax) * k - ax;
+    sc.scrollTop = (top + ay) * k - ay;
+  };
+  const settleZoom = () => {
+    // The pages' height changed with the zoom: the boxes take their new
+    // size straight away, not easing after it (see heightMotion)
+    requestAnimationFrame(() => { zooming.current = false; });
+  };
+  const zoomTo = (target, ax, ay) => {
+    const sc = scrollRef.current;
+    if (!sc) return;
+    target = clampZoom(target);
+    if (ax === undefined) { ax = sc.clientWidth / 2; ay = sc.clientHeight / 2; }
+    cancelAnimationFrame(zoomAnim.current);
+    setZoomState(target);
+    zooming.current = true;
+    const from = zoomNow.current;
+    if (prefersReducedMotion()) {
+      applyZoom(target, ax, ay);
+      settleZoom();
+      return;
+    }
+    const t0 = performance.now();
+    const step = (now) => {
+      const t = Math.min(1, (now - t0) / MOTION_MS);
+      applyZoom(from + (target - from) * motionEase(t), ax, ay);
+      if (t < 1) zoomAnim.current = requestAnimationFrame(step);
+      else settleZoom();
+    };
+    zoomAnim.current = requestAnimationFrame(step);
+  };
+  const resetZoom = () => {
+    cancelAnimationFrame(zoomAnim.current);
+    zoomNow.current = 1;
+    innerRef.current?.style.setProperty('--zoom', '1');
+    setZoomState(1);
+  };
+
+  // Pinch (two fingers) and trackpad pinch / ctrl + wheel zoom around the
+  // spot you're zooming on, following your fingers with no easing
+  useEffect(() => {
+    const sc = scrollRef.current;
+    if (!sc) return undefined;
+    // Easing boxes inside don't ease while zooming (they'd lag behind)
+    sc._heightMotion = { running: () => zooming.current, animatesChanges: () => false };
+    let pinch = null;
+    const spot = (x, y) => {
+      const r = sc.getBoundingClientRect();
+      return [x - r.left, y - r.top];
+    };
+    const onStart = (e) => {
+      if (e.touches.length !== 2 || !docRef.current) return;
+      const [a, b] = e.touches;
+      cancelAnimationFrame(zoomAnim.current);
+      zooming.current = true;
+      pinch = { dist: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY), zoom: zoomNow.current };
+    };
+    const onMove = (e) => {
+      if (!pinch || e.touches.length !== 2) return;
+      e.preventDefault();
+      const [a, b] = e.touches;
+      const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      const [ax, ay] = spot((a.clientX + b.clientX) / 2, (a.clientY + b.clientY) / 2);
+      applyZoom(clampZoom(pinch.zoom * (dist / pinch.dist)), ax, ay);
+    };
+    const onEnd = (e) => {
+      if (!pinch || e.touches.length >= 2) return;
+      pinch = null;
+      setZoomState(zoomNow.current);
+      settleZoom();
+    };
+    let wheelDone = null;
+    const onWheel = (e) => {
+      if (!e.ctrlKey || !docRef.current) return;
+      e.preventDefault();
+      cancelAnimationFrame(zoomAnim.current);
+      zooming.current = true;
+      const [ax, ay] = spot(e.clientX, e.clientY);
+      applyZoom(clampZoom(zoomNow.current * Math.exp(-e.deltaY * 0.01)), ax, ay);
+      clearTimeout(wheelDone);
+      wheelDone = setTimeout(() => { setZoomState(zoomNow.current); settleZoom(); }, 150);
+    };
+    sc.addEventListener('touchstart', onStart, { passive: true });
+    sc.addEventListener('touchmove', onMove, { passive: false });
+    sc.addEventListener('touchend', onEnd);
+    sc.addEventListener('touchcancel', onEnd);
+    sc.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      clearTimeout(wheelDone);
+      sc._heightMotion = null;
+      sc.removeEventListener('touchstart', onStart);
+      sc.removeEventListener('touchmove', onMove);
+      sc.removeEventListener('touchend', onEnd);
+      sc.removeEventListener('touchcancel', onEnd);
+      sc.removeEventListener('wheel', onWheel);
+    };
+  }, []);
 
   const openFile = useCallback(async (files) => {
     const file = [...files].find(isPdfFile);
@@ -154,52 +344,23 @@ export default function PdfEditor({ active }) {
         const page = await view.getPage(n);
         const { canvas, viewport } = await renderPage(page, { cssWidth: PAGE_CSS_WIDTH });
         const url = URL.createObjectURL(await canvasToBlob(canvas, 'image/png'));
+        const px = canvas.width;
         canvas.width = canvas.height = 0;
         const content = await page.getTextContent();
-        const items = [];
-        content.items.forEach((item, i) => {
-          if (!item.str || !item.str.trim()) return;
-          const [a, b, c, d, e, f] = item.transform;
-          // Only straight, left-to-right text on unrotated pages can be retyped in place
-          if (page.rotate || Math.abs(b) > 1e-3 || Math.abs(c) > 1e-3 || a <= 0 || d <= 0 || item.dir === 'ttb') return;
-          const style = content.styles[item.fontName] || {};
-          const size = d;
-          const ascent = style.ascent || 0.8;
-          const descent = style.descent || -0.2;
-          const width = item.width || size * item.str.length * 0.5;
-          const [x1, y1] = viewport.convertToViewportPoint(e, f + ascent * size);
-          const [x2, y2] = viewport.convertToViewportPoint(e + width, f + descent * size);
-          let realName = '';
-          try {
-            if (page.commonObjs.has(item.fontName)) realName = page.commonObjs.get(item.fontName)?.name || '';
-          } catch {
-            realName = '';
-          }
-          items.push({
-            id: `${n}-${i}`,
-            page: n - 1,
-            str: item.str,
-            // In PDF units, for writing
-            pdf: { x: e, y: f, size, width, ascent, descent },
-            // In % of the drawn page, for showing
-            box: {
-              left: (Math.min(x1, x2) / viewport.width) * 100,
-              top: (Math.min(y1, y2) / viewport.height) * 100,
-              width: (Math.abs(x2 - x1) / viewport.width) * 100,
-              height: (Math.abs(y2 - y1) / viewport.height) * 100,
-              fontSize: ((size * viewport.scale) / viewport.width) * 100, // in cqw
-            },
-            font: pickFont(realName, style.fontFamily),
-          });
-        });
+        const items = itemsOf(page, content, viewport, n);
         page.cleanup();
-        pages.push({ num: n, url, items, width: viewport.width, height: viewport.height });
+        pages.push({ num: n, url, px, items, width: viewport.width, height: viewport.height });
       }
       // A new document's pages pop in as the old one's pop out
       const id = nextDocId++;
       pages.forEach(p => { p.key = `${id}-${p.num}`; });
       clearTimeout(holdTimer.current);
       setHold(0);
+      resetZoom();
+      // Kept open to draw the pages sharper when zoomed in
+      dropView();
+      viewRef.current = { id, view };
+      view = null;
       setDoc(prev => {
         if (prev) releaseLater(prev);
         return { id, name: file.name, bytes, pages };
@@ -222,6 +383,56 @@ export default function PdfEditor({ active }) {
 
   usePastedFiles(active, isPdfFile, openFile);
 
+  // Zoomed in, the pages are drawn again at the size they're shown (once the
+  // zoom has settled: drawing a page is heavy work, never while things move)
+  useEffect(() => {
+    if (!doc) return undefined;
+    let stale = false;
+    const t = setTimeout(async () => {
+      const open = viewRef.current;
+      if (!open || open.id !== doc.id) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      for (const p of doc.pages) {
+        if (stale) return;
+        const img = imgRefs.current[p.key];
+        if (!img) continue;
+        const cssWidth = img.getBoundingClientRect().width;
+        if (!cssWidth || p.maxed || p.px >= cssWidth * dpr * 0.9) continue;
+        try {
+          const page = await open.view.getPage(p.num);
+          const { canvas } = await renderPage(page, { cssWidth });
+          const url = URL.createObjectURL(await canvasToBlob(canvas, 'image/png'));
+          const px = canvas.width;
+          canvas.width = canvas.height = 0;
+          page.cleanup();
+          if (stale || viewRef.current !== open) {
+            URL.revokeObjectURL(url);
+            return;
+          }
+          setDoc(prev => {
+            if (!prev || prev.id !== doc.id) {
+              URL.revokeObjectURL(url);
+              return prev;
+            }
+            return { ...prev, pages: prev.pages.map(q => {
+              if (q.key !== p.key) return q;
+              // The old picture stays until the new one has replaced it
+              const old = q.url;
+              setTimeout(() => URL.revokeObjectURL(old), 2000);
+              // Drawn as big as a page can be: no use drawing it again
+              return { ...q, url, px, maxed: px < cssWidth * dpr * 0.9 };
+            }) };
+          });
+        } catch {
+          return;
+        }
+      }
+    }, MOTION_MS + 250);
+    return () => { stale = true; clearTimeout(t); };
+    // Only when the zoom or the document changes (not each sharper page)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zoom, doc?.id]);
+
   useEffect(() => () => release(docRef.current), []);
 
   const cancelled = useRef(false);
@@ -230,7 +441,7 @@ export default function PdfEditor({ active }) {
     let colors = edit;
     if (!colors) {
       try {
-        colors = sampleColors(imgRefs.current[`${doc.id}-${item.page + 1}`], item.box);
+        colors = sampleColors(imgRefs.current[`${doc.id}-${item.page + 1}`], item.box.sample || item.box);
       } catch {
         colors = { bg: [255, 255, 255], ink: [0, 0, 0] };
       }
@@ -262,7 +473,7 @@ export default function PdfEditor({ active }) {
     if (!doc || busy) return;
     setBusy(true);
     try {
-      const { PDFDocument, StandardFonts, rgb } = await loadPdfLib();
+      const { PDFDocument, StandardFonts, rgb, degrees } = await loadPdfLib();
       const pdf = await PDFDocument.load(doc.bytes);
       const fonts = new Map();
       const getFont = async (key) => {
@@ -279,18 +490,24 @@ export default function PdfEditor({ active }) {
         const font = await getFont(standardFontKey(item.font));
         const safe = encodable(font, edit.text);
         lost = lost || safe.lost;
-        const { x, y, size, width, ascent, descent } = item.pdf;
+        const { x, y, size, width, ascent, descent, angle = 0 } = item.pdf;
         const newWidth = safe.text ? font.widthOfTextAtSize(safe.text, size) : 0;
         const pad = size * PAD;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        // The patch's corner: back along the baseline and down from it, turned with the text
+        const along = -pad;
+        const up = descent * size - pad;
         page.drawRectangle({
-          x: x - pad,
-          y: y + descent * size - pad,
+          x: x + along * cos - up * sin,
+          y: y + along * sin + up * cos,
           width: Math.max(width, newWidth) + pad * 2,
           height: (ascent - descent) * size + pad * 2,
+          rotate: degrees((angle * 180) / Math.PI),
           color: color(edit.bg),
           borderWidth: 0,
         });
-        if (safe.text) page.drawText(safe.text, { x, y, size, font, color: color(edit.ink) });
+        if (safe.text) page.drawText(safe.text, { x, y, size, font, color: color(edit.ink), rotate: degrees((angle * 180) / Math.PI) });
       }
       const out = await pdf.save();
       downloadBlob(new Blob([out], { type: 'application/pdf' }), `${baseName(doc.name)}-edited.pdf`);
@@ -306,6 +523,7 @@ export default function PdfEditor({ active }) {
   const editCount = Object.keys(edits).length;
   const textCount = doc ? doc.pages.reduce((n, p) => n + p.items.length, 0) : 0;
   const close = () => {
+    dropView();
     releaseLater(doc);
     holdWhileLeaving();
     setDoc(null);
@@ -322,13 +540,16 @@ export default function PdfEditor({ active }) {
         ref={dropBox}
         className={`tool-box pdf-drop editor-drop ${doc ? 'has-pages' : ''} ${dragging ? 'dragging' : ''}`}
         // Empty: anywhere opens the picker; with a PDF, only the space around it
-        onClick={(e) => { if (!doc || e.target === e.currentTarget || e.target.classList.contains('pdf-drop-inner')) inputRef.current?.click(); }}
+        onClick={(e) => { if (!doc || e.target === e.currentTarget || e.target === scrollRef.current || e.target.classList.contains('pdf-drop-inner')) inputRef.current?.click(); }}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false); }}
         onDrop={(e) => { e.preventDefault(); setDragging(false); openFile(e.dataTransfer?.files || []); }}
         aria-label="Open a PDF"
       >
+        {/* Scrolls inside the box, both ways once zoomed in */}
+        <div ref={scrollRef} className="editor-scroll">
         <div
+          ref={innerRef}
           className={`pdf-drop-inner ${doc || hold ? 'full' : 'drop-box-empty'}`}
           style={hold ? { minHeight: `${hold}px` } : undefined}
         >
@@ -358,6 +579,8 @@ export default function PdfEditor({ active }) {
                       minWidth: `${item.box.width}%`,
                       height: `${item.box.height}%`,
                       '--fs': item.box.fontSize,
+                      // Turned with the text (about its top-left corner)
+                      transform: item.box.turn ? `rotate(${item.box.turn}deg)` : undefined,
                       ...cssFont(item.font),
                     };
                     if (editing === item.id && draftColors) {
@@ -399,6 +622,13 @@ export default function PdfEditor({ active }) {
               </div>
             )}
           />
+        </div>
+        </div>
+        {/* Zoom: pinch too (or the trackpad / ctrl + scroll) */}
+        <div className={`zoom-pill ${doc ? 'show' : ''}`} aria-hidden={!doc}>
+          <button className="zoom-btn" onClick={(e) => { e.currentTarget.blur(); zoomTo(zoom / ZOOM_STEP); }} disabled={!doc || zoom <= 1} title="Zoom out" aria-label="Zoom out"><ZoomOut size={14} /></button>
+          <span className="zoom-num"><Count value={Math.round(zoom * 100)} />%</span>
+          <button className="zoom-btn" onClick={(e) => { e.currentTarget.blur(); zoomTo(zoom * ZOOM_STEP); }} disabled={!doc || zoom >= ZOOM_MAX} title="Zoom in" aria-label="Zoom in"><ZoomIn size={14} /></button>
         </div>
       </div>
       <input

@@ -1049,6 +1049,94 @@ kbd {
   width: 100%;
 }
 
+/* The PDF editor's box: it doesn't scroll itself; the scroller inside does
+   (both ways once zoomed), so the zoom buttons can float over it */
+.pdf-drop.editor-drop {
+  position: relative;
+  overflow: hidden;
+}
+
+.editor-scroll {
+  height: 100%;
+  overflow: auto;
+  /* Two fingers zoom the PDF, not the whole page */
+  touch-action: pan-x pan-y;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.editor-scroll > .pdf-drop-inner.drop-box-empty {
+  min-height: 100%;
+}
+
+/* Zoomed: the pages are --zoom times the box's width */
+.editor-scroll > .pdf-drop-inner.full {
+  width: calc(100% * var(--zoom, 1));
+  min-width: 100%;
+}
+
+/* Zoom out · % · zoom in, floating in the box's corner; pops in with a PDF */
+.zoom-pill {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 6px 18px -10px rgba(0, 0, 0, 0.22);
+  opacity: 0;
+  transform: translateY(14px) scale(0.95);
+  pointer-events: none;
+  transition: opacity var(--motion-duration) var(--motion-easing),
+              transform var(--motion-duration) var(--motion-easing);
+}
+
+.zoom-pill.show {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.zoom-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: calc(var(--radius) - 4px);
+  background: transparent;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: opacity var(--motion-duration) var(--motion-easing),
+              background-color var(--motion-duration) var(--motion-easing);
+}
+
+.zoom-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+@media (hover: hover) {
+  .zoom-btn:not(:disabled):hover {
+    background: rgba(127, 127, 127, 0.1);
+  }
+}
+
+.zoom-num {
+  min-width: 46px;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-main);
+  font-variant-numeric: tabular-nums;
+}
+
 .pdf-page {
   position: relative;
   overflow: hidden;
@@ -1079,6 +1167,7 @@ kbd {
   line-height: 1;
   white-space: pre;
   border-radius: 2px;
+  transform-origin: 0 0;
 }
 
 .pdf-text-item {

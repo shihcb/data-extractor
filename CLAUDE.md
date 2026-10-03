@@ -40,6 +40,13 @@ its description above the box (always the same words) and a stats line right
 under it that's always there, label first so only the numbers change, counting
 up from 0 ("pages 0 · files 0 · selected 0"; sizes always in KB).
 
+The PDF editor finds text at any angle and on rotated pages (only vertical
+writing is left out) and writes edits back turned the same way. Its box zooms
+(buttons ease on the shared curve; pinch / ctrl + scroll follow the fingers)
+around the spot being zoomed, scrolling both ways inside the box; pages are
+redrawn sharper once a zoom settles. While zooming, easing boxes inside don't
+ease (`_heightMotion` on the scroller).
+
 Rules that keep it smooth (each was a real bug):
 - A row/box measures positions against itself (`position: relative`), never
   against something that moves with the boxes above it.
