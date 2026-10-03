@@ -152,6 +152,13 @@ export default function PdfTools({ active }) {
     if (!loading) dropUnusedSources([]);
   };
 
+  // Pages deleted while files were still loading: their documents are let go
+  // once loading is done (closing one mid-load broke the file being drawn)
+  useEffect(() => {
+    if (!loading) dropUnusedSources(pagesRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
+
   useEffect(() => () => {
     pagesRef.current.forEach(p => p.thumb && URL.revokeObjectURL(p.thumb));
     sources.current.forEach(src => closePdf(src.view));

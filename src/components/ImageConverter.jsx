@@ -158,7 +158,7 @@ export default function ImageConverter({ active }) {
         const out = await estimateImage(selected, settings);
         if (cancelled) return;
         estimatedFor.current = selected.id;
-        setEstimate({ ...out, pdf: settings.format === 'pdf' });
+        setEstimate({ ...out, pdf: settings.format === 'pdf', id: selected.id });
       } catch {
         if (!cancelled) setEstimate(null);
       }
@@ -233,10 +233,13 @@ export default function ImageConverter({ active }) {
   };
 
 
-  // Until the estimate is in: the size it will be, with the last byte count
+  // Until this image's estimate is in: the size it will be, with the last
+  // byte count (another image's estimate never stands in for it)
   const out = !selected
     ? { width: 0, height: 0, size: 0 }
-    : estimate || { ...targetSize(selected.w, selected.h, resize), size: 0 };
+    : estimate?.id === selected.id
+      ? estimate
+      : { ...targetSize(selected.w, selected.h, resize), size: estimate?.size || 0 };
 
   return (
     <div className="tool">

@@ -226,6 +226,10 @@ export default function PdfEditor({ active }) {
   useEffect(() => () => clearTimeout(holdTimer.current), []);
   const docRef = useRef(doc);
   docRef.current = doc;
+  // The document whose pages are popping out (another opened, or closed):
+  // they keep showing its changes, in its fonts, until they're gone
+  const leavingDoc = useRef(null);
+  const editsRef = useRef({});
   const toast = useToast();
 
   const release = (d) => d?.pages.forEach(p => URL.revokeObjectURL(p.url));
@@ -235,7 +239,10 @@ export default function PdfEditor({ active }) {
   // The open document, kept for drawing pages sharper when zoomed in
   const viewRef = useRef(null);
   const dropView = () => {
-    viewRef.current?.faces?.forEach(f => document.fonts.delete(f));
+    // Its fonts go once its pages have popped out (they show changed words
+    // in them until then)
+    const faces = viewRef.current?.faces || [];
+    setTimeout(() => faces.forEach(f => document.fonts.delete(f)), MOTION_MS + 300);
     closePdf(viewRef.current?.view);
     viewRef.current = null;
   };
@@ -411,7 +418,10 @@ export default function PdfEditor({ active }) {
       viewRef.current = { id, view, faces };
       view = null;
       setDoc(prev => {
-        if (prev) releaseLater(prev);
+        if (prev) {
+          leavingDoc.current = { fonts: prev.fonts, edits: editsRef.current };
+          releaseLater(prev);
+        }
         return { id, name: file.name, bytes, pages, fonts };
       });
       resetEdits();
@@ -626,9 +636,9 @@ export default function PdfEditor({ active }) {
   // How words are shown: in the PDF's own font when it has every letter,
   // else in the closest standard font
   // squeezed or stretched to take the original's room
-  const lookOf = (item, text, typing = false) => {
+  const lookOf = (item, text, typing = false, fonts = doc?.fonts) => {
     const stand = cssFont(item.font);
-    const info = doc?.fonts?.[item.fontKey];
+    const info = fonts?.[item.fontKey];
     // The PDF's own font (its real-letter copy): when it has every letter, or
     // while typing (any letter it lacks shows in the stand-in meanwhile)
     if (info?.family && (typing || originalCanWrite(info, text))) {
@@ -652,9 +662,12 @@ export default function PdfEditor({ active }) {
       // its layout position (whole pixels). (Both rects carry the box's
       // lift, so it cancels out.)
       const before = parseFloat(run.dataset.nudge || 0);
+      // (a page still popping in is drawn at less than full size: undone)
+      const rect = box.getBoundingClientRect();
+      const scale = box.offsetHeight ? rect.height / box.offsetHeight : 1;
       const baseline = run.dataset.turned
         ? mark.offsetTop / px
-        : (mark.getBoundingClientRect().top - box.getBoundingClientRect().top) / px - before;
+        : (mark.getBoundingClientRect().top - rect.top) / (scale || 1) / px - before;
       const nudge = parseFloat(run.dataset.asc) - parseFloat(run.dataset.lift || 0) - baseline;
       run.dataset.nudge = String(nudge);
       const squeeze = parseFloat(run.dataset.squeeze) || 1;
@@ -669,9 +682,11 @@ export default function PdfEditor({ active }) {
     return () => document.fonts?.removeEventListener?.('loadingdone', again);
   }, [alignRuns]);
 
+  editsRef.current = edits;
   const editCount = Object.keys(edits).length;
   const textCount = doc ? doc.pages.reduce((n, p) => n + p.items.length, 0) : 0;
   const close = () => {
+    leavingDoc.current = doc ? { fonts: doc.fonts, edits } : null;
     dropView();
     releaseLater(doc);
     holdWhileLeaving();
@@ -708,7 +723,7 @@ export default function PdfEditor({ active }) {
             getKey={p => p.key}
             motion="pop"
             className="pdf-pages"
-            renderItem={(p) => (
+            renderItem={(p, { leaving }) => (
               <div className="tool-box pdf-page" style={{ aspectRatio: `${p.width} / ${p.height}` }}>
                 <img
                   // By the page's own key: an old document's pages still popping
@@ -721,9 +736,11 @@ export default function PdfEditor({ active }) {
                 />
                 <div className="pdf-text-layer">
                   {p.items.map(item => {
-                    const edit = edits[item.id];
-                    const typing = editing === item.id && draftColors;
-                    const look = lookOf(item, typing ? draft : (edit ? edit.text : item.str), !!typing);
+                    // (a page on its way out shows its own document's changes)
+                    const gone = leaving ? leavingDoc.current : null;
+                    const edit = (gone ? gone.edits : edits)[item.id];
+                    const typing = !gone && editing === item.id && draftColors;
+                    const look = lookOf(item, typing ? draft : (edit ? edit.text : item.str), !!typing, gone ? gone.fonts : doc?.fonts);
                     // The box runs from the PDF font's ascent to its descent; the
                     // text sits with its baseline on the PDF's (ascent below the
                     // top), however the stand-in font is proportioned

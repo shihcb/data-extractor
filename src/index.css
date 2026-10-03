@@ -734,7 +734,9 @@ kbd {
   white-space: nowrap;
 }
 
-.shortcuts-btn {
+/* (.btn.: the later `.btn { position: relative }` must not pull it back into
+   the page, where it sat below the bottom of a page that doesn't scroll) */
+.btn.shortcuts-btn {
   position: fixed;
   right: 18px;
   bottom: calc(18px + env(safe-area-inset-bottom));
