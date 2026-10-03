@@ -15,6 +15,13 @@ export default function FlipRow({ className = 'tool-actions', children }) {
   useLayoutEffect(() => {
     const row = ref.current;
     const els = [...row.children];
+    // Hidden (a closed panel): nothing measures, so nothing to remember — the
+    // first look once it's shown starts fresh rather than growing every
+    // button from 0px
+    if (!row.getClientRects().length || !row.offsetWidth) {
+      last.current = new Map();
+      return;
+    }
     // Natural layout: the engine's inline widths off for a moment
     const saved = els.map(el => el.style.width);
     els.forEach((el) => { el.style.width = ''; });
@@ -26,7 +33,7 @@ export default function FlipRow({ className = 'tool-actions', children }) {
       els.forEach((el) => {
         const before = last.current.get(el);
         const n = now.get(el);
-        if (!before || Math.abs(before.width - n.width) < 0.5) return;
+        if (!before || !before.width || Math.abs(before.width - n.width) < 0.5) return;
         widened = true;
         animateTo(el, 'width', n.width, { from: before.width });
       });
