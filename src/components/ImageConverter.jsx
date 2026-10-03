@@ -13,6 +13,7 @@ import AutoHeight from './AutoHeight';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
 import SlideText from './SlideText';
+import SlideSwap from './SlideSwap';
 import { animateTo } from '../engine';
 
 // Box padding (matches .drop-box) and the smallest it shrinks to
@@ -286,7 +287,7 @@ export default function ImageConverter({ active }) {
           <FlipRow className="field-grid">
             <TabSwitcher className="tab-switcher-sm" tabs={IMAGE_FORMATS} active={format} onChange={setFormat} />
             <TabSwitcher className="tab-switcher-sm" tabs={RESIZE_MODES} active={resizeMode} onChange={setResizeMode} />
-            {/* One number box; its unit words do the word slide (% ↔ px wide) */}
+            {/* One number box; its unit words do the word swap (% ↔ px wide) */}
             <label className="field resize-field">
               <input
                 className="text-input num"
@@ -298,10 +299,7 @@ export default function ImageConverter({ active }) {
                 onChange={(e) => (resizeMode === 'percent' ? setPercent : setWidthPx)(e.target.value)}
                 aria-label={resizeMode === 'percent' ? 'Scale percent' : 'Width in pixels'}
               />
-              <span className="unit-words">
-                <SlideText show={resizeMode === 'percent'}>%</SlideText>
-                <SlideText show={resizeMode === 'width'}>px wide</SlideText>
-              </span>
+              <SlideSwap text={resizeMode === 'percent' ? '%' : 'px wide'} />
             </label>
           </FlipRow>
           <Collapse open={fmt.lossy}>

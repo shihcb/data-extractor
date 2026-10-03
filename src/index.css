@@ -1253,3 +1253,24 @@ html.page-fits body {
   display: inline-flex;
   align-items: center;
 }
+
+/* The word swap (SlideSwap): both words share one spot; the space between
+   eases from one's width to the other's. Top-aligned with the line's own
+   height so clipping it doesn't move it off the baseline. */
+.slide-swap {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  vertical-align: top;
+}
+.slide-swap-word {
+  display: inline-block;
+}
+.slide-swap-ghost {
+  position: absolute;
+  top: 0;
+  left: 0;
+  white-space: nowrap;
+  pointer-events: none;
+}
