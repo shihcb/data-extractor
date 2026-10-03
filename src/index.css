@@ -1200,3 +1200,7 @@ a.btn {
 .options-panel > .motion-collapse > .auto-height-inner {
   padding-top: 14px;
 }
+
+.resize-field {
+  display: inline-flex;
+}

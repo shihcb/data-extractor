@@ -285,35 +285,38 @@ export default function ImageConverter({ active }) {
           <div className="field-grid">
             <TabSwitcher className="tab-switcher-sm" tabs={IMAGE_FORMATS} active={format} onChange={setFormat} />
             <TabSwitcher className="tab-switcher-sm" tabs={RESIZE_MODES} active={resizeMode} onChange={setResizeMode} />
-            {resizeMode === 'percent' ? (
-              <label className="field">
-                <input
-                  className="text-input num"
-                  type="number"
-                  inputMode="decimal"
-                  min="1"
-                  max="1000"
-                  value={percent}
-                  onChange={(e) => setPercent(e.target.value)}
-                  aria-label="Scale percent"
-                />
-                %
-              </label>
-            ) : (
-              <label className="field">
-                <input
-                  className="text-input num"
-                  type="number"
-                  inputMode="numeric"
-                  min="1"
-                  max="16384"
-                  value={widthPx}
-                  onChange={(e) => setWidthPx(e.target.value)}
-                  aria-label="Width in pixels"
-                />
-                px wide
-              </label>
-            )}
+            {/* Swapping between % and px wide fades like the size text does */}
+            <FadeText k={resizeMode} className="resize-field">
+              {resizeMode === 'percent' ? (
+                <label className="field">
+                  <input
+                    className="text-input num"
+                    type="number"
+                    inputMode="decimal"
+                    min="1"
+                    max="1000"
+                    value={percent}
+                    onChange={(e) => setPercent(e.target.value)}
+                    aria-label="Scale percent"
+                  />
+                  %
+                </label>
+              ) : (
+                <label className="field">
+                  <input
+                    className="text-input num"
+                    type="number"
+                    inputMode="numeric"
+                    min="1"
+                    max="16384"
+                    value={widthPx}
+                    onChange={(e) => setWidthPx(e.target.value)}
+                    aria-label="Width in pixels"
+                  />
+                  px wide
+                </label>
+              )}
+            </FadeText>
           </div>
           <Collapse open={fmt.lossy}>
             <div className="field-grid quality-row">
