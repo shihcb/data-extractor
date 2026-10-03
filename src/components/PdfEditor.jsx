@@ -5,7 +5,6 @@ import { baseName, canvasToBlob, downloadBlob, isPdfFile, useDoneFlags, usePaste
 import { MOTION_MS } from '../motion';
 import { useToast } from '../toastContext';
 import Count from './Count';
-import AutoHeight from './AutoHeight';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
 import MotionList from './MotionList';
@@ -17,8 +16,6 @@ import MotionList from './MotionList';
 
 const PAGE_CSS_WIDTH = 820;
 const PAD = 0.12; // patch margin, as a share of the font size
-
-const plural = (n, word) => (n === 1 ? word : `${word}s`);
 
 let nextDocId = 1;
 
@@ -307,6 +304,7 @@ export default function PdfEditor({ active }) {
   };
 
   const editCount = Object.keys(edits).length;
+  const textCount = doc ? doc.pages.reduce((n, p) => n + p.items.length, 0) : 0;
   const close = () => {
     releaseLater(doc);
     holdWhileLeaving();
@@ -317,6 +315,7 @@ export default function PdfEditor({ active }) {
 
   return (
     <div className="tool">
+      <p className="tool-desc">click any text in a PDF to change it</p>
       {/* The same box as PDF tools: a fixed size that scrolls inside (the
           page stays still); the pages pop in and out like PDF tools' cards */}
       <div
@@ -410,15 +409,10 @@ export default function PdfEditor({ active }) {
         onChange={(e) => { openFile(e.target.files || []); e.target.value = ''; }}
       />
 
-      <AutoHeight className="tool-meta" aria-live="polite">
-        <FadeText k={doc ? 'doc' : 'empty'}>
-        {doc ? (
-          <>
-            <Count value={doc.pages.length} /> {plural(doc.pages.length, 'page')} · <Count value={editCount} /> {plural(editCount, 'change')} · click any text to change it
-          </>
-        ) : 'click any text in a PDF to change it'}
-      </FadeText>
-      </AutoHeight>
+      {/* The stats: always there, only the numbers change (counting from 0) */}
+      <div className="tool-meta tool-stats" aria-live="polite">
+        pages <Count value={doc ? doc.pages.length : 0} /> · texts <Count value={textCount} /> · changes <Count value={editCount} />
+      </div>
 
       <FlipRow>
         <button className="btn btn-icon" onClick={(e) => { e.currentTarget.blur(); inputRef.current?.click(); }} title="Open a PDF" aria-label="Open a PDF">

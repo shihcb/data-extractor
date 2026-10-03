@@ -33,9 +33,12 @@ of restarting it. When the user names one of these, this is what they mean:
 
 PDF tools and the image converter are the same layout (and the PDF editor
 shares their box, its pages popping in and out the same way): one box size (the
-screen minus `--box-room`, ~380px, which leaves room for the floating bar) that scrolls inside so the page stays still,
+screen minus `--box-room`, ~410px, which leaves room for the floating bar) that scrolls inside so the page stays still,
 the same cards (picture, label row, small buttons; tap to select, several at
-once), the same buttons, and the same bulk bar. Keep them matching.
+once), the same buttons, and the same bulk bar. Keep them matching. Each has
+its description above the box (always the same words) and a stats line right
+under it that's always there, label first so only the numbers change, counting
+up from 0 ("pages 0 · files 0 · selected 0"; sizes always in KB).
 
 Rules that keep it smooth (each was a real bug):
 - A row/box measures positions against itself (`position: relative`), never

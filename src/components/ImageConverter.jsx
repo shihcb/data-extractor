@@ -2,18 +2,16 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Copy, Download, ImageUp, X } from 'lucide-react';
 import { zipSync } from 'fflate';
 import { IMAGE_FORMATS, encodeImage, estimateImage, jpegsToPdf, loadImage, makeThumb, targetSize } from '../imageConvert';
-import { baseName, copyImageBlob, downloadBlob, formatBytes, isImageFile, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
+import { baseName, copyImageBlob, downloadBlob, isImageFile, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
 import { MOTION_MS } from '../motion';
 import { useToast } from '../toastContext';
 import TabSwitcher from './TabSwitcher';
 import MotionList from './MotionList';
 import Collapse from './Collapse';
 import Count from './Count';
-import AutoHeight from './AutoHeight';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
 import BulkBar from './BulkBar';
-import SlideText from './SlideText';
 import SlideSwap from './SlideSwap';
 
 const RESIZE_MODES = [
@@ -22,6 +20,9 @@ const RESIZE_MODES = [
 ];
 
 let nextId = 1;
+
+// Always in KB, so only the number changes (never "B" → "KB" → "MB")
+const kb = (n) => `${Math.round(n / 1024).toLocaleString()} KB`;
 
 // Frees what an image holds once it's gone: its links and its decoded copy
 function releaseItem(item) {
@@ -232,10 +233,14 @@ export default function ImageConverter({ active }) {
   };
 
 
-  const original = selected ? targetSize(selected.w, selected.h, { mode: 'percent', percent: 100 }) : null;
+  // Until the estimate is in: the size it will be, with the last byte count
+  const out = !selected
+    ? { width: 0, height: 0, size: 0 }
+    : estimate || { ...targetSize(selected.w, selected.h, resize), size: 0 };
 
   return (
     <div className="tool">
+      <p className="tool-desc">convert and resize images, or make them a PDF</p>
       {/* The same box as PDF tools: a fixed size that scrolls inside, the
           images as cards that pop in and out */}
       <div
@@ -301,6 +306,12 @@ export default function ImageConverter({ active }) {
         </div>
       </div>
 
+      {/* The stats: always there, only the numbers change (counting from 0).
+          "out" is what the selected image (or the first) comes out as. */}
+      <div className="tool-meta tool-stats" aria-live="polite">
+        images <Count value={items.length} /> · selected <Count value={picked.size} /> · out <Count value={out.width} format={String} /> × <Count value={out.height} format={String} /> · <Count value={out.size} format={kb} />
+      </div>
+
       <Collapse open={items.length > 0} className="options-collapse">
         <div className="options-panel">
           <FlipRow className="field-grid">
@@ -341,17 +352,6 @@ export default function ImageConverter({ active }) {
         </div>
       </Collapse>
 
-      <AutoHeight className="tool-meta" aria-live="polite">
-        <FadeText k={!selected ? 'empty' : estimate ? `est-${!!estimate.clamped}` : 'wait'}>
-        {selected && estimate ? (
-          <>
-            {original.width} × {original.height} → <Count value={estimate.width} format={String} /> × <Count value={estimate.height} format={String} /> · <Count value={estimate.size} format={formatBytes} />
-            <SlideText show={!!estimate.pdf}>{'\u00a0per page'}</SlideText>
-            {estimate.clamped ? ' (largest this device can make)' : ''}
-          </>
-        ) : selected ? `${original.width} × ${original.height}` : 'png, jpg, webp, gif, avif and more'}
-      </FadeText>
-      </AutoHeight>
 
       <FlipRow>
         <button

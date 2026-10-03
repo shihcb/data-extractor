@@ -6,7 +6,6 @@ import { baseName, canvasToBlob, downloadBlob, isPdfFile, uniqueNamer, useDoneFl
 import { MOTION_MS } from '../motion';
 import { useToast } from '../toastContext';
 import MotionList from './MotionList';
-import AutoHeight from './AutoHeight';
 import Count from './Count';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
@@ -18,8 +17,6 @@ const IMAGE_SCALE = 2; // pages to images: 144 dpi
 
 let nextPageId = 1;
 let nextSourceId = 1;
-
-const plural = (n, word) => (n === 1 ? word : `${word}s`);
 
 export default function PdfTools({ active }) {
   // A page: { id, srcId, index, rotation (degrees, any multiple of 90), thumb (url), num }
@@ -253,6 +250,7 @@ export default function PdfTools({ active }) {
 
   return (
     <div className="tool">
+      <p className="tool-desc">merge, split, rotate or turn pages into images</p>
       {/* A fixed-size box that scrolls inside: the page itself stays still */}
       <div
         ref={dropBox}
@@ -321,19 +319,10 @@ export default function PdfTools({ active }) {
         </div>
       </div>
 
-      <AutoHeight className="tool-meta" aria-live="polite">
-        {/* No per-page loading line: the cards show it, and a line changing
-            every page piled its fading copies on top of each other */}
-        <FadeText k={pages.length ? 'pages' : 'empty'}>
-        {pages.length ? (
-          <>
-            <Count value={pages.length} /> {plural(pages.length, 'page')} from <Count value={fileCount} /> {plural(fileCount, 'file')}
-            {/* The selection count comes and goes with the word slide */}
-            <SlideText show={selected.size > 0}>{'\u00a0·\u00a0'}<Count value={selected.size} />{'\u00a0selected'}</SlideText>
-          </>
-        ) : 'merge, split, rotate or turn pages into images'}
-      </FadeText>
-      </AutoHeight>
+      {/* The stats: always there, only the numbers change (counting from 0) */}
+      <div className="tool-meta tool-stats" aria-live="polite">
+        pages <Count value={pages.length} /> · files <Count value={fileCount} /> · selected <Count value={selected.size} />
+      </div>
 
       <FlipRow>
         <button className="btn btn-icon" onClick={(e) => { e.currentTarget.blur(); inputRef.current?.click(); }} title="Add PDFs" aria-label="Add PDFs">
