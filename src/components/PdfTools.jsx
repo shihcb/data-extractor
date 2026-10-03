@@ -9,6 +9,8 @@ import MotionList from './MotionList';
 import AutoHeight from './AutoHeight';
 import Count from './Count';
 import FadeText from './FadeText';
+import FlipRow from './FlipRow';
+import SlideText from './SlideText';
 
 const THUMB_CSS_WIDTH = 160;
 const IMAGE_SCALE = 2; // pages to images: 144 dpi
@@ -205,7 +207,11 @@ export default function PdfTools({ active }) {
   });
 
   const fileCount = new Set(pages.map(p => p.srcId)).size;
-  const label = (key, idle) => (busy === key ? 'working…' : idle);
+  // A button's words: "working…" while it runs, swapped with the text swap
+  const label = (key, idle) => {
+    const text = busy === key ? 'working…' : idle;
+    return <FadeText k={text} className="btn-label">{text}</FadeText>;
+  };
   const none = !pages.length || !!loading;
 
   return (
@@ -269,14 +275,14 @@ export default function PdfTools({ active }) {
         {loading ? `loading ${loading}` : pages.length ? (
           <>
             <Count value={pages.length} /> {plural(pages.length, 'page')} from <Count value={fileCount} /> {plural(fileCount, 'file')}
-            {selected.size > 0 && <> · <Count value={selected.size} /> selected</>}
+            <SlideText show={selected.size > 0}>{'\u00a0·\u00a0'}<Count value={selected.size} />{'\u00a0selected'}</SlideText>
             {' · tap a page to select it'}
           </>
         ) : 'merge, split, reorder, rotate, delete pages, or turn them into images'}
       </FadeText>
       </AutoHeight>
 
-      <div className="tool-actions">
+      <FlipRow>
         <button className="btn btn-icon" onClick={(e) => { e.currentTarget.blur(); inputRef.current?.click(); }} title="Add PDFs" aria-label="Add PDFs">
           <FilePlus size={14} />
         </button>
@@ -292,14 +298,17 @@ export default function PdfTools({ active }) {
         <button className={`btn ${done.images ? 'btn-done' : ''}`} onClick={toImages} disabled={none || !!busy}>
           {label('images', 'pages to PNG')}
         </button>
-      </div>
-      <div className="tool-actions">
+      </FlipRow>
+      <FlipRow>
         <button
           className="btn btn-sm"
           onClick={(e) => { e.currentTarget.blur(); setSelected(selected.size === pages.length ? new Set() : new Set(pages.map(p => p.id))); }}
           disabled={none}
         >
-          {selected.size === pages.length && pages.length ? 'select none' : 'select all'}
+          {(() => {
+            const text = selected.size === pages.length && pages.length ? 'select none' : 'select all';
+            return <FadeText k={text} className="btn-label">{text}</FadeText>;
+          })()}
         </button>
         <button className="btn btn-sm" onClick={(e) => { e.currentTarget.blur(); removePages(new Set(selected)); }} disabled={none || !selected.size}>
           delete selected
@@ -307,7 +316,7 @@ export default function PdfTools({ active }) {
         <button className="btn btn-sm" onClick={(e) => { e.currentTarget.blur(); clearAll(); }} disabled={none}>
           clear
         </button>
-      </div>
+      </FlipRow>
     </div>
   );
 }

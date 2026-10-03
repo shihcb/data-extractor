@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useRef } from 'react';
 import { canAnimate } from '../motion';
-import { animateTo, shift } from '../engine';
+import { animateTo, isMoving, shift } from '../engine';
 
 // A row of buttons that never snaps. When a button's label changes, its
 // width eases to the new one (like the source repo's next button widening
@@ -34,6 +34,13 @@ export default function FlipRow({ className = 'tool-actions', children }) {
         const before = last.current.get(el);
         const n = now.get(el);
         if (!before || !before.width || Math.abs(before.width - n.width) < 0.5) return;
+        // Something inside is already easing its width (the word slide in the
+        // resize field, a counting number): that drives this one through
+        // layout — easing it here too would fight it and jump
+        if ([...el.querySelectorAll('*')].some(d => isMoving(d, 'width'))) {
+          widened = true;
+          return;
+        }
         widened = true;
         animateTo(el, 'width', n.width, { from: before.width });
       });
@@ -48,7 +55,13 @@ export default function FlipRow({ className = 'tool-actions', children }) {
         });
       }
     }
-    last.current = now;
+    // A control whose insides are still moving isn't remembered: its size
+    // right now is partway (comparing against it later eased it from a
+    // stale width — the resize field jumped 29px)…
+    // …and while any control is still changing width, the others' spots are
+    // partway too (the row re-centres as it eases), so nothing is remembered
+    const settling = els.some(el => isMoving(el, 'width') || [...el.querySelectorAll('*')].some(d => isMoving(d, 'width')));
+    last.current = settling ? new Map() : now;
   });
 
   // Positioned, so its children measure their spots against the row itself:

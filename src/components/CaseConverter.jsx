@@ -7,6 +7,7 @@ import { useToast } from '../toastContext';
 import Count from './Count';
 import AutoHeight from './AutoHeight';
 import FadeText from './FadeText';
+import FlipRow from './FlipRow';
 
 const plural = (n, word) => (n === 1 ? word : `${word}s`);
 
@@ -65,7 +66,7 @@ export default function CaseConverter() {
         <Count value={stats.chars} /> {plural(stats.chars, 'character')} · <Count value={stats.words} /> {plural(stats.words, 'word')} · <Count value={stats.lines} /> {plural(stats.lines, 'line')}
       </FadeText>
       </AutoHeight>
-      <div className="tool-actions">
+      <FlipRow>
         <button
           className={`btn btn-icon ${done.paste ? 'btn-done' : ''}`}
           onClick={handlePaste}
@@ -85,7 +86,7 @@ export default function CaseConverter() {
             {c.label}
           </button>
         ))}
-      </div>
+      </FlipRow>
     </div>
   );
 }

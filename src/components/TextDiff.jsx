@@ -6,6 +6,7 @@ import Count from './Count';
 import AutoHeight from './AutoHeight';
 import Collapse from './Collapse';
 import FadeText from './FadeText';
+import FlipRow from './FlipRow';
 
 const MODES = [
   { key: 'lines', label: 'lines' },
@@ -100,7 +101,7 @@ export default function TextDiff() {
         />
       </div>
 
-      <div className="tool-actions">
+      <FlipRow>
         <TabSwitcher className="tab-switcher-sm" tabs={MODES} active={mode} onChange={setMode} />
         <button
           className="btn btn-icon"
@@ -114,7 +115,7 @@ export default function TextDiff() {
         <button className="btn" onClick={(e) => { e.currentTarget.blur(); setLeft(''); setRight(''); }} disabled={empty}>
           clear
         </button>
-      </div>
+      </FlipRow>
 
       <AutoHeight className="tool-meta" aria-live="polite">
         <FadeText k={status}>

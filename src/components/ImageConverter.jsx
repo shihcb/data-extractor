@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Copy, Download, ImageUp, X } from 'lucide-react';
 import { zipSync } from 'fflate';
-import { IMAGE_FORMATS, encodeImage, jpegsToPdf, loadImage, makeThumb, targetSize } from '../imageConvert';
+import { IMAGE_FORMATS, encodeImage, estimateImage, jpegsToPdf, loadImage, makeThumb, targetSize } from '../imageConvert';
 import { baseName, copyImageBlob, downloadBlob, formatBytes, isImageFile, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
 import { MOTION_MS } from '../motion';
 import { useToast } from '../toastContext';
@@ -141,10 +141,10 @@ export default function ImageConverter({ active }) {
     const newImage = estimatedFor.current !== selected.id;
     const t = setTimeout(async () => {
       try {
-        const out = await encodeImage(selected.img, settings);
+        const out = await estimateImage(selected, settings);
         if (cancelled) return;
         estimatedFor.current = selected.id;
-        setEstimate({ width: out.width, height: out.height, size: out.blob.size, ext: out.ext, fellBack: out.fellBack, clamped: out.clamped, pdf: settings.format === 'pdf' });
+        setEstimate({ ...out, pdf: settings.format === 'pdf' });
       } catch {
         if (!cancelled) setEstimate(null);
       }
@@ -286,38 +286,23 @@ export default function ImageConverter({ active }) {
           <FlipRow className="field-grid">
             <TabSwitcher className="tab-switcher-sm" tabs={IMAGE_FORMATS} active={format} onChange={setFormat} />
             <TabSwitcher className="tab-switcher-sm" tabs={RESIZE_MODES} active={resizeMode} onChange={setResizeMode} />
-            {/* Swapping between % and px wide fades like the size text does */}
-            <FadeText k={resizeMode} className="resize-field">
-              {resizeMode === 'percent' ? (
-                <label className="field">
-                  <input
-                    className="text-input num"
-                    type="number"
-                    inputMode="decimal"
-                    min="1"
-                    max="1000"
-                    value={percent}
-                    onChange={(e) => setPercent(e.target.value)}
-                    aria-label="Scale percent"
-                  />
-                  %
-                </label>
-              ) : (
-                <label className="field">
-                  <input
-                    className="text-input num"
-                    type="number"
-                    inputMode="numeric"
-                    min="1"
-                    max="16384"
-                    value={widthPx}
-                    onChange={(e) => setWidthPx(e.target.value)}
-                    aria-label="Width in pixels"
-                  />
-                  px wide
-                </label>
-              )}
-            </FadeText>
+            {/* One number box; its unit words do the word slide (% ↔ px wide) */}
+            <label className="field resize-field">
+              <input
+                className="text-input num"
+                type="number"
+                inputMode={resizeMode === 'percent' ? 'decimal' : 'numeric'}
+                min="1"
+                max={resizeMode === 'percent' ? '1000' : '16384'}
+                value={resizeMode === 'percent' ? percent : widthPx}
+                onChange={(e) => (resizeMode === 'percent' ? setPercent : setWidthPx)(e.target.value)}
+                aria-label={resizeMode === 'percent' ? 'Scale percent' : 'Width in pixels'}
+              />
+              <span className="unit-words">
+                <SlideText show={resizeMode === 'percent'}>%</SlideText>
+                <SlideText show={resizeMode === 'width'}>px wide</SlideText>
+              </span>
+            </label>
           </FlipRow>
           <Collapse open={fmt.lossy}>
             <div className="field-grid quality-row">

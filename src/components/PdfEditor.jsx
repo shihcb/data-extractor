@@ -7,6 +7,7 @@ import { useToast } from '../toastContext';
 import Count from './Count';
 import AutoHeight from './AutoHeight';
 import FadeText from './FadeText';
+import FlipRow from './FlipRow';
 
 // Changing text in a PDF the reliable way (what browser PDF editors do):
 // the old words are covered with a patch the colour of the paper behind
@@ -389,7 +390,7 @@ export default function PdfEditor({ active }) {
       </FadeText>
       </AutoHeight>
 
-      <div className="tool-actions">
+      <FlipRow>
         <button className="btn btn-icon" onClick={(e) => { e.currentTarget.blur(); inputRef.current?.click(); }} title="Open a PDF" aria-label="Open a PDF">
           <FileUp size={14} />
         </button>
@@ -402,7 +403,7 @@ export default function PdfEditor({ active }) {
         <button className="btn" onClick={(e) => { e.currentTarget.blur(); close(); }} disabled={!doc}>
           close
         </button>
-      </div>
+      </FlipRow>
     </div>
   );
 }

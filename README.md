@@ -13,7 +13,7 @@ Shift+1…6 switch tabs, `?` lists the shortcuts. Light/dark follows the device.
 
 ## Motion
 
-All animation uses one timing, ported from instagram-follower-checker: **450ms, `cubic-bezier(0.4, 0, 0.2, 1)`** (`src/motion.js`, and `--motion-duration` / `--motion-easing` in CSS). Pop-ups and toasts come in from 14px down at 95% scale; list rows slide in and out with the rows around them shifting (`MotionList`); tab switches are the sideways push (`TabPanes`); counters count and ease their width (`Count`); panels open from 10px up at 96% (`Collapse`); and any box whose content changes size eases to its new height (`AutoHeight`, coordinated in `src/heightMotion.js` so only the outermost box that changed moves).
+All animation uses one timing, ported from instagram-follower-checker: **450ms, `cubic-bezier(0.4, 0, 0.2, 1)`**, driven by a port of that repo's motion engine (`src/engine.js`). Each kind of animation has a name — the word slide, the text swap, the box ease, the panel open, the row slide, the button glide, the count, the tab push, the pop, the glide to top — listed with what it does in [CLAUDE.md](CLAUDE.md).
 
 ## Develop
 

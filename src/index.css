@@ -1247,3 +1247,9 @@ html.page-fits body {
   overflow: hidden;
   overscroll-behavior: none;
 }
+
+/* The resize field's unit words sit side by side; only one is open */
+.unit-words {
+  display: inline-flex;
+  align-items: center;
+}

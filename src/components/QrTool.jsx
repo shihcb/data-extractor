@@ -11,6 +11,7 @@ import TabPanes from './TabPanes';
 import AutoHeight from './AutoHeight';
 import Collapse from './Collapse';
 import FadeText from './FadeText';
+import FlipRow from './FlipRow';
 
 const MODES = [
   { key: 'make', label: 'make' },
@@ -125,9 +126,9 @@ function MakeQr() {
         spellCheck={false}
         aria-label="Text for the QR code"
       />
-      <div className="tool-actions">
+      <FlipRow>
         <TabSwitcher className="tab-switcher-sm" tabs={LEVELS} active={level} onChange={setLevel} />
-      </div>
+      </FlipRow>
       <AutoHeight className="tool-meta" >
         <FadeText k={error ? 'error' : text ? 'level' : 'empty'}>
         {error || (text ? 'higher levels still scan when part of the code is covered or damaged' : 'the code updates as you type')}
@@ -137,7 +138,7 @@ function MakeQr() {
         <canvas ref={canvasRef} className="qr-canvas" style={{ display: hasCode ? undefined : 'none' }} aria-label="QR code" />
         <FadeText k={hasCode ? '' : 'hint'} className="tool-hint">{hasCode ? null : 'your QR code shows here'}</FadeText>
       </AutoHeight>
-      <div className="tool-actions">
+      <FlipRow>
         <button className={`btn btn-primary ${done.png ? 'btn-done' : ''}`} onClick={downloadPng} disabled={!hasCode}>
           <Download size={14} /> PNG
         </button>
@@ -147,7 +148,7 @@ function MakeQr() {
         <button className={`btn ${done.copy ? 'btn-done' : ''}`} onClick={copy} disabled={!hasCode}>
           <Copy size={14} /> copy
         </button>
-      </div>
+      </FlipRow>
     </div>
   );
 }
@@ -266,16 +267,22 @@ function ScanQr({ active }) {
         />
       </AutoHeight>
 
-      <div className="tool-actions">
+      <FlipRow>
         <button className="btn btn-icon" onClick={(e) => { e.currentTarget.blur(); inputRef.current?.click(); }} title="Choose an image" aria-label="Choose an image">
           <ImageUp size={14} />
         </button>
-        {camera ? (
-          <button className="btn" onClick={(e) => { e.currentTarget.blur(); stopCamera(); }}>stop camera</button>
-        ) : (
-          <button className="btn" onClick={startCamera}><Camera size={14} /> use camera</button>
-        )}
-      </div>
+        {/* One button: its words swap (text swap) and it eases to its new width */}
+        <button
+          className="btn"
+          onClick={(e) => {
+            if (camera) { e.currentTarget.blur(); stopCamera(); }
+            else startCamera(e);
+          }}
+        >
+          {!camera && <Camera size={14} />}
+          <FadeText k={camera ? 'stop' : 'use'} className="btn-label">{camera ? 'stop camera' : 'use camera'}</FadeText>
+        </button>
+      </FlipRow>
 
       {/* Grows in from nothing; keeps showing the last result while it closes */}
       <Collapse open={!!result} className="qr-result-collapse">
@@ -285,7 +292,7 @@ function ScanQr({ active }) {
           ) : (
             <>
               <FadeText as="p" k={shown.text} className="qr-result-text selectable">{shown.text}</FadeText>
-              <div className="tool-actions">
+              <FlipRow>
                 <button
                   className={`btn ${done.copy ? 'btn-done' : ''}`}
                   onClick={async (e) => {
@@ -301,7 +308,7 @@ function ScanQr({ active }) {
                     <ExternalLink size={14} /> open link
                   </a>
                 )}
-              </div>
+              </FlipRow>
             </>
           )}
         </AutoHeight>

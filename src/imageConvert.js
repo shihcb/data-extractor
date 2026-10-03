@@ -108,3 +108,56 @@ export async function jpegsToPdf(pages) {
   const bytes = await doc.save();
   return new Blob([bytes], { type: 'application/pdf' });
 }
+
+// What an image comes out as with these settings, worked out off the page's
+// thread where the browser can (a worker with OffscreenCanvas; the image is
+// decoded in the background too), else on it.
+let worker = null;
+let nextJob = 1;
+const jobs = new Map();
+function getWorker() {
+  if (worker !== null) return worker;
+  try {
+    if (typeof OffscreenCanvas === 'undefined' || typeof createImageBitmap !== 'function') throw new Error('no');
+    worker = new Worker(new URL('./estimateWorker.js', import.meta.url), { type: 'module' });
+    worker.onmessage = (e) => {
+      const job = jobs.get(e.data.id);
+      if (!job) return;
+      jobs.delete(e.data.id);
+      if (e.data.error) job.reject(new Error(e.data.error));
+      else job.resolve(e.data);
+    };
+    worker.onerror = () => {
+      jobs.forEach(j => j.reject(new Error('worker failed')));
+      jobs.clear();
+      worker.terminate();
+      worker = false; // don't try again: the page's thread does it from now on
+    };
+  } catch {
+    worker = false;
+  }
+  return worker;
+}
+
+export async function estimateImage(item, { format, resize, quality }) {
+  const w = getWorker();
+  const fmt = IMAGE_FORMATS.find(f => f.key === format) || IMAGE_FORMATS[0];
+  if (!w) {
+    const out = await encodeImage(item.img, { format, resize, quality });
+    return { width: out.width, height: out.height, size: out.blob.size, ext: out.ext, fellBack: out.fellBack, clamped: out.clamped };
+  }
+  const size = targetSize(item.img.naturalWidth, item.img.naturalHeight, resize);
+  const bitmap = await createImageBitmap(item.file);
+  const id = nextJob++;
+  const res = await new Promise((resolve, reject) => {
+    jobs.set(id, { resolve, reject });
+    w.postMessage({
+      id, bitmap, width: size.width, height: size.height, mime: fmt.mime,
+      quality: fmt.lossy ? quality / 100 : undefined, opaque: fmt.mime === 'image/jpeg',
+    }, [bitmap]);
+  });
+  return {
+    width: size.width, height: size.height, size: res.size, clamped: size.clamped,
+    ext: EXT_FOR_MIME[res.type] || fmt.key, fellBack: res.type !== fmt.mime,
+  };
+}
