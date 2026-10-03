@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Download, FileUp, Undo2, ZoomIn, ZoomOut } from 'lucide-react';
+import { Download, FileUp, Redo2, Undo2, ZoomIn, ZoomOut } from 'lucide-react';
 import { closePdf, loadPdfLib, openPdf, renderPage, isPasswordError } from '../pdf';
 import { baseName, canvasToBlob, downloadBlob, isPdfFile, useDoneFlags, usePastedFiles } from '../utils';
 import { MOTION_MS, motionEase, prefersReducedMotion } from '../motion';
@@ -172,6 +172,27 @@ function itemsOf(page, content, viewport, n) {
 export default function PdfEditor({ active }) {
   const [doc, setDoc] = useState(null); // { id, name, bytes, pages: [{ key, num, url, items, width, height }] }
   const [edits, setEdits] = useState({}); // item id -> { text, bg, ink }
+  // Undo / redo, one change at a time: the edits as they were before each
+  // change (past) and the ones undone (future)
+  const [history, setHistory] = useState({ past: [], future: [] });
+  const changeEdits = (next) => {
+    setHistory(h => ({ past: [...h.past, edits], future: [] }));
+    setEdits(next);
+  };
+  const undo = () => {
+    if (!history.past.length) return;
+    setHistory(h => ({ past: h.past.slice(0, -1), future: [edits, ...h.future] }));
+    setEdits(history.past[history.past.length - 1]);
+  };
+  const redo = () => {
+    if (!history.future.length) return;
+    setHistory(h => ({ past: [...h.past, edits], future: h.future.slice(1) }));
+    setEdits(history.future[0]);
+  };
+  const resetEdits = () => {
+    setEdits({});
+    setHistory({ past: [], future: [] });
+  };
   const [editing, setEditing] = useState(null); // item id
   const [draft, setDraft] = useState('');
   const [draftColors, setDraftColors] = useState(null); // { bg, ink } of the text being edited
@@ -365,7 +386,7 @@ export default function PdfEditor({ active }) {
         if (prev) releaseLater(prev);
         return { id, name: file.name, bytes, pages };
       });
-      setEdits({});
+      resetEdits();
       setEditing(null);
       if (!pages.some(p => p.items.length)) toast('no text to change in this PDF (is it a scan?)', { warn: true });
     } catch (err) {
@@ -460,12 +481,12 @@ export default function PdfEditor({ active }) {
     setEditing(null);
     const text = draft;
     const colors = draftColors;
-    setEdits(prev => {
-      const next = { ...prev };
-      if (text === item.str) delete next[item.id];
-      else next[item.id] = { text, bg: colors.bg, ink: colors.ink };
-      return next;
-    });
+    const next = { ...edits };
+    if (text === item.str) delete next[item.id];
+    else next[item.id] = { text, bg: colors.bg, ink: colors.ink };
+    // Only a real change is a step to undo
+    if ((edits[item.id]?.text ?? null) === (next[item.id]?.text ?? null)) return;
+    changeEdits(next);
   };
 
   const save = async (e) => {
@@ -527,7 +548,7 @@ export default function PdfEditor({ active }) {
     releaseLater(doc);
     holdWhileLeaving();
     setDoc(null);
-    setEdits({});
+    resetEdits();
     setEditing(null);
   };
 
@@ -651,8 +672,12 @@ export default function PdfEditor({ active }) {
         <button className={`btn btn-primary ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!doc || !editCount || busy}>
           <Download size={14} /> save pdf
         </button>
-        <button className="btn" onClick={(e) => { e.currentTarget.blur(); setEdits({}); }} disabled={!editCount}>
-          <Undo2 size={14} /> undo changes
+        {/* One change at a time, back and forth */}
+        <button className="btn btn-icon" onClick={(e) => { e.currentTarget.blur(); undo(); }} disabled={!doc || !history.past.length} title="Undo" aria-label="Undo">
+          <Undo2 size={14} />
+        </button>
+        <button className="btn btn-icon" onClick={(e) => { e.currentTarget.blur(); redo(); }} disabled={!doc || !history.future.length} title="Redo" aria-label="Redo">
+          <Redo2 size={14} />
         </button>
         <button className="btn" onClick={(e) => { e.currentTarget.blur(); close(); }} disabled={!doc}>
           close
