@@ -160,14 +160,14 @@ export default function ImageConverter({ active }) {
       if (format === 'pdf') {
         const pages = [];
         for (let i = 0; i < list.length; i++) {
-          setBusy(list.length > 1 ? `${i + 1} / ${list.length}` : '…');
+          setBusy('on');
           pages.push(await encodeImage(list[i].img, settings));
         }
-        setBusy('…');
+        setBusy('on');
         blob = await jpegsToPdf(pages);
         name = list.length === 1 ? `${baseName(list[0].file.name)}.pdf` : 'images.pdf';
       } else if (list.length === 1) {
-        setBusy('…');
+        setBusy('on');
         const out = await encodeImage(list[0].img, settings);
         blob = out.blob;
         fellBack = out.fellBack;
@@ -176,7 +176,7 @@ export default function ImageConverter({ active }) {
         const files = {};
         const unique = uniqueNamer();
         for (let i = 0; i < list.length; i++) {
-          setBusy(`${i + 1} / ${list.length}`);
+          setBusy('on');
           const out = await encodeImage(list[i].img, settings);
           fellBack = fellBack || out.fellBack;
           files[unique(`${baseName(list[i].file.name)}.${out.ext}`)] = new Uint8Array(await out.blob.arrayBuffer());
@@ -213,8 +213,6 @@ export default function ImageConverter({ active }) {
     if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false);
   };
 
-  // Always just "download" (it saves a zip or one PDF for several images)
-  const downloadLabel = busy ? `converting ${busy}` : 'download';
 
   const original = selected ? targetSize(selected.w, selected.h, { mode: 'percent', percent: 100 }) : null;
 
@@ -335,7 +333,7 @@ export default function ImageConverter({ active }) {
             <SlideText show={!!estimate.pdf}>{'\u00a0per page'}</SlideText>
             {estimate.clamped ? ' (largest this device can make)' : ''}
           </>
-        ) : selected ? '…' : 'png, jpg, webp, gif, avif and more'}
+        ) : selected ? `${original.width} × ${original.height}` : 'png, jpg, webp, gif, avif and more'}
       </FadeText>
       </AutoHeight>
 
@@ -353,8 +351,9 @@ export default function ImageConverter({ active }) {
           onClick={handleDownload}
           disabled={!items.length || !!busy}
         >
-          {busy ? <span className="spinner" aria-hidden="true" /> : <Download size={14} />}
-          <FadeText k={downloadLabel} className="btn-label">{downloadLabel}</FadeText>
+          {/* Always just "download": no working text while it converts */}
+          <Download size={14} />
+          download
         </button>
         <button
           className={`btn ${done.copy ? 'btn-done' : ''}`}

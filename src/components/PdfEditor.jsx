@@ -106,7 +106,6 @@ function encodable(font, text) {
 
 export default function PdfEditor({ active }) {
   const [doc, setDoc] = useState(null); // { name, bytes, pages: [{ num, url, items, width, height }] }
-  const [loading, setLoading] = useState('');
   const [edits, setEdits] = useState({}); // item id -> { text, bg, ink }
   const [editing, setEditing] = useState(null); // item id
   const [draft, setDraft] = useState('');
@@ -138,7 +137,6 @@ export default function PdfEditor({ active }) {
       view = await openPdf(bytes);
       const pages = [];
       for (let n = 1; n <= view.numPages; n++) {
-        setLoading(`page ${n} of ${view.numPages}`);
         const page = await view.getPage(n);
         const { canvas, viewport } = await renderPage(page, { cssWidth: PAGE_CSS_WIDTH });
         const url = URL.createObjectURL(await canvasToBlob(canvas, 'image/png'));
@@ -201,7 +199,6 @@ export default function PdfEditor({ active }) {
       toast(`${file.name} ${why}`, { warn: true });
     } finally {
       closePdf(view);
-      setLoading('');
     }
   }, [toast]);
 
@@ -311,8 +308,7 @@ export default function PdfEditor({ active }) {
             aria-label="Open a PDF"
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inputRef.current?.click(); } }}
           >
-            {loading && <span className="spinner" aria-label="loading" />}
-            <FadeText k={loading ? '' : 'hint'} className="tool-hint">{loading ? null : 'drop, paste or click to open a PDF'}</FadeText>
+            <FadeText k="hint" className="tool-hint">drop, paste or click to open a PDF</FadeText>
           </div>
         ) : (
           <div ref={pagesRef} className="pdf-pages">
@@ -386,8 +382,8 @@ export default function PdfEditor({ active }) {
       />
 
       <AutoHeight className="tool-meta" aria-live="polite">
-        <FadeText k={loading ? 'loading' : doc ? 'doc' : 'empty'}>
-        {loading ? `loading ${loading}` : doc ? (
+        <FadeText k={doc ? 'doc' : 'empty'}>
+        {doc ? (
           <>
             <Count value={doc.pages.length} /> {plural(doc.pages.length, 'page')} · <Count value={editCount} /> {plural(editCount, 'change')} · click any text to change it
           </>
@@ -400,7 +396,7 @@ export default function PdfEditor({ active }) {
           <FileUp size={14} />
         </button>
         <button className={`btn btn-primary ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!doc || !editCount || busy}>
-          {busy ? <span className="spinner" aria-hidden="true" /> : <Download size={14} />} save pdf
+          <Download size={14} /> save pdf
         </button>
         <button className="btn" onClick={(e) => { e.currentTarget.blur(); setEdits({}); }} disabled={!editCount}>
           <Undo2 size={14} /> undo changes

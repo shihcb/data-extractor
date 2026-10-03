@@ -861,15 +861,77 @@ kbd {
   width: 100%;
   cursor: pointer;
   /* A fixed size that fills the screen below the tabs, above the meta line
-     and buttons (about 340px together): the page stays still and the pages
+     and buttons (about 390px together, with the bulk bar open): the page stays still and the pages
      scroll inside the box */
-  height: calc(100vh - var(--box-room, 340px));
-  height: calc(100dvh - var(--box-room, 340px));
+  height: calc(100vh - var(--box-room, 390px));
+  height: calc(100dvh - var(--box-room, 390px));
   min-height: 260px;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+}
+
+/* The bulk bar (instagram-follower-checker's .row-select-bar): one bar,
+   the count outlined, the buttons plain text; centered under clear */
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: max-content;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 6px 18px -10px rgba(0, 0, 0, 0.22);
+}
+
+.bulk-count,
+.bulk-btn {
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: var(--radius);
+}
+
+.bulk-count {
+  padding: 0 11.5px;
+  color: var(--text-main);
+  border: 1.5px solid var(--text-main);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.bulk-btn {
+  padding: 0 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--motion-duration) var(--motion-easing),
+              opacity var(--motion-duration) var(--motion-easing),
+              background-color var(--motion-duration) var(--motion-easing);
+}
+
+.bulk-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.bulk-delete {
+  color: #ef4444;
+}
+
+@media (hover: hover) {
+  .bulk-btn:not(:disabled):hover {
+    background: rgba(127, 127, 127, 0.1);
+  }
 }
 
 /* The image converter's settings take more room below its box */

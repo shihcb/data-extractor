@@ -8,7 +8,9 @@ import { animateTo, drawnValue, isMoving, stop } from '../engine';
 // that changes size while it opens is followed; once open it's an ordinary
 // box (easing boxes inside it do the easing). Closed content stays mounted
 // until the close finishes, then hides. Driven by the motion engine.
-export default function Collapse({ open, children, className = '' }) {
+// variant="slide": the content instead slides down from under what's above
+// it (clipped at its top edge, like a list row) and back up under it.
+export default function Collapse({ open, children, className = '', variant = 'fade' }) {
   const outerRef = useRef(null);
   const innerRef = useRef(null);
   const s = useRef({ open }).current;
@@ -53,19 +55,30 @@ export default function Collapse({ open, children, className = '' }) {
       const to = content.offsetHeight;
       if (s.ctrl) s.ctrl.last = to;
       animateTo(box, 'height', to, { from });
-      animateTo(content, 'opacity', 1, { from: fromNothing ? 0 : 1 });
-      animateTo(content, 'ty', 0, { from: fromNothing ? -10 : 0 });
-      animateTo(content, 'scale', 1, { from: fromNothing ? 0.96 : 1 });
+      if (variant === 'slide') {
+        animateTo(content, 'ty', 0, { from: drawnValue(content, 'ty', fromNothing ? -to : 0) });
+        animateTo(content, 'clip', 0, { from: drawnValue(content, 'clip', fromNothing ? to : 0) });
+      } else {
+        animateTo(content, 'opacity', 1, { from: fromNothing ? 0 : 1 });
+        animateTo(content, 'ty', 0, { from: fromNothing ? -10 : 0 });
+        animateTo(content, 'scale', 1, { from: fromNothing ? 0.96 : 1 });
+      }
     } else {
-      animateTo(content, 'opacity', 0, { from: 1 });
-      animateTo(content, 'ty', -10, { from: 0 });
-      animateTo(content, 'scale', 0.96, { from: 1 });
+      if (variant === 'slide') {
+        const h = content.offsetHeight;
+        animateTo(content, 'ty', -h, { from: drawnValue(content, 'ty', 0) });
+        animateTo(content, 'clip', h, { from: drawnValue(content, 'clip', 0) });
+      } else {
+        animateTo(content, 'opacity', 0, { from: 1 });
+        animateTo(content, 'ty', -10, { from: 0 });
+        animateTo(content, 'scale', 0.96, { from: 1 });
+      }
       animateTo(box, 'height', 0, {
         from: box.offsetHeight,
         onSettle: () => { if (!s.open) box.style.display = 'none'; },
       });
     }
-  }, [open, s]);
+  }, [open, s, variant]);
 
   return (
     <div ref={outerRef} className={`motion-collapse ${className}`} style={initialStyle} aria-hidden={!open}>
