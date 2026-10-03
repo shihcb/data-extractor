@@ -1,4 +1,5 @@
-import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import React, { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { fadeIn } from '../motion';
 import { ArrowLeftRight } from 'lucide-react';
 import { diffChars, diffLines, diffWordsWithSpace } from 'diff';
 import TabSwitcher from './TabSwitcher';
@@ -39,11 +40,6 @@ function compare(a, b, mode) {
   return { parts, added, removed, changed: parts.some(p => p.added || p.removed) };
 }
 
-const unit = (mode, n) => {
-  const word = mode === 'lines' ? 'line' : mode === 'words' ? 'word' : 'character';
-  return n === 1 ? word : `${word}s`;
-};
-
 // Lines mode: one row per line, marked + / − in the gutter
 function LineRows({ parts }) {
   const rows = [];
@@ -78,6 +74,15 @@ export default function TextDiff() {
     if (hasOutput) setLastView({ result, mode });
   }, [hasOutput, result, mode]);
   const view = hasOutput ? { result, mode } : lastView;
+  // Another way of comparing: the result fades in anew (the text swap's
+  // fade) while its box eases to the new size
+  const outRef = useRef(null);
+  const shownMode = useRef(mode);
+  useLayoutEffect(() => {
+    if (shownMode.current === view?.mode) return;
+    if (shownMode.current && view?.mode) fadeIn(outRef.current?.firstElementChild);
+    shownMode.current = view?.mode;
+  }, [view?.mode]);
 
 
   return (
@@ -124,8 +129,8 @@ export default function TextDiff() {
           {status === 'same' && 'no differences'}
           {status === 'diff' && (
             <>
-              <span className="diff-count-add">+<Count value={result.added} /></span> {unit(mode, result.added)} added ·{' '}
-              <span className="diff-count-del">−<Count value={result.removed} /></span> {unit(mode, result.removed)} removed
+              {/* Label first, so only the numbers change (they count) */}
+              added <span className="diff-count-add"><Count value={result.added} /></span> · removed <span className="diff-count-del"><Count value={result.removed} /></span>
             </>
           )}
         </FadeText>
@@ -135,6 +140,7 @@ export default function TextDiff() {
           the last comparison while it closes */}
       <Collapse open={hasOutput} className="diff-collapse">
         <AutoHeight
+          boxRef={outRef}
           className="tool-box diff-output-box"
           innerClassName={`diff-output selectable ${view?.mode === 'lines' ? 'diff-output-lines' : ''}`}
         >

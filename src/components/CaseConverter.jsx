@@ -6,10 +6,7 @@ import { flashOutline } from '../motion';
 import { useToast } from '../toastContext';
 import Count from './Count';
 import AutoHeight from './AutoHeight';
-import FadeText from './FadeText';
 import FlipRow from './FlipRow';
-
-const plural = (n, word) => (n === 1 ? word : `${word}s`);
 
 export default function CaseConverter() {
   const [text, setText] = useState('');
@@ -62,9 +59,10 @@ export default function CaseConverter() {
         aria-label="Text to convert"
       />
       <AutoHeight className="tool-meta" aria-live="polite">
-        <FadeText k={'stats'}>
-        <Count value={stats.chars} /> {plural(stats.chars, 'character')} · <Count value={stats.words} /> {plural(stats.words, 'word')} · <Count value={stats.lines} /> {plural(stats.lines, 'line')}
-      </FadeText>
+        {/* Label first, so only the numbers change (they count) */}
+        <span className="tool-stats">
+          characters <Count value={stats.chars} /> · words <Count value={stats.words} /> · lines <Count value={stats.lines} />
+        </span>
       </AutoHeight>
       <FlipRow>
         <button

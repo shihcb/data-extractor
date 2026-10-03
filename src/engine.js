@@ -124,6 +124,11 @@ function kick() {
   active.forEach((s, el) => write(el, s, now));
 }
 
+// Too small a change to bother moving: half a pixel for sizes and slides,
+// but scale and opacity run 0–1 (the pop's 95% → 100% is a change of 0.05:
+// under a half-pixel rule it never eased in, and snapped down on the way out)
+const tiny = (name) => (name === 'scale' || name === 'opacity' ? 0.002 : 0.5);
+
 // Moves `prop` to a new target, from where it's drawn, by adding a piece.
 // `from` (optional) is where it's drawn when nothing's moving it yet.
 // `keep`: hold the target as an inline style once settled (an explicit size).
@@ -133,7 +138,7 @@ export function animateTo(el, name, target, { from, duration = MOTION_MS, onSett
   const s = stateOf(el);
   const prop = s.props[name];
   const drawn = prop ? valueOf(prop, now) : (from ?? target);
-  if (prefersReducedMotion() || Math.abs(drawn - target) < 0.5) {
+  if (prefersReducedMotion() || Math.abs(drawn - target) < tiny(name)) {
     if (prop) {
       prop.pieces = [];
       prop.target = target;

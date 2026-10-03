@@ -4,7 +4,7 @@ import QRCode from 'qrcode';
 import jsQR from 'jsqr';
 import { copyImageBlob, copyText, downloadBlob, isImageFile, useDoneFlags, usePastedFiles } from '../utils';
 import { loadImage } from '../imageConvert';
-import { fadeIn, flashOutline } from '../motion';
+import { flashOutline } from '../motion';
 import { useToast } from '../toastContext';
 import TabSwitcher from './TabSwitcher';
 import TabPanes from './TabPanes';
@@ -12,6 +12,7 @@ import AutoHeight from './AutoHeight';
 import Collapse from './Collapse';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
+import usePop from './usePop';
 
 const MODES = [
   { key: 'make', label: 'make' },
@@ -62,14 +63,14 @@ function MakeQr() {
   const [error, setError] = useState('');
   const [done, flagDone] = useDoneFlags();
   const canvasRef = useRef(null);
-  const hadCode = useRef(false);
   const toast = useToast();
   const hasCode = !!text && !error;
+  // The code pops in and out like the cards; edits redraw it in place
+  usePop(canvasRef, hasCode);
 
   useEffect(() => {
     if (!text) {
       setError('');
-      hadCode.current = false;
       return;
     }
     let cancelled = false;
@@ -77,14 +78,10 @@ function MakeQr() {
       .then(() => {
         if (cancelled) return;
         setError('');
-        // The first code fades in; later edits redraw in place
-        if (!hadCode.current) fadeIn(canvasRef.current);
-        hadCode.current = true;
       })
       .catch(() => {
         if (cancelled) return;
         setError('too long for a QR code — shorten it or pick a lower level');
-        hadCode.current = false;
       });
     return () => { cancelled = true; };
   }, [text, level]);
@@ -135,7 +132,7 @@ function MakeQr() {
       </FadeText>
       </AutoHeight>
       <AutoHeight className="tool-box qr-box-outer" innerClassName={`qr-box ${hasCode ? '' : 'qr-box-empty'}`}>
-        <canvas ref={canvasRef} className="qr-canvas" style={{ display: hasCode ? undefined : 'none' }} aria-label="QR code" />
+        <canvas ref={canvasRef} className="qr-canvas" aria-label="QR code" />
         <FadeText k={hasCode ? '' : 'hint'} className="tool-hint">{hasCode ? null : 'your QR code shows here'}</FadeText>
       </AutoHeight>
       <FlipRow>
@@ -164,15 +161,16 @@ function ScanQr({ active }) {
   const streamRef = useRef(null);
   const resultRef = useRef(null);
   const toast = useToast();
+  // The camera's picture pops in and out like the cards
+  usePop(videoRef, camera);
 
   const show = (text) => {
-    const wasOpen = !!resultRef.current?.closest('.motion-collapse')?.offsetHeight;
     const next = text ? { text } : { none: true };
     setResult(next);
     setLastResult(next);
+    // Opening, the panel opens with it; a new result in an open one swaps
+    // its words (the text swap) — and a found code gets the outline flash
     requestAnimationFrame(() => {
-      // Opening, the panel's own fade shows it; a new result in an open one fades in
-      if (wasOpen) fadeIn(resultRef.current);
       if (text) flashOutline(resultRef.current);
     });
   };
@@ -256,7 +254,7 @@ function ScanQr({ active }) {
         aria-label="Choose an image with a QR code"
         onKeyDown={(e) => { if (!camera && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); inputRef.current?.click(); } }}
       >
-        {camera && <video ref={videoRef} className="qr-video drop-preview" playsInline muted />}
+        <video ref={videoRef} className="qr-video drop-preview" playsInline muted />
         <FadeText k={camera ? '' : 'hint'} className="tool-hint">{camera ? null : 'drop, paste or click to scan an image'}</FadeText>
         <input
           ref={inputRef}

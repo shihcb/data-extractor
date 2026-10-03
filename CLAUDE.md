@@ -27,7 +27,7 @@ of restarting it. When the user names one of these, this is what they mean:
 | **the button glide** | a row of buttons/controls never snaps: a button whose label changes eases its width, the others slide along | `FlipRow` |
 | **the count** | numbers count to their new value (and up from 0 when they appear), their width easing | `Count` |
 | **the tab push** | switching tabs: the old pane slides out sideways as the new one slides in, the area easing to the new height; the tab outline slides along | `TabPanes`, `TabSwitcher` |
-| **the pop** | pop-ups and toasts come in from 14px down at 95% scale and leave the same way; so do the PDF pages and the image converter's image cards | `Modal`, `Toast`, `MotionList` |
+| **the pop** | pop-ups and toasts come in from 14px down at 95% scale and leave the same way; so do the PDF pages, the image cards, the bulk bar, the QR code and the camera picture | `Modal`, `Toast`, `MotionList`, `usePop` |
 | **the glide to top** | a box easing shut: the page's bottom follows the content's bottom frame by frame, so no blank room opens below (a sudden shrink glides up instead); when everything fits on screen again it glides back to the top and stops scrolling until it needs to | `App.jsx` |
 | **the clear** | the last PDF pages / images leaving (or the PDF editor closing its PDF): they pop out in place while the box's content holds its height, then the box goes back to empty | `PdfTools.jsx`, `ImageConverter.jsx`, `PdfEditor.jsx` |
 
@@ -49,6 +49,13 @@ ease (`_heightMotion` on the scroller). New words use the PDF's own font when
 it has every letter (pdf.js opened with `fontExtraProperties`; saved with
 fontkit, mapped back to real letters for copy/search), else the closest
 standard font squeezed to the original's width (`src/pdfFonts.js`).
+
+Every stats line in the app is label first ("characters 3 · words 1", "added 2 ·
+removed 1") so only the numbers change, counting.
+
+The engine's "too small to move" cut-off is per kind of value: half a pixel for
+sizes and slides, 0.002 for scale and opacity (a half-unit cut-off skipped
+every 95% ↔ 100% scale).
 
 Buttons are always `--button-gap` (6px, the instagram repo's) apart: button
 rows, the settings row, the bulk bar, card buttons, the zoom controls.

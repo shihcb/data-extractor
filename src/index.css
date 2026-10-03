@@ -1235,6 +1235,22 @@ kbd {
   min-height: 280px;
 }
 
+.qr-box,
+.qr-scan-box {
+  position: relative;
+}
+
+/* The hint sits over the middle, so the code / camera popping out beside
+   it doesn't push it aside */
+.qr-box > .tool-hint,
+.qr-scan-box > .tool-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
 .qr-canvas {
   width: min(100%, 280px) !important;
   height: auto !important;
