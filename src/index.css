@@ -181,3 +181,118 @@ button {
   color: #059669 !important;
 }
 
+
+/* ── Tab Switcher (matches instagram-follower-checker's instructions tabs) ── */
+
+.tab-switcher {
+  --tab-radius: 12px;
+  display: inline-flex;
+  gap: 6px;
+  position: relative;
+  padding: 4px;
+  background: var(--bg-card);
+  border: 1px solid rgba(9, 9, 11, 0.12);
+  border-radius: var(--tab-radius);
+}
+
+.tab-indicator {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  height: calc(100% - 8px);
+  width: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.tab-indicator > span {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  box-sizing: border-box;
+  border: 1.5px solid #09090b;
+  transform-origin: left center;
+  will-change: transform;
+}
+
+/* Inner corners run parallel to the bar's: its radius minus 4px padding + 1px border */
+.tab-indicator > .tab-ind-l {
+  width: 9px;
+  border-right: none;
+  border-radius: calc(var(--tab-radius) - 5px) 0 0 calc(var(--tab-radius) - 5px);
+}
+
+.tab-indicator > .tab-ind-m {
+  width: 100px;
+  border-left: none;
+  border-right: none;
+  border-radius: 0;
+}
+
+.tab-indicator > .tab-ind-r {
+  width: 9px;
+  border-left: none;
+  border-radius: 0 calc(var(--tab-radius) - 5px) calc(var(--tab-radius) - 5px) 0;
+}
+
+.tab-switcher-btn {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
+  padding: 7px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: #71717a;
+  border-radius: calc(var(--tab-radius) - 5px);
+  transition: color var(--motion-duration) var(--motion-easing);
+}
+
+.tab-switcher-btn.active {
+  color: #09090b;
+}
+
+.tab-pane {
+  animation: tabPaneFadeIn var(--motion-duration) var(--motion-easing);
+}
+
+@keyframes tabPaneFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Image Converter ────────────────────────────────────────── */
+
+.image-converter-drop {
+  width: 100%;
+  min-height: max(320px, 60vh);
+  height: max(320px, 60vh);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.03), 0 1px 3px rgba(15, 23, 42, 0.01);
+  cursor: pointer;
+  transition: border-color var(--motion-duration) var(--motion-easing);
+}
+
+.image-converter-drop.dragging {
+  border-color: #cbd5e1;
+}
+
+.image-converter-hint {
+  color: #94a3b8;
+  font-size: 0.95rem;
+  font-weight: 400;
+}
+
+.image-converter-preview {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+}
