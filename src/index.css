@@ -5,6 +5,8 @@
    script in index.html sets data-theme before the first paint). Dark
    values are instagram-follower-checker's. */
 :root {
+  /* The space between buttons, everywhere (the instagram repo's 6px) */
+  --button-gap: 6px;
   --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
@@ -412,7 +414,7 @@ button:disabled {
   position: relative;
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--button-gap);
   justify-content: center;
 }
 
@@ -532,7 +534,7 @@ button:disabled {
 .field-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 14px 22px;
+  gap: var(--button-gap);
   justify-content: center;
   align-items: center;
   width: 100%;
@@ -862,7 +864,7 @@ kbd {
 .bulk-bar {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--button-gap);
   width: max-content;
   max-width: 100%;
   pointer-events: auto;
@@ -1030,7 +1032,7 @@ kbd {
 .page-buttons {
   display: flex;
   justify-content: space-between;
-  gap: 3px;
+  gap: var(--button-gap);
 }
 
 .page-buttons .btn {
@@ -1083,7 +1085,7 @@ kbd {
   z-index: 2;
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--button-gap);
   padding: 3px;
   border-radius: var(--radius);
   background: var(--bg-card);

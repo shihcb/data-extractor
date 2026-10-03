@@ -47,6 +47,9 @@ around the spot being zoomed, scrolling both ways inside the box; pages are
 redrawn sharper once a zoom settles. While zooming, easing boxes inside don't
 ease (`_heightMotion` on the scroller).
 
+Buttons are always `--button-gap` (6px, the instagram repo's) apart: button
+rows, the settings row, the bulk bar, card buttons, the zoom controls.
+
 Rules that keep it smooth (each was a real bug):
 - A row/box measures positions against itself (`position: relative`), never
   against something that moves with the boxes above it.
