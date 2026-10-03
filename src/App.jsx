@@ -66,7 +66,12 @@ export default function App() {
       const cs = getComputedStyle(shell);
       return content.offsetHeight + (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
     };
-    const apply = () => { shell.style.minHeight = floor ? `${Math.floor(floor)}px` : ''; };
+    // Written only when it changes: this runs on every frame a box eases, and
+    // rewriting the page's height each time made a phone lay it all out twice
+    const apply = () => {
+      const h = floor ? `${Math.floor(floor)}px` : '';
+      if (shell.style.minHeight !== h) shell.style.minHeight = h;
+    };
     const onScroll = () => {
       // Held room (floor above the content) can only shrink; otherwise the
       // floor follows the view, capped at the content
@@ -84,7 +89,10 @@ export default function App() {
       const cs = getComputedStyle(shell);
       return content.offsetHeight + (parseFloat(cs.paddingTop) || 0) <= window.innerHeight + 1;
     };
-    const updateLock = () => root.classList.toggle('page-fits', fits() && window.scrollY < 1 && !glide);
+    const updateLock = () => {
+      const lock = fits() && window.scrollY < 1 && !glide;
+      if (root.classList.contains('page-fits') !== lock) root.classList.toggle('page-fits', lock);
+    };
     const glideToTop = () => {
       if (glide || window.scrollY < 1) return;
       const from = window.scrollY;

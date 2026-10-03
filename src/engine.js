@@ -44,26 +44,37 @@ function valueOf(prop, now) {
   return v;
 }
 
+// A style is only written when it changes: an unchanged write still costs a
+// phone a style pass on every frame of every moving thing
+function put(el, key, value) {
+  if (el.style[key] !== value) el.style[key] = value;
+}
+
 function write(el, s, now) {
   const v = {};
   for (const name in s.props) v[name] = valueOf(s.props[name], now);
-  if ('height' in v) el.style.height = `${Math.max(0, v.height)}px`;
-  if ('width' in v) el.style.width = `${Math.max(0, v.width)}px`;
+  if ('height' in v) put(el, 'height', `${Math.max(0, v.height)}px`);
+  if ('width' in v) put(el, 'width', `${Math.max(0, v.width)}px`);
   // Clipped while it resizes — except text (a clipped inline box drops to a
   // different baseline, so a counting number would jump up off its line)
-  if (('height' in v || 'width' in v) && !el._noClip) el.style.overflow = 'hidden';
-  if ('tx' in v || 'ty' in v || 'scale' in v) {
+  if (('height' in v || 'width' in v) && !el._noClip) put(el, 'overflow', 'hidden');
+  const moves = 'tx' in v || 'ty' in v || 'scale' in v;
+  if (moves) {
     const tx = v.tx ?? 0;
     const ty = v.ty ?? 0;
     const sc = v.scale ?? 1;
-    el.style.transform = `translate(${tx}px, ${ty}px)${sc !== 1 ? ` scale(${sc})` : ''}`;
+    put(el, 'transform', `translate(${tx}px, ${ty}px)${sc !== 1 ? ` scale(${sc})` : ''}`);
   }
   if ('clip' in v) {
     const c = `inset(${Math.max(0, v.clip)}px 0px 0px 0px)`;
-    el.style.clipPath = c;
-    el.style.webkitClipPath = c;
+    put(el, 'clipPath', c);
+    put(el, 'webkitClipPath', c);
   }
-  if ('opacity' in v) el.style.opacity = String(Math.min(1, Math.max(0, v.opacity)));
+  if ('opacity' in v) put(el, 'opacity', String(Math.min(1, Math.max(0, v.opacity))));
+  // Its own layer while it slides or fades, so the phone moves the drawn
+  // pixels instead of repainting it (and what's under it) every frame
+  const layer = [moves && 'transform', 'opacity' in v && 'opacity'].filter(Boolean).join(', ');
+  put(el, 'willChange', layer);
 }
 
 function clear(el, s, names) {
@@ -75,6 +86,7 @@ function clear(el, s, names) {
     delete s.props[name];
   }
   if (!('tx' in s.props) && !('ty' in s.props) && !('scale' in s.props)) el.style.transform = '';
+  if (!('tx' in s.props) && !('ty' in s.props) && !('scale' in s.props) && !('opacity' in s.props)) el.style.willChange = '';
   if (!('height' in s.props) && !('width' in s.props)) el.style.overflow = s.hadOverflow || '';
 }
 
