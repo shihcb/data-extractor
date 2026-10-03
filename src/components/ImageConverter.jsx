@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Copy, Download, ImageUp, X } from 'lucide-react';
 import { zipSync } from 'fflate';
-import { IMAGE_FORMATS, encodeImage, jpegsToPdf, loadImage, targetSize } from '../imageConvert';
+import { IMAGE_FORMATS, encodeImage, jpegsToPdf, loadImage, makeThumb, targetSize } from '../imageConvert';
 import { baseName, copyImageBlob, downloadBlob, formatBytes, isImageFile, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
 import { MOTION_MS } from '../motion';
 import { useToast } from '../toastContext';
@@ -64,7 +64,8 @@ export default function ImageConverter({ active }) {
       const url = URL.createObjectURL(file);
       try {
         const img = await loadImage(url);
-        return { id: nextId++, file, url, img, w: img.naturalWidth, h: img.naturalHeight };
+        const thumb = await makeThumb(img);
+        return { id: nextId++, file, url, thumb, img, w: img.naturalWidth, h: img.naturalHeight };
       } catch {
         URL.revokeObjectURL(url);
         toast(`couldn't open ${file.name || 'that image'}`, { warn: true });
@@ -89,7 +90,7 @@ export default function ImageConverter({ active }) {
     setItems(rest);
     if (selected?.id === id) setSelectedId(rest[Math.min(index, rest.length - 1)]?.id ?? null);
     // After its row has slid out (it still shows the thumbnail until then)
-    setTimeout(() => URL.revokeObjectURL(item.url), MOTION_MS + 300);
+    setTimeout(() => { URL.revokeObjectURL(item.url); URL.revokeObjectURL(item.thumb); }, MOTION_MS + 300);
   };
 
   const clearAll = () => {
@@ -97,10 +98,10 @@ export default function ImageConverter({ active }) {
     setItems([]);
     setSelectedId(null);
     setWidthPx('');
-    setTimeout(() => old.forEach(i => URL.revokeObjectURL(i.url)), MOTION_MS + 300);
+    setTimeout(() => old.forEach(i => { URL.revokeObjectURL(i.url); URL.revokeObjectURL(i.thumb); }), MOTION_MS + 300);
   };
 
-  useEffect(() => () => itemsRef.current.forEach(i => URL.revokeObjectURL(i.url)), []);
+  useEffect(() => () => itemsRef.current.forEach(i => { URL.revokeObjectURL(i.url); URL.revokeObjectURL(i.thumb); }), []);
 
   // The box fits the selected image's shape (up to the empty box's height),
   // easing there on the motion engine.
@@ -138,7 +139,9 @@ export default function ImageConverter({ active }) {
       } catch {
         if (!cancelled) setEstimate(null);
       }
-    }, 250);
+      // After the rows and boxes have finished moving: encoding a big image
+      // blocks the page, which stuttered the slide-in
+    }, MOTION_MS + 150);
     return () => { cancelled = true; clearTimeout(t); };
   }, [selected, settings]);
 
@@ -254,7 +257,7 @@ export default function ImageConverter({ active }) {
             className={`file-row ${selected?.id === item.id ? 'selected' : ''}`}
             onClick={() => setSelectedId(item.id)}
           >
-            <img src={item.url} alt="" className="file-thumb" />
+            <img src={item.thumb} alt="" className="file-thumb" decoding="async" />
             <div className="file-info">
               <span className="file-name">{item.file.name || 'pasted image'}</span>
               <span className="file-meta">{item.w} × {item.h} · {formatBytes(item.file.size)}</span>

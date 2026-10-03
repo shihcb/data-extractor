@@ -19,10 +19,26 @@ export function loadImage(url) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.decoding = 'async';
-    img.onload = () => resolve(img);
+    // Decoded off the main thread before it's used, so drawing it later
+    // (preview, slide-in) doesn't stall a frame
+    img.onload = () => (img.decode ? img.decode().catch(() => {}) : Promise.resolve()).then(() => resolve(img));
     img.onerror = () => reject(new Error('could not open image'));
     img.src = url;
   });
+}
+
+// A small copy for the file row (80px, sharp on 2x screens): drawing the
+// full image at 40px on every frame of the row's slide made it stutter
+export async function makeThumb(img) {
+  const s = Math.min(1, 80 / Math.min(img.naturalWidth, img.naturalHeight)); // fills the square row icon
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(img.naturalWidth * s));
+  canvas.height = Math.max(1, Math.round(img.naturalHeight * s));
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  const blob = await canvasToBlob(canvas, 'image/png');
+  return URL.createObjectURL(blob);
 }
 
 // The output size for an image of w × h with the resize settings.
