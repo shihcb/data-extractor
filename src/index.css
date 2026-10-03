@@ -74,7 +74,7 @@ button {
 
 .case-converter-textarea {
   width: 100%;
-  min-height: 180px;
+  min-height: 320px;
   resize: none;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
