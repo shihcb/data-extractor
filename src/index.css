@@ -1204,3 +1204,13 @@ a.btn {
 .resize-field {
   display: inline-flex;
 }
+
+/* Words that slide in and out of a line (SlideText): clipped while their
+   width eases; aligned to the top with the line's own height so the clip
+   doesn't drop them to a different baseline */
+.slide-text {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  vertical-align: top;
+}

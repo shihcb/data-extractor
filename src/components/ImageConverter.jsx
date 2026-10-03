@@ -12,6 +12,7 @@ import Count from './Count';
 import AutoHeight from './AutoHeight';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
+import SlideText from './SlideText';
 import { animateTo } from '../engine';
 
 // Box padding (matches .drop-box) and the smallest it shrinks to
@@ -339,11 +340,11 @@ export default function ImageConverter({ active }) {
       </Collapse>
 
       <AutoHeight className="tool-meta" aria-live="polite">
-        <FadeText k={!selected ? 'empty' : estimate ? `est-${estimate.pdf}-${!!estimate.clamped}` : 'wait'}>
+        <FadeText k={!selected ? 'empty' : estimate ? `est-${!!estimate.clamped}` : 'wait'}>
         {selected && estimate ? (
           <>
             {original.width} × {original.height} → <Count value={estimate.width} format={String} /> × <Count value={estimate.height} format={String} /> · <Count value={estimate.size} format={formatBytes} />
-            {estimate.pdf ? ' per page' : ''}
+            <SlideText show={!!estimate.pdf}>{'\u00a0per page'}</SlideText>
             {estimate.clamped ? ' (largest this device can make)' : ''}
           </>
         ) : selected ? '…' : 'png, jpg, webp, gif, avif and more'}
