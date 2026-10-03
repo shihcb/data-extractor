@@ -99,6 +99,10 @@ export default function MotionList({ items, getKey, renderItem, variant = 'rows'
     el._exitStarted = true;
     const h = el.offsetHeight;
     const done = () => {
+      // Hidden first: dropping its slide styles makes it fully visible again,
+      // and the page can draw a frame before React removes it (on iPhone the
+      // deleted row flashed back into view)
+      el.style.visibility = 'hidden';
       stop(el);
       exiting.current.delete(key);
       rerender();
