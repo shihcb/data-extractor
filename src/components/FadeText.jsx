@@ -13,16 +13,25 @@ function captureGhost(el) {
   const r = el.getBoundingClientRect();
   const ghost = el.cloneNode(true);
   const cs = getComputedStyle(el);
+  // Where it sat, relative to its host (the host may move before the copy goes in)
+  const dx = r.left - hr.left;
+  const dy = r.top - hr.top;
   Object.assign(ghost.style, {
     position: 'absolute', margin: '0', transform: 'none', animation: 'none',
-    top: `${r.top - hr.top - host.clientTop + host.scrollTop}px`,
-    left: `${r.left - hr.left - host.clientLeft}px`,
+    top: '0px', left: '0px',
     width: `${r.width}px`, height: `${r.height}px`, boxSizing: 'border-box',
-    textAlign: cs.textAlign, pointerEvents: 'none', zIndex: '3',
+    display: cs.display === 'inline' ? 'inline-block' : cs.display,
+    whiteSpace: 'nowrap', textAlign: cs.textAlign, pointerEvents: 'none', zIndex: '3',
   });
   ghost.setAttribute('aria-hidden', 'true');
   return () => {
     host.appendChild(ghost);
+    // Placed by measuring the copy itself, so it lands exactly on the old
+    // text whatever its containing box is (it was 24px off before)
+    const g = ghost.getBoundingClientRect();
+    const h = host.getBoundingClientRect();
+    ghost.style.left = `${h.left + dx - g.left}px`;
+    ghost.style.top = `${h.top + dy - g.top}px`;
     const drop = () => ghost.remove();
     ghost.animate([{ opacity: 1 }, { opacity: 0 }], { ...MOTION, fill: 'forwards' }).finished.then(drop, drop);
     setTimeout(drop, 800);

@@ -282,7 +282,7 @@ export default function ImageConverter({ active }) {
 
       <Collapse open={items.length > 0} className="options-collapse">
         <div className="options-panel">
-          <div className="field-grid">
+          <FlipRow className="field-grid">
             <TabSwitcher className="tab-switcher-sm" tabs={IMAGE_FORMATS} active={format} onChange={setFormat} />
             <TabSwitcher className="tab-switcher-sm" tabs={RESIZE_MODES} active={resizeMode} onChange={setResizeMode} />
             {/* Swapping between % and px wide fades like the size text does */}
@@ -317,7 +317,7 @@ export default function ImageConverter({ active }) {
                 </label>
               )}
             </FadeText>
-          </div>
+          </FlipRow>
           <Collapse open={fmt.lossy}>
             <div className="field-grid quality-row">
               <label className="field">
