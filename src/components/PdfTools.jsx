@@ -331,7 +331,7 @@ export default function PdfTools({ active }) {
             {/* The selection count comes and goes with the word slide */}
             <SlideText show={selected.size > 0}>{'\u00a0·\u00a0'}<Count value={selected.size} />{'\u00a0selected'}</SlideText>
           </>
-        ) : 'merge, split, reorder, rotate, delete pages, or turn them into images'}
+        ) : 'merge, split, rotate or turn pages into images'}
       </FadeText>
       </AutoHeight>
 

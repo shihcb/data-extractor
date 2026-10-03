@@ -416,7 +416,7 @@ export default function PdfEditor({ active }) {
           <>
             <Count value={doc.pages.length} /> {plural(doc.pages.length, 'page')} · <Count value={editCount} /> {plural(editCount, 'change')} · click any text to change it
           </>
-        ) : 'changes text by covering it and retyping it in a matching standard font'}
+        ) : 'click any text in a PDF to change it'}
       </FadeText>
       </AutoHeight>
 
