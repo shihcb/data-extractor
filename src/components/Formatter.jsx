@@ -1,19 +1,26 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { ClipboardPaste } from 'lucide-react';
-import { CASES, textStats } from '../textCase';
+import { FORMATTERS, detectKind } from '../formatters';
 import { copyText, useDoneFlags } from '../utils';
-import { flashOutline } from '../motion';
+import { fadeIn, flashOutline } from '../motion';
 import { useToast } from '../toastContext';
-import Count from './Count';
 
-const plural = (n, word) => (n === 1 ? word : `${word}s`);
-
-export default function CaseConverter() {
+export default function Formatter() {
   const [text, setText] = useState('');
   const [done, flagDone] = useDoneFlags();
   const textareaRef = useRef(null);
+  const kindRef = useRef(null);
   const toast = useToast();
-  const stats = useMemo(() => textStats(text), [text]);
+  // Checked a beat behind typing, so big pastes stay smooth
+  const deferred = useDeferredValue(text);
+  const kind = useMemo(() => detectKind(deferred), [deferred]);
+  // The status text just fades to its new words
+  const prevKind = useRef(kind);
+  useEffect(() => {
+    if (prevKind.current === kind) return;
+    prevKind.current = kind;
+    fadeIn(kindRef.current);
+  }, [kind]);
 
   const handlePaste = async (e) => {
     e.currentTarget.blur();
@@ -25,41 +32,42 @@ export default function CaseConverter() {
         flashOutline(textareaRef.current);
       }
     } catch {
-      // Not allowed to read the clipboard: put the cursor in the box so a
-      // long-press / Ctrl+V paste goes straight in
       textareaRef.current?.focus();
       toast('paste with ctrl+v or a long-press in the box');
     }
   };
 
-  const handleConvert = async (e, c) => {
+  const run = async (e, f) => {
     e.currentTarget.blur();
-    const converted = c.fn(text);
-    setText(converted);
-    flashOutline(textareaRef.current);
-    if (await copyText(converted)) {
-      flagDone(c.key);
-    } else {
-      toast("couldn't copy — select the text and copy it", { warn: true });
+    let out;
+    try {
+      out = f.fn(text);
+    } catch (err) {
+      toast(err.message, { warn: true });
+      return;
     }
+    setText(out);
+    flashOutline(textareaRef.current);
+    if (await copyText(out)) flagDone(f.key);
+    else toast("couldn't copy — select the text and copy it", { warn: true });
   };
 
   return (
     <div className="tool">
       <textarea
         ref={textareaRef}
-        className="tool-textarea"
+        className="tool-textarea mono"
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="type or paste text"
+        placeholder="paste JSON, a URL or Base64"
         spellCheck={false}
         autoComplete="off"
         autoCorrect="off"
         autoCapitalize="off"
-        aria-label="Text to convert"
+        aria-label="Text to format"
       />
       <p className="tool-meta" aria-live="polite">
-        <Count value={stats.chars} /> {plural(stats.chars, 'character')} · <Count value={stats.words} /> {plural(stats.words, 'word')} · <Count value={stats.lines} /> {plural(stats.lines, 'line')}
+        <span ref={kindRef}>{kind || ' '}</span>
       </p>
       <div className="tool-actions">
         <button
@@ -70,15 +78,15 @@ export default function CaseConverter() {
         >
           <ClipboardPaste size={14} />
         </button>
-        {CASES.map(c => (
+        {FORMATTERS.map(f => (
           <button
-            key={c.key}
-            className={`btn ${done[c.key] ? 'btn-done' : ''}`}
-            onClick={(e) => handleConvert(e, c)}
+            key={f.key}
+            className={`btn ${done[f.key] ? 'btn-done' : ''}`}
+            onClick={(e) => run(e, f)}
             disabled={!text.trim()}
-            title={`Convert to ${c.label} and copy`}
+            title={`${f.label} and copy`}
           >
-            {c.label}
+            {f.label}
           </button>
         ))}
       </div>

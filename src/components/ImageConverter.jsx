@@ -1,214 +1,366 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
-import { ImageUp } from 'lucide-react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Copy, Download, ImageUp, X } from 'lucide-react';
+import { zipSync } from 'fflate';
+import { IMAGE_FORMATS, encodeImage, jpegsToPdf, loadImage, targetSize } from '../imageConvert';
+import { baseName, copyImageBlob, downloadBlob, formatBytes, isImageFile, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
+import { MOTION_MS } from '../motion';
+import { useToast } from '../toastContext';
+import TabSwitcher from './TabSwitcher';
+import MotionList from './MotionList';
+import Collapse from './Collapse';
+import Count from './Count';
 
-const FORMATS = [
-  { key: 'png',  label: 'PNG',  mime: 'image/png' },
-  { key: 'jpg',  label: 'JPG',  mime: 'image/jpeg' },
-  { key: 'webp', label: 'WEBP', mime: 'image/webp' },
-  { key: 'pdf',  label: 'PDF',  mime: 'application/pdf' },
-];
-
-// Box padding (matches .image-converter-drop) and the smallest it shrinks to
+// Box padding (matches .drop-box) and the smallest it shrinks to
 const PAD_X = 24;
 const PAD_Y = 18;
 const MIN_IMAGE_BOX = 200;
-
-const loadImage = (url) => new Promise((resolve, reject) => {
-  const img = new Image();
-  img.onload = () => resolve(img);
-  img.onerror = reject;
-  img.src = url;
-});
-
-// Same as the case converter's text box: max(320px, 60vh)
 const emptyBoxHeight = () => Math.max(320, window.innerHeight * 0.6);
 
-// A one-page PDF holding a JPEG, written by hand (no library needed).
-// The page is the image's size at 96 dpi.
-function jpegToPdf(jpeg, width, height) {
-  const enc = new TextEncoder();
-  const w = +(width * 0.75).toFixed(2);
-  const h = +(height * 0.75).toFixed(2);
-  const content = `q ${w} 0 0 ${h} 0 0 cm /Im0 Do Q`;
-  const objects = [
-    '<< /Type /Catalog /Pages 2 0 R >>',
-    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${w} ${h}] /Resources << /XObject << /Im0 5 0 R >> >> /Contents 4 0 R >>`,
-    `<< /Length ${content.length} >>\nstream\n${content}\nendstream`,
-    null, // the image, written below with its binary data
-  ];
+const RESIZE_MODES = [
+  { key: 'percent', label: 'scale %' },
+  { key: 'width',   label: 'width px' },
+];
 
-  const parts = [];
-  const offsets = [];
-  let length = 0;
-  const push = (chunk) => {
-    const bytes = typeof chunk === 'string' ? enc.encode(chunk) : chunk;
-    parts.push(bytes);
-    length += bytes.length;
-  };
-
-  push('%PDF-1.4\n');
-  objects.forEach((body, i) => {
-    offsets.push(length);
-    if (body === null) {
-      push(`${i + 1} 0 obj\n<< /Type /XObject /Subtype /Image /Width ${width} /Height ${height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`);
-      push(jpeg);
-      push('\nendstream\nendobj\n');
-    } else {
-      push(`${i + 1} 0 obj\n${body}\nendobj\n`);
-    }
-  });
-
-  const xref = length;
-  push(`xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`);
-  offsets.forEach(o => push(`${String(o).padStart(10, '0')} 00000 n \n`));
-  push(`trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
-
-  return new Blob(parts, { type: 'application/pdf' });
-}
+let nextId = 1;
 
 export default function ImageConverter({ active }) {
-  const [file, setFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState('');
-  const [imageSize, setImageSize] = useState(null);
-  const [boxHeight, setBoxHeight] = useState(emptyBoxHeight);
+  const [items, setItems] = useState([]); // { id, file, url, img, w, h }
+  const [selectedId, setSelectedId] = useState(null);
+  const [format, setFormat] = useState('png');
+  const [resizeMode, setResizeMode] = useState('percent');
+  const [percent, setPercent] = useState('100');
+  const [widthPx, setWidthPx] = useState('');
+  const [quality, setQuality] = useState(90);
+  const [estimate, setEstimate] = useState(null); // { width, height, size, ext, fellBack }
+  const [busy, setBusy] = useState('');
   const [dragging, setDragging] = useState(false);
-  const [doneFormat, setDoneFormat] = useState('');
+  const [boxHeight, setBoxHeight] = useState(emptyBoxHeight);
+  const [done, flagDone] = useDoneFlags();
   const inputRef = useRef(null);
   const boxRef = useRef(null);
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+  const toast = useToast();
 
-  const takeFile = async (f) => {
-    if (!f || !f.type.startsWith('image/')) return;
-    const url = URL.createObjectURL(f);
-    try {
-      const img = await loadImage(url);
-      setImageSize({ w: img.naturalWidth, h: img.naturalHeight });
-    } catch {
-      URL.revokeObjectURL(url);
-      return;
-    }
-    setFile(f);
-    setPreviewUrl(url);
+  const selected = items.find(i => i.id === selectedId) || items[0] || null;
+  const fmt = IMAGE_FORMATS.find(f => f.key === format);
+
+  const resize = useMemo(() => ({
+    mode: resizeMode,
+    percent: parseFloat(percent),
+    width: parseInt(widthPx, 10),
+  }), [resizeMode, percent, widthPx]);
+
+  const settings = useMemo(() => ({ format, resize, quality }), [format, resize, quality]);
+
+  const addFiles = useCallback(async (fileList) => {
+    const files = [...fileList].filter(isImageFile);
+    if (!files.length) return;
+    const loaded = await Promise.all(files.map(async (file) => {
+      const url = URL.createObjectURL(file);
+      try {
+        const img = await loadImage(url);
+        return { id: nextId++, file, url, img, w: img.naturalWidth, h: img.naturalHeight };
+      } catch {
+        URL.revokeObjectURL(url);
+        toast(`couldn't open ${file.name || 'that image'}`, { warn: true });
+        return null;
+      }
+    }));
+    const ok = loaded.filter(Boolean);
+    if (!ok.length) return;
+    setItems(prev => [...prev, ...ok]);
+    setSelectedId(ok[0].id);
+    // A width to start from: the first image's own
+    setWidthPx(w => w || String(ok[0].w));
+  }, [toast]);
+
+  usePastedFiles(active, isImageFile, addFiles);
+
+  const removeItem = (id) => {
+    const index = items.findIndex(i => i.id === id);
+    const item = items[index];
+    if (!item) return;
+    const rest = items.filter(i => i.id !== id);
+    setItems(rest);
+    if (selected?.id === id) setSelectedId(rest[Math.min(index, rest.length - 1)]?.id ?? null);
+    // After its row has slid out (it still shows the thumbnail until then)
+    setTimeout(() => URL.revokeObjectURL(item.url), MOTION_MS + 300);
   };
 
-  // The box fits the image's shape (up to the empty box's height), and
-  // animates there via the height transition in index.css.
+  const clearAll = () => {
+    const old = items;
+    setItems([]);
+    setSelectedId(null);
+    setWidthPx('');
+    setTimeout(() => old.forEach(i => URL.revokeObjectURL(i.url)), MOTION_MS + 300);
+  };
+
+  useEffect(() => () => itemsRef.current.forEach(i => URL.revokeObjectURL(i.url)), []);
+
+  // The box fits the selected image's shape (up to the empty box's height),
+  // easing there via .tool-box's height transition.
   useLayoutEffect(() => {
     const fit = () => {
       const maxH = emptyBoxHeight();
-      if (!imageSize || !boxRef.current) {
+      if (!selected || !boxRef.current) {
         setBoxHeight(maxH);
         return;
       }
       const innerW = boxRef.current.clientWidth - PAD_X * 2;
-      const fitted = innerW * (imageSize.h / imageSize.w) + PAD_Y * 2;
+      const fitted = innerW * (selected.h / selected.w) + PAD_Y * 2;
       setBoxHeight(Math.round(Math.min(maxH, Math.max(MIN_IMAGE_BOX, fitted))));
     };
     fit();
     window.addEventListener('resize', fit);
     return () => window.removeEventListener('resize', fit);
-  }, [imageSize]);
+  }, [selected]);
 
-  // Paste an image anywhere on the page while this tab is open
+  // What the selected image comes out as with these settings (encoded for
+  // real, a moment after the last change)
   useEffect(() => {
-    if (!active) return;
-    const onPaste = (e) => {
-      const item = [...(e.clipboardData?.files || [])].find(f => f.type.startsWith('image/'));
-      if (item) {
-        e.preventDefault();
-        takeFile(item);
+    if (!selected) {
+      setEstimate(null);
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        const out = await encodeImage(selected.img, settings);
+        if (!cancelled) setEstimate({ width: out.width, height: out.height, size: out.blob.size, ext: out.ext, fellBack: out.fellBack, clamped: out.clamped });
+      } catch {
+        if (!cancelled) setEstimate(null);
       }
-    };
-    window.addEventListener('paste', onPaste);
-    return () => window.removeEventListener('paste', onPaste);
-  }, [active]);
+    }, 250);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [selected, settings]);
 
-  useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
-
-  const handleConvert = async (e, format) => {
+  const handleDownload = async (e) => {
     e.currentTarget.blur();
-    if (!previewUrl) return;
-    const img = await loadImage(previewUrl);
-    const canvas = document.createElement('canvas');
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    const ctx = canvas.getContext('2d');
-    if (format.key === 'jpg' || format.key === 'pdf') {
-      // No transparency in JPG (or the JPEG inside the PDF): use white, not black
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (!items.length || busy) return;
+    const list = items;
+    try {
+      let blob;
+      let name;
+      let fellBack = false;
+      if (format === 'pdf') {
+        const pages = [];
+        for (let i = 0; i < list.length; i++) {
+          setBusy(list.length > 1 ? `${i + 1} / ${list.length}` : '…');
+          pages.push(await encodeImage(list[i].img, settings));
+        }
+        setBusy('…');
+        blob = await jpegsToPdf(pages);
+        name = list.length === 1 ? `${baseName(list[0].file.name)}.pdf` : 'images.pdf';
+      } else if (list.length === 1) {
+        setBusy('…');
+        const out = await encodeImage(list[0].img, settings);
+        blob = out.blob;
+        fellBack = out.fellBack;
+        name = `${baseName(list[0].file.name)}.${out.ext}`;
+      } else {
+        const files = {};
+        const unique = uniqueNamer();
+        for (let i = 0; i < list.length; i++) {
+          setBusy(`${i + 1} / ${list.length}`);
+          const out = await encodeImage(list[i].img, settings);
+          fellBack = fellBack || out.fellBack;
+          files[unique(`${baseName(list[i].file.name)}.${out.ext}`)] = new Uint8Array(await out.blob.arrayBuffer());
+        }
+        // Images are already compressed: store them as they are
+        blob = new Blob([zipSync(files, { level: 0 })], { type: 'application/zip' });
+        name = 'images.zip';
+      }
+      downloadBlob(blob, name);
+      flagDone('download');
+      if (fellBack) toast(`this browser can't make ${fmt.label}, so it saved PNG`, { warn: true });
+    } catch (err) {
+      toast(err?.message ? `couldn't convert: ${err.message}` : "couldn't convert", { warn: true });
+    } finally {
+      setBusy('');
     }
-    ctx.drawImage(img, 0, 0);
-
-    const toBlob = (mime) => new Promise(resolve => canvas.toBlob(resolve, mime, 0.92));
-    let blob;
-    if (format.key === 'pdf') {
-      const jpeg = await toBlob('image/jpeg');
-      if (!jpeg) return;
-      blob = jpegToPdf(new Uint8Array(await jpeg.arrayBuffer()), canvas.width, canvas.height);
-    } else {
-      blob = await toBlob(format.mime);
-    }
-    if (!blob) return;
-
-    const baseName = file.name.replace(/\.[^.]+$/, '') || 'image';
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${baseName}.${format.key}`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-
-    setDoneFormat(format.key);
-    setTimeout(() => setDoneFormat(''), 1800);
   };
 
+  const handleCopy = async (e) => {
+    e.currentTarget.blur();
+    if (!selected) return;
+    // Started inside the click (Safari only allows it there); the clipboard
+    // takes PNG, so that's what's copied whatever the format.
+    const png = encodeImage(selected.img, { ...settings, format: 'png' }).then(out => out.blob);
+    if (await copyImageBlob(png)) {
+      flagDone('copy');
+      toast('image copied');
+    } else {
+      toast("this browser can't copy images — download it instead", { warn: true });
+    }
+  };
+
+  const onDragLeave = (e) => {
+    if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false);
+  };
+
+  const downloadLabel = busy
+    ? `converting ${busy}`
+    : items.length > 1
+      ? (format === 'pdf' ? 'download pdf' : 'download zip')
+      : 'download';
+
+  const original = selected ? targetSize(selected.w, selected.h, { mode: 'percent', percent: 100 }) : null;
+
   return (
-    <div className="case-converter-wrapper">
+    <div className="tool">
       <div
         ref={boxRef}
-        className={`image-converter-drop ${dragging ? 'dragging' : ''}`}
+        className={`tool-box drop-box ${dragging ? 'dragging' : ''}`}
         style={{ height: `${boxHeight}px` }}
         onClick={() => inputRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-        onDragLeave={() => setDragging(false)}
+        onDragLeave={onDragLeave}
         onDrop={(e) => {
           e.preventDefault();
           setDragging(false);
-          takeFile(e.dataTransfer?.files?.[0]);
+          addFiles(e.dataTransfer?.files || []);
         }}
+        role="button"
+        tabIndex={0}
+        aria-label="Add images"
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inputRef.current?.click(); } }}
       >
-        {previewUrl ? (
-          <img key={previewUrl} src={previewUrl} alt={file?.name || 'preview'} className="image-converter-preview" />
+        {selected ? (
+          <img key={selected.id} src={selected.url} alt={selected.file.name} className="drop-preview" />
         ) : (
-          <span className="image-converter-hint">drop, paste or click to add an image</span>
+          <span className="tool-hint">drop, paste or click to add images</span>
         )}
         <input
           ref={inputRef}
           type="file"
           accept="image/*"
+          multiple
           hidden
-          onChange={(e) => { takeFile(e.target.files?.[0]); e.target.value = ''; }}
+          onChange={(e) => { addFiles(e.target.files || []); e.target.value = ''; }}
         />
       </div>
-      <div className="case-converter-actions">
+
+      <MotionList
+        items={items}
+        getKey={item => item.id}
+        className="file-list"
+        renderItem={(item) => (
+          <div
+            className={`file-row ${selected?.id === item.id ? 'selected' : ''}`}
+            onClick={() => setSelectedId(item.id)}
+          >
+            <img src={item.url} alt="" className="file-thumb" />
+            <div className="file-info">
+              <span className="file-name">{item.file.name || 'pasted image'}</span>
+              <span className="file-meta">{item.w} × {item.h} · {formatBytes(item.file.size)}</span>
+            </div>
+            <button
+              className="btn btn-sm btn-icon file-remove"
+              onClick={(e) => { e.stopPropagation(); e.currentTarget.blur(); removeItem(item.id); }}
+              title="Remove"
+              aria-label={`Remove ${item.file.name}`}
+            >
+              <X size={13} />
+            </button>
+          </div>
+        )}
+      />
+
+      <Collapse open={items.length > 0} className="options-collapse">
+        <div className="options-panel">
+          <div className="field-grid">
+            <TabSwitcher className="tab-switcher-sm" tabs={IMAGE_FORMATS} active={format} onChange={setFormat} />
+            <TabSwitcher className="tab-switcher-sm" tabs={RESIZE_MODES} active={resizeMode} onChange={setResizeMode} />
+            {resizeMode === 'percent' ? (
+              <label className="field">
+                <input
+                  className="text-input num"
+                  type="number"
+                  inputMode="decimal"
+                  min="1"
+                  max="1000"
+                  value={percent}
+                  onChange={(e) => setPercent(e.target.value)}
+                  aria-label="Scale percent"
+                />
+                %
+              </label>
+            ) : (
+              <label className="field">
+                <input
+                  className="text-input num"
+                  type="number"
+                  inputMode="numeric"
+                  min="1"
+                  max="16384"
+                  value={widthPx}
+                  onChange={(e) => setWidthPx(e.target.value)}
+                  aria-label="Width in pixels"
+                />
+                px wide
+              </label>
+            )}
+          </div>
+          <Collapse open={fmt.lossy}>
+            <div className="field-grid quality-row">
+              <label className="field">
+                quality
+                <input
+                  className="range-input"
+                  type="range"
+                  min="10"
+                  max="100"
+                  value={quality}
+                  onChange={(e) => setQuality(Number(e.target.value))}
+                  aria-label="Quality"
+                />
+                <span className="count-num quality-num"><Count value={quality} /></span>
+              </label>
+            </div>
+          </Collapse>
+        </div>
+      </Collapse>
+
+      <p className="tool-meta" aria-live="polite">
+        {selected && estimate ? (
+          <>
+            {original.width} × {original.height} → <Count value={estimate.width} /> × <Count value={estimate.height} /> · <Count value={estimate.size} format={formatBytes} />
+            {format === 'pdf' ? ' per page' : ''}
+            {estimate.clamped ? ' (largest this device can make)' : ''}
+          </>
+        ) : selected ? '…' : 'png, jpg, webp, gif, avif and more'}
+      </p>
+
+      <div className="tool-actions">
         <button
-          className="case-btn case-btn-icon-only"
+          className="btn btn-icon"
           onClick={(e) => { e.currentTarget.blur(); inputRef.current?.click(); }}
-          title="Choose an image"
+          title="Add images"
+          aria-label="Add images"
         >
           <ImageUp size={14} />
         </button>
-        {FORMATS.map(format => (
-          <button
-            key={format.key}
-            className={`case-btn ${doneFormat === format.key ? 'case-btn-copied' : ''}`}
-            onClick={(e) => handleConvert(e, format)}
-            disabled={!file}
-          >
-            {format.label}
-          </button>
-        ))}
+        <button
+          className={`btn btn-primary ${done.download ? 'btn-done' : ''}`}
+          onClick={handleDownload}
+          disabled={!items.length || !!busy}
+        >
+          {busy ? <span className="spinner" aria-hidden="true" /> : <Download size={14} />}
+          {downloadLabel}
+        </button>
+        <button
+          className={`btn ${done.copy ? 'btn-done' : ''}`}
+          onClick={handleCopy}
+          disabled={!selected}
+          title="Copy the selected image (as PNG)"
+        >
+          <Copy size={14} />
+          copy
+        </button>
+        <button className="btn" onClick={(e) => { e.currentTarget.blur(); clearAll(); }} disabled={!items.length}>
+          clear
+        </button>
       </div>
     </div>
   );

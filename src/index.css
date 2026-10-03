@@ -1,52 +1,116 @@
 @import "tailwindcss";
 
+/* ── Tokens ─────────────────────────────────────────────────────
+   Light values; dark ones below follow the device's setting (the inline
+   script in index.html sets data-theme before the first paint). Dark
+   values are instagram-follower-checker's. */
 :root {
-  --font-heading: 'Outfit', 'Inter', sans-serif;
-  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
   --bg-page: #faf9f6;
   --bg-card: #ffffff;
-  --bg-inset: #fafafd;
-  
-  --color-navy: #0f172a;
-  --color-slate-gray: #64748b;
-  --color-indigo: #4f46e5;
-  --color-indigo-hover: #4338ca;
-  --color-indigo-light: #f5f3ff;
-  --color-emerald: #059669;
-  --color-emerald-light: #ecfdf5;
-
+  --bg-inset: #f4f4f5;
+  --text-main: #09090b;
+  --text-muted: #71717a;
+  --text-faint: #94a3b8;
   --border-subtle: #e6e5e0;
+  --border-focus: #cbd5e1;
+  --input-border: rgba(9, 9, 11, 0.12);
+  --btn-bg: #ffffff;
+  --btn-bg-hover: #ffffff;
+  --btn-border: #d1d5db;
+  --btn-primary-bg: #000000;
+  --btn-primary-text: #ffffff;
+  --success-bg: #ecfdf5;
+  --success-border: #a7f3d0;
+  --success-text: #059669;
+  --warn-bg: #d97706;
+  --diff-add-bg: rgba(16, 185, 129, 0.16);
+  --diff-add-text: #047857;
+  --diff-del-bg: rgba(239, 68, 68, 0.14);
+  --diff-del-text: #b91c1c;
+  --shadow-card: 0 4px 12px -2px rgba(15, 23, 42, 0.03), 0 1px 3px rgba(15, 23, 42, 0.01);
+  --shadow-btn: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-btn-hover: 0 2px 6px rgba(0, 0, 0, 0.08);
+  --overlay-bg: rgba(0, 0, 0, 0.5);
+  --radius: 12px;
 
-  /* Shared motion timing (matches instagram-follower-checker) */
+  /* The app's one motion (instagram-follower-checker's "list 3 slide") */
   --motion-duration: 0.45s;
   --motion-easing: cubic-bezier(0.4, 0, 0.2, 1);
+
+  color-scheme: light;
 }
+
+:root[data-theme="dark"] {
+  --bg-page: #09090b;
+  --bg-card: #18181b;
+  --bg-inset: #111113;
+  --text-main: #f4f4f5;
+  --text-muted: #a1a1aa;
+  --text-faint: #71717a;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-focus: rgba(255, 255, 255, 0.22);
+  --input-border: rgba(255, 255, 255, 0.12);
+  --btn-bg: #18181b;
+  --btn-bg-hover: #27272a;
+  --btn-border: rgba(255, 255, 255, 0.15);
+  --btn-primary-bg: #ffffff;
+  --btn-primary-text: #000000;
+  --success-bg: rgba(16, 185, 129, 0.14);
+  --success-border: rgba(16, 185, 129, 0.4);
+  --success-text: #34d399;
+  --diff-add-bg: rgba(16, 185, 129, 0.2);
+  --diff-add-text: #6ee7b7;
+  --diff-del-bg: rgba(239, 68, 68, 0.2);
+  --diff-del-text: #fca5a5;
+  --shadow-card: 0 20px 40px -15px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-btn: none;
+  --shadow-btn-hover: none;
+  --overlay-bg: rgba(0, 0, 0, 0.6);
+
+  color-scheme: dark;
+}
+
+/* ── Base ─────────────────────────────────────────────────────── */
 
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
   -webkit-tap-highlight-color: transparent !important;
-  -webkit-tap-highlight-color: rgba(0, 0, 0, 0) !important;
-  -webkit-touch-callout: none !important;
-  -webkit-user-select: none !important;
-  user-select: none !important;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
   outline: none !important;
 }
 
-html, body {
-  overflow: hidden;
-  height: 100vh;
-  width: 100vw;
+/* Typing, pasting and copying need the normal long-press menu and selection */
+textarea,
+input,
+[contenteditable="true"],
+.selectable,
+.selectable * {
+  -webkit-touch-callout: default;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+html {
+  background-color: var(--bg-page);
 }
 
 body {
+  min-height: 100vh;
+  min-height: 100dvh;
   background-color: var(--bg-page);
-  color: var(--color-navy);
+  color: var(--text-main);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  transition: background-color var(--motion-duration) var(--motion-easing),
+              color var(--motion-duration) var(--motion-easing);
 }
 
 button {
@@ -54,9 +118,40 @@ button {
   font-family: inherit;
   border: none;
   background: none;
+  color: inherit;
 }
 
-/* Centered layout wrapper */
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* No transitions while the page first draws (the source repo's .preload):
+   otherwise boxes and colours animate in from their defaults on load. */
+.preload *,
+.preload *::before,
+.preload *::after {
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* ── Layout ───────────────────────────────────────────────────── */
+
+.app-shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  padding: max(28px, min(9vh, 80px)) 0 64px;
+  padding-top: max(28px, min(9vh, 80px), env(safe-area-inset-top));
+}
+
 .app-container {
   width: 100%;
   max-width: 820px;
@@ -65,103 +160,11 @@ button {
   padding: 0 20px;
 }
 
-
-/* ── Case Converter ─────────────────────────────────────────── */
-
-.case-converter-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-  width: 100%;
-}
-
-.case-converter-textarea {
-  width: 100%;
-  min-height: max(320px, 60vh);
-  resize: none;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: 16px;
-  box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.03), 0 1px 3px rgba(15, 23, 42, 0.01);
-  padding: 18px 24px;
-  font-family: var(--font-body);
-  font-size: 0.95rem;
-  font-weight: 500;
-  color: var(--color-navy);
-  line-height: 1.6;
-  /* allow text selection in textarea */
-  -webkit-user-select: text !important;
-  user-select: text !important;
-  transition: border-color var(--motion-duration) var(--motion-easing);
-}
-
-.case-converter-textarea::placeholder {
-  color: #94a3b8;
-  font-weight: 400;
-}
-
-.case-converter-textarea:focus {
-  border-color: #cbd5e1;
-}
-
-.case-converter-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-}
-
-.case-btn {
-  /* instagram-follower-checker's .btn.btn-secondary.btn-sm */
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border-radius: 12px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  white-space: nowrap;
-  background: #ffffff;
-  border: 1px solid #d1d5db;
-  color: #09090b;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  transition: background-color var(--motion-duration) var(--motion-easing),
-              color var(--motion-duration) var(--motion-easing),
-              border-color var(--motion-duration) var(--motion-easing),
-              box-shadow var(--motion-duration) var(--motion-easing),
-              opacity var(--motion-duration) var(--motion-easing);
-  cursor: pointer;
-}
-
-/* Only apply hover on real pointer devices — prevents a mobile tap leaving it stuck */
-@media (hover: hover) and (pointer: fine) {
-  .case-btn:hover:not(:disabled) {
-    border-color: #09090b;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+@media (max-width: 480px) {
+  .app-container {
+    padding: 0 16px;
   }
 }
-
-.case-btn:disabled {
-  opacity: 0.45;
-  box-shadow: none;
-  cursor: not-allowed;
-}
-
-/* Icon-only variant for the paste / choose image buttons */
-.case-btn-icon-only {
-  padding: 8px 14px;
-}
-
-/* Green confirm state */
-.case-btn-copied {
-  background: #ecfdf5 !important;
-  border-color: #a7f3d0 !important;
-  color: #059669 !important;
-}
-
-
-/* ── Tab Switcher (matches instagram-follower-checker's instructions tabs) ── */
 
 /* A real rule, not a Tailwind margin utility: the unlayered `* { margin: 0 }`
    above overrides Tailwind's layered utilities. */
@@ -171,16 +174,55 @@ button {
   margin-bottom: 14px;
 }
 
+/* ── Tab switcher (instagram-follower-checker's instructions tabs) ── */
+
 .tab-switcher {
   --tab-radius: 12px;
-  display: inline-flex;
+  display: flex;
   gap: 6px;
   position: relative;
+  max-width: 100%;
   padding: 4px;
   background: var(--bg-card);
-  border: 1px solid rgba(9, 9, 11, 0.12);
+  border: 1px solid var(--input-border);
   border-radius: var(--tab-radius);
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+
+.tab-switcher::-webkit-scrollbar {
+  display: none;
+}
+
+/* More tabs past an edge: that edge fades out, so a tab running off the
+   side reads as "scroll for more". The border ring stays solid
+   (border-box minus padding-box); only the inside fades. */
+@property --nav-fade-l { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --nav-fade-r { syntax: '<length>'; inherits: false; initial-value: 0px; }
+.tab-switcher {
+  --nav-fade-l: 0px;
+  --nav-fade-r: 0px;
+  transition: --nav-fade-l var(--motion-duration) var(--motion-easing),
+              --nav-fade-r var(--motion-duration) var(--motion-easing),
+              background-color var(--motion-duration) var(--motion-easing),
+              border-color var(--motion-duration) var(--motion-easing);
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 0, #000 var(--nav-fade-l), #000 calc(100% - var(--nav-fade-r)), transparent 100%),
+    linear-gradient(#000, #000),
+    linear-gradient(#000, #000);
+  mask-image:
+    linear-gradient(to right, transparent 0, #000 var(--nav-fade-l), #000 calc(100% - var(--nav-fade-r)), transparent 100%),
+    linear-gradient(#000, #000),
+    linear-gradient(#000, #000);
+  -webkit-mask-clip: padding-box, padding-box, border-box;
+  mask-clip: padding-box, padding-box, border-box;
+  -webkit-mask-composite: source-over, xor;
+  mask-composite: add, exclude;
+}
+.tab-switcher.fade-left { --nav-fade-l: 28px; }
+.tab-switcher.fade-right { --nav-fade-r: 28px; }
 
 .tab-indicator {
   position: absolute;
@@ -198,9 +240,10 @@ button {
   left: 0;
   height: 100%;
   box-sizing: border-box;
-  border: 1.5px solid #09090b;
+  border: 1.5px solid var(--text-main);
   transform-origin: left center;
   will-change: transform;
+  transition: border-color var(--motion-duration) var(--motion-easing);
 }
 
 /* Inner corners run parallel to the bar's: its radius minus 4px padding + 1px border */
@@ -231,83 +274,846 @@ button {
   font-size: 0.78rem;
   font-weight: 600;
   white-space: nowrap;
-  color: #71717a;
+  color: var(--text-muted);
   border-radius: calc(var(--tab-radius) - 5px);
   transition: color var(--motion-duration) var(--motion-easing);
 }
 
 .tab-switcher-btn.active {
-  color: #09090b;
+  color: var(--text-main);
 }
 
-/* Panes stack in one grid cell; only the active one (and one sliding
-   out) is visible. Extra bottom padding keeps the boxes' shadows unclipped. */
+@media (hover: hover) and (pointer: fine) {
+  .tab-switcher-btn:hover:not(.active) {
+    color: var(--text-main);
+  }
+}
+
+/* The small one used inside a tool (format picker, make/scan) */
+.tab-switcher.tab-switcher-sm .tab-switcher-btn {
+  padding: 6px 11px;
+  font-size: 0.75rem;
+}
+
+/* ── Tab panes ────────────────────────────────────────────────── */
+
+/* Only the active pane takes up room; the others are laid over it, so a
+   tall tab never stretches a short one. Extra padding keeps the boxes'
+   shadows and outlines unclipped. */
 .tab-panes {
-  display: grid;
-  grid-template: 1fr / 1fr;
+  position: relative;
   overflow: hidden;
-  padding-bottom: 16px;
-  margin-bottom: -16px;
+  padding: 3px 3px 16px;
+  margin: -3px -3px -16px;
 }
 
 .tab-pane {
-  grid-area: 1 / 1;
-  min-width: 0;
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  right: 3px;
   visibility: hidden;
   pointer-events: none;
 }
 
-.tab-pane.active,
-.tab-pane.pane-out {
-  visibility: visible;
+.tab-pane.active {
+  position: relative;
+  top: auto;
+  left: auto;
+  right: auto;
+  pointer-events: auto;
 }
 
-.tab-pane.active {
-  pointer-events: auto;
+/* inherit, not visible: a pane inside a hidden pane (the QR tab's own
+   make/scan panes) must stay hidden with it */
+.tab-pane.active,
+.tab-pane.pane-out {
+  visibility: inherit;
 }
 
 .tab-pane.pane-out {
   z-index: 1;
 }
 
-/* ── Image Converter ────────────────────────────────────────── */
+/* ── Tools: shared pieces ─────────────────────────────────────── */
 
-.image-converter-drop {
-  width: 100%;
-  /* height is set inline (fits the image) and eases with the shared timing */
+.tool {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 18px 24px;
+  gap: 20px;
+  width: 100%;
+}
+
+.tool-box {
+  width: 100%;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: 16px;
-  box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.03), 0 1px 3px rgba(15, 23, 42, 0.01);
-  cursor: pointer;
-  overflow: hidden;
-  transition: height var(--motion-duration) var(--motion-easing),
-              border-color var(--motion-duration) var(--motion-easing);
+  box-shadow: var(--shadow-card);
+  transition: border-color var(--motion-duration) var(--motion-easing),
+              background-color var(--motion-duration) var(--motion-easing),
+              height var(--motion-duration) var(--motion-easing);
 }
 
-.image-converter-drop.dragging {
-  border-color: #cbd5e1;
-}
-
-.image-converter-hint {
-  color: #94a3b8;
+.tool-textarea {
+  display: block;
+  width: 100%;
+  min-height: max(320px, 60vh);
+  resize: none;
+  padding: 18px 24px;
+  font-family: var(--font-body);
   font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-main);
+  line-height: 1.6;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+  transition: border-color var(--motion-duration) var(--motion-easing),
+              background-color var(--motion-duration) var(--motion-easing),
+              color var(--motion-duration) var(--motion-easing);
+}
+
+.tool-textarea.mono {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
   font-weight: 400;
 }
 
-.image-converter-preview {
+.tool-textarea.short {
+  min-height: 200px;
+}
+
+.tool-textarea::placeholder {
+  color: var(--text-faint);
+  font-weight: 400;
+}
+
+.tool-textarea:focus,
+.tool-box:focus-within {
+  border-color: var(--border-focus);
+}
+
+.tool-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.tool-meta {
+  margin-top: -10px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.tool-hint {
+  color: var(--text-faint);
+  font-size: 0.95rem;
+  font-weight: 400;
+  text-align: center;
+  padding: 0 12px;
+}
+
+.count-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* A box that just got new content: a brief outline, 0.45s in, 0.45s out
+   (the source repo's card-flash). */
+@keyframes card-flash {
+  0%, 100% { box-shadow: var(--shadow-card), 0 0 0 0 transparent; }
+  50% { box-shadow: var(--shadow-card), 0 0 0 2px var(--text-main); }
+}
+.card-flash {
+  animation: card-flash 0.9s var(--motion-easing);
+}
+
+/* ── Buttons (instagram-follower-checker's .btn.btn-secondary.btn-sm) ── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  color: var(--text-main);
+  box-shadow: var(--shadow-btn);
+  transition: background-color var(--motion-duration) var(--motion-easing),
+              color var(--motion-duration) var(--motion-easing),
+              border-color var(--motion-duration) var(--motion-easing),
+              box-shadow var(--motion-duration) var(--motion-easing),
+              opacity var(--motion-duration) var(--motion-easing);
+}
+
+/* Only on real pointer devices: a tap on a phone would leave it stuck */
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover:not(:disabled) {
+    background: var(--btn-bg-hover);
+    border-color: var(--text-main);
+    box-shadow: var(--shadow-btn-hover);
+  }
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  box-shadow: none;
+}
+
+.btn-icon {
+  padding: 8px 14px;
+}
+
+.btn-primary {
+  background: var(--btn-primary-bg);
+  border-color: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover:not(:disabled) {
+    background: var(--btn-primary-bg);
+    border-color: var(--btn-primary-bg);
+    opacity: 0.88;
+  }
+}
+
+/* Green "done" state (copied, downloaded) */
+.btn.btn-done {
+  background: var(--success-bg);
+  border-color: var(--success-border);
+  color: var(--success-text);
+}
+
+.btn-sm {
+  padding: 5px 10px;
+  font-size: 0.75rem;
+  border-radius: 9px;
+}
+
+/* ── Form fields ──────────────────────────────────────────────── */
+
+.field-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 22px;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.text-input {
+  padding: 7px 10px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-main);
+  background: var(--bg-card);
+  border: 1px solid var(--input-border);
+  border-radius: 9px;
+  transition: border-color var(--motion-duration) var(--motion-easing),
+              background-color var(--motion-duration) var(--motion-easing);
+}
+
+.text-input:focus {
+  border-color: var(--text-main);
+}
+
+.text-input.num {
+  width: 84px;
+  font-variant-numeric: tabular-nums;
+}
+
+.range-input {
+  width: 140px;
+  accent-color: var(--text-main);
+}
+
+/* ── Drop boxes (image, pdf, qr scan) ─────────────────────────── */
+
+.drop-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 18px 24px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.drop-box.dragging {
+  border-color: var(--border-focus);
+}
+
+.drop-box-empty {
+  min-height: max(320px, 60vh);
+}
+
+.drop-preview {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
   border-radius: 8px;
-  animation: imageFadeIn var(--motion-duration) var(--motion-easing);
+  animation: fadeIn var(--motion-duration) var(--motion-easing);
 }
 
-@keyframes imageFadeIn {
+@keyframes fadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
+}
+
+/* ── Motion list (the row engine) ─────────────────────────────── */
+
+.motion-list {
+  position: relative;
+  width: 100%;
+}
+
+.motion-item {
+  position: relative;
+  z-index: 1;
+}
+
+.motion-list-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 14px;
+}
+
+/* ── Pop-up (instagram-follower-checker's .modal-overlay) ─────── */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  height: 100vh;
+  height: 100dvh;
+  padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+  background-color: var(--overlay-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  opacity: 0;
+  pointer-events: none;
+  will-change: opacity;
+  transition: opacity var(--motion-duration) var(--motion-easing);
+}
+
+.modal-overlay.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-card {
+  width: 90%;
+  max-width: 380px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  transform: translateY(14px) scale(0.95);
+  will-change: opacity, transform;
+  transition: opacity var(--motion-duration) var(--motion-easing),
+              transform var(--motion-duration) var(--motion-easing);
+}
+
+.modal-overlay.show .modal-card {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.modal-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+.shortcut-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.shortcut-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  list-style: none;
+  color: var(--text-muted);
+}
+
+kbd {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 2px 7px;
+  border: 1px solid var(--btn-border);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  color: var(--text-main);
+  background: var(--bg-inset);
+  white-space: nowrap;
+}
+
+.shortcuts-btn {
+  position: fixed;
+  right: 18px;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  z-index: 50;
+}
+
+/* Shortcuts need a keyboard: no button on touch screens */
+@media (hover: none), (pointer: coarse) {
+  .shortcuts-btn {
+    display: none;
+  }
+}
+
+/* ── Toast (instagram-follower-checker's .feature-toast) ──────── */
+
+.feature-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  z-index: 9500;
+  display: flex;
+  align-items: center;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 10px 16px;
+  border-radius: 14px;
+  background: var(--text-main);
+  color: var(--bg-page);
+  font-size: 0.8rem;
+  font-weight: 600;
+  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 14px) scale(0.95);
+  transition: opacity var(--motion-duration) var(--motion-easing),
+              transform var(--motion-duration) var(--motion-easing);
+}
+
+.feature-toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+}
+
+.feature-toast.warn {
+  background: var(--warn-bg);
+  color: #ffffff;
+}
+
+.feature-toast-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* ── Spinner (exempt from the shared timing, like the source repo's) ── */
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--btn-border);
+  border-top-color: var(--text-main);
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Image converter ──────────────────────────────────────────── */
+
+.file-list .motion-item {
+  padding-bottom: 8px;
+}
+
+.file-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px 8px 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color var(--motion-duration) var(--motion-easing),
+              background-color var(--motion-duration) var(--motion-easing);
+}
+
+.file-row.selected {
+  border-color: var(--text-main);
+}
+
+.file-thumb {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  object-fit: cover;
+  border-radius: 8px;
+  background: var(--bg-inset);
+}
+
+.file-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.file-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.file-list:empty {
+  display: none;
+}
+
+.options-collapse {
+  width: 100%;
+}
+
+.options-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 2px 0;
+}
+
+.quality-row {
+  padding-top: 0;
+}
+
+.quality-num {
+  min-width: 2.2em;
+  text-align: right;
+  color: var(--text-main);
+}
+
+/* ── PDF tools ────────────────────────────────────────────────── */
+
+.pdf-drop {
+  flex-direction: column;
+}
+
+.pdf-drop.pdf-drop-full {
+  display: block;
+  padding: 16px;
+  cursor: default;
+}
+
+.page-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  transition: border-color var(--motion-duration) var(--motion-easing),
+              box-shadow var(--motion-duration) var(--motion-easing);
+}
+
+.page-card.selected {
+  border-color: var(--text-main);
+  box-shadow: 0 0 0 1px var(--text-main);
+}
+
+.page-thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  width: 100%;
+  padding: 6px;
+  background: var(--bg-inset);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.page-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  transition: transform var(--motion-duration) var(--motion-easing);
+}
+
+.page-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.page-src {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.page-buttons {
+  display: flex;
+  justify-content: space-between;
+  gap: 3px;
+}
+
+.page-buttons .btn {
+  flex: 1;
+  padding: 4px 0;
+  min-width: 0;
+  border-radius: 7px;
+}
+
+/* ── PDF editor ───────────────────────────────────────────────── */
+
+.pdf-pages {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.pdf-page {
+  position: relative;
+  overflow: hidden;
+  container-type: inline-size;
+  background: #ffffff;
+}
+
+.pdf-page-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.pdf-text-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.pdf-text-item,
+.pdf-text-input {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  padding: 0 0.06em;
+  font-size: calc(var(--fs) * 1cqw);
+  line-height: 1;
+  white-space: pre;
+  border-radius: 2px;
+}
+
+.pdf-text-item {
+  background: transparent;
+  border: 1px dashed transparent;
+  cursor: text;
+  transition: border-color var(--motion-duration) var(--motion-easing),
+              background-color var(--motion-duration) var(--motion-easing);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pdf-text-item:hover {
+    border-color: rgba(79, 70, 229, 0.7);
+    background-color: rgba(79, 70, 229, 0.06);
+  }
+}
+
+.pdf-text-item.edited {
+  border-color: rgba(16, 185, 129, 0.55);
+}
+
+.pdf-text-input {
+  border: 1px solid rgba(79, 70, 229, 0.9);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+}
+
+/* ── QR code ──────────────────────────────────────────────────── */
+
+.qr-panes {
+  width: 100%;
+}
+
+.qr-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  min-height: 280px;
+}
+
+.qr-canvas {
+  width: min(100%, 280px) !important;
+  height: auto !important;
+  border-radius: 8px;
+  background: #ffffff;
+  image-rendering: pixelated;
+}
+
+.qr-scan-box {
+  min-height: 280px;
+}
+
+.qr-video {
+  width: 100%;
+  max-height: 60vh;
+  object-fit: cover;
+}
+
+.qr-result {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 24px;
+}
+
+.qr-result-text {
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+a.btn {
+  text-decoration: none;
+}
+
+/* ── Text diff ────────────────────────────────────────────────── */
+
+.diff-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .diff-inputs {
+    grid-template-columns: 1fr;
+  }
+}
+
+.diff-output {
+  padding: 16px 20px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.diff-output-lines {
+  padding: 10px 0;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+}
+
+.diff-line {
+  display: flex;
+  padding: 0 16px 0 8px;
+}
+
+.diff-gutter {
+  width: 1.5em;
+  flex-shrink: 0;
+  text-align: center;
+  color: var(--text-faint);
+  user-select: none;
+}
+
+.diff-text {
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.diff-line-add {
+  background: var(--diff-add-bg);
+}
+
+.diff-line-add .diff-gutter,
+.diff-count-add {
+  color: var(--diff-add-text);
+}
+
+.diff-line-del {
+  background: var(--diff-del-bg);
+}
+
+.diff-line-del .diff-gutter,
+.diff-count-del {
+  color: var(--diff-del-text);
+}
+
+.diff-ins,
+.diff-del {
+  border-radius: 3px;
+  text-decoration: none;
+}
+
+.diff-ins {
+  background: var(--diff-add-bg);
+  color: var(--diff-add-text);
+}
+
+.diff-del {
+  background: var(--diff-del-bg);
+  color: var(--diff-del-text);
+  text-decoration: line-through;
+  text-decoration-color: currentColor;
 }

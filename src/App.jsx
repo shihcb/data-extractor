@@ -1,12 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Keyboard } from 'lucide-react';
 import CaseConverter from './components/CaseConverter';
 import ImageConverter from './components/ImageConverter';
+import PdfTools from './components/PdfTools';
+import PdfEditor from './components/PdfEditor';
+import QrTool from './components/QrTool';
+import TextDiff from './components/TextDiff';
+import Formatter from './components/Formatter';
 import TabSwitcher from './components/TabSwitcher';
 import TabPanes from './components/TabPanes';
+import Modal from './components/Modal';
+import { ToastProvider } from './components/Toast';
 
 const TABS = [
-  { key: 'case',  label: 'case converter' },
-  { key: 'image', label: 'image converter' },
+  { key: 'case',      label: 'case converter' },
+  { key: 'image',     label: 'image converter' },
+  { key: 'pdf',       label: 'pdf tools' },
+  { key: 'pdfedit',   label: 'pdf editor' },
+  { key: 'qr',        label: 'qr code' },
+  { key: 'diff',      label: 'text diff' },
+  { key: 'format',    label: 'formatter' },
 ];
 
 const readTab = () => {
@@ -18,8 +31,15 @@ const readTab = () => {
   }
 };
 
+const isTyping = () => {
+  const el = document.activeElement;
+  return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState(readTab);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const closeShortcuts = useCallback(() => setShortcutsOpen(false), []);
 
   useEffect(() => {
     try {
@@ -29,17 +49,74 @@ export default function App() {
     }
   }, [activeTab]);
 
+  // Shift+1..7 switch tabs, ? shows the shortcuts (not while typing)
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || isTyping()) return;
+      if (e.key === '?') {
+        e.preventDefault();
+        setShortcutsOpen(open => !open);
+        return;
+      }
+      if (!e.shiftKey) return;
+      // e.code, not e.key: Shift+1 types "!" (or other symbols on other layouts)
+      const match = /^Digit([1-9])$/.exec(e.code);
+      const tab = match && TABS[Number(match[1]) - 1];
+      if (tab) {
+        e.preventDefault();
+        setActiveTab(tab.key);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   return (
-    <div className="min-h-screen bg-[#faf9f6] text-[#0f172a] px-4 sm:px-6 w-full flex flex-col items-center justify-center py-20 sm:py-24 relative">
-      <div className="app-container my-auto">
-        <div className="tab-switcher-row">
-          <TabSwitcher tabs={TABS} active={activeTab} onChange={setActiveTab} />
+    <ToastProvider>
+      <div className="app-shell">
+        <div className="app-container">
+          <div className="tab-switcher-row">
+            <TabSwitcher tabs={TABS} active={activeTab} onChange={setActiveTab} />
+          </div>
+          <TabPanes tabs={TABS} active={activeTab}>
+            <CaseConverter active={activeTab === 'case'} />
+            <ImageConverter active={activeTab === 'image'} />
+            <PdfTools active={activeTab === 'pdf'} />
+            <PdfEditor active={activeTab === 'pdfedit'} />
+            <QrTool active={activeTab === 'qr'} />
+            <TextDiff active={activeTab === 'diff'} />
+            <Formatter active={activeTab === 'format'} />
+          </TabPanes>
         </div>
-        <TabPanes tabs={TABS} active={activeTab}>
-          <CaseConverter />
-          <ImageConverter active={activeTab === 'image'} />
-        </TabPanes>
       </div>
-    </div>
+
+      <button
+        className="btn btn-icon shortcuts-btn"
+        onClick={(e) => { e.currentTarget.blur(); setShortcutsOpen(true); }}
+        title="Keyboard shortcuts (?)"
+        aria-label="Keyboard shortcuts"
+      >
+        <Keyboard size={15} />
+      </button>
+
+      <Modal open={shortcutsOpen} onClose={closeShortcuts} title="keyboard shortcuts">
+        <ul className="shortcut-list">
+          {TABS.map((tab, i) => (
+            <li key={tab.key}>
+              <span>{tab.label}</span>
+              <kbd>Shift + {i + 1}</kbd>
+            </li>
+          ))}
+          <li>
+            <span>show these shortcuts</span>
+            <kbd>?</kbd>
+          </li>
+          <li>
+            <span>close a pop-up</span>
+            <kbd>Esc</kbd>
+          </li>
+        </ul>
+      </Modal>
+    </ToastProvider>
   );
 }

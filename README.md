@@ -1,16 +1,26 @@
-# React + Vite
+# toolbox
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Quick tools that run entirely in the browser — nothing is uploaded.
 
-Currently, two official plugins are available:
+- **case converter** — lowercase, UPPERCASE, Title Case, Sentence case, camelCase, snake_case, kebab-case, tidy spaces; live character / word / line count
+- **image converter** — PNG, JPG, WEBP or PDF; resize by % or width; quality; several images at once (zip or one multi-page PDF); copy to clipboard
+- **pdf tools** — merge, split, reorder, rotate, delete pages, pages to PNG
+- **pdf editor** — change text by covering it and retyping it in a matching standard font
+- **qr code** — make (PNG / SVG) and scan (image or camera)
+- **text diff** — compare by lines, words or characters
+- **formatter** — JSON pretty / minify, URL and Base64 encode / decode
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Shift+1…7 switch tabs, `?` lists the shortcuts. Light/dark follows the device. Installable and works offline (the service worker is generated at build time from `sw.template.js`).
 
-## React Compiler
+## Motion
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+All animation uses one timing, ported from instagram-follower-checker: **450ms, `cubic-bezier(0.4, 0, 0.2, 1)`** (`src/motion.js`, and `--motion-duration` / `--motion-easing` in CSS). Pop-ups and toasts come in from 14px down at 95% scale; list rows slide in and out with the rows around them shifting (`MotionList`); tab switches are the sideways push (`TabPanes`); counters count (`Count`).
 
-## Expanding the Oxlint configuration
+## Develop
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+```sh
+npm install
+npm run dev     # local server
+npm run lint
+npm run build   # into dist/
+```
