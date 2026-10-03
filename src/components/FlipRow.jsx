@@ -51,5 +51,8 @@ export default function FlipRow({ className = 'tool-actions', children }) {
     last.current = now;
   });
 
-  return <div ref={ref} className={className}>{children}</div>;
+  // Positioned, so its children measure their spots against the row itself:
+  // the row moving with the boxes above it (a file row deleted) must not
+  // look like them moving, or they get pushed away on top of that movement
+  return <div ref={ref} className={className} style={{ position: 'relative' }}>{children}</div>;
 }
