@@ -366,7 +366,7 @@ export default function ImageConverter({ active }) {
           disabled={!items.length || !!busy}
         >
           {busy ? <span className="spinner" aria-hidden="true" /> : <Download size={14} />}
-          {downloadLabel}
+          <FadeText k={downloadLabel} className="btn-label">{downloadLabel}</FadeText>
         </button>
         <button
           className={`btn ${done.copy ? 'btn-done' : ''}`}

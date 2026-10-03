@@ -8,7 +8,7 @@ import { MOTION, canAnimate, fadeIn } from '../motion';
 // it stays as it is. Its box's height eases separately (AutoHeight).
 function captureGhost(el) {
   if (!el || !el.getClientRects().length || !el.textContent.trim() || !canAnimate(el)) return null;
-  const host = el.parentElement?.closest('.tool-meta, .tool-box, .tool') || document.body;
+  const host = el.parentElement?.closest('.btn, .field-grid, .tool-meta, .tool-box, .tool') || document.body;
   const hr = host.getBoundingClientRect();
   const r = el.getBoundingClientRect();
   const ghost = el.cloneNode(true);

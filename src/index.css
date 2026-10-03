@@ -1214,3 +1214,15 @@ a.btn {
   white-space: nowrap;
   vertical-align: top;
 }
+
+/* Labels and fields stay on one line while their width eases */
+.field,
+.resize-field,
+.btn-label {
+  white-space: nowrap;
+}
+
+/* Hosts the fading copy of its old label */
+.btn {
+  position: relative;
+}
