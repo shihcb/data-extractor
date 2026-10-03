@@ -57,3 +57,16 @@ export function registerHeightBox(c) {
     if (c.box._heightMotion === c) c.box._heightMotion = null;
   };
 }
+
+// How much taller (negative: shorter) the page is still going to get from
+// the boxes easing right now: each outermost moving box, from the height
+// it's drawn at to the one it's heading for. Lets the page move with a box
+// from its first frame instead of chasing it once it has moved.
+export function heightStillToCome() {
+  let d = 0;
+  boxes.forEach(c => {
+    if (!c.running() || ancestors(c).some(a => a.running())) return;
+    d += c.last - c.box.offsetHeight;
+  });
+  return d;
+}

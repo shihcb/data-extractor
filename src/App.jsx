@@ -11,6 +11,7 @@ import TabPanes from './components/TabPanes';
 import Modal from './components/Modal';
 import { ToastProvider } from './components/Toast';
 import { MOTION_MS, motionEase, prefersReducedMotion } from './motion';
+import { heightStillToCome } from './heightMotion';
 
 const TABS = [
   { key: 'case',      label: 'case converter' },
@@ -91,8 +92,17 @@ export default function App() {
       const cs = getComputedStyle(shell);
       return content.offsetHeight + (parseFloat(cs.paddingTop) || 0) <= window.innerHeight + 1;
     };
-    // Where the page belongs: the content's bottom at the view's bottom
-    const target = () => (fits() ? 0 : Math.max(0, natural - window.innerHeight));
+    // Where the page belongs once the boxes easing now have landed: the
+    // content's bottom at the view's bottom (the top, if it all fits). Aimed
+    // at from the first frame, the page and the box move together on the
+    // same curve; aimed at where the box is drawn, the page waited until
+    // blank room showed, then rushed after the box.
+    const target = () => {
+      const still = heightStillToCome();
+      const cs = getComputedStyle(shell);
+      if (content.offsetHeight + still + (parseFloat(cs.paddingTop) || 0) <= window.innerHeight + 1) return 0;
+      return Math.max(0, naturalHeight() + still - window.innerHeight);
+    };
     const updateLock = () => {
       const lock = fits() && window.scrollY < 1 && !glide;
       if (root.classList.contains('page-fits') !== lock) root.classList.toggle('page-fits', lock);
@@ -112,11 +122,10 @@ export default function App() {
         onScroll();
         return;
       }
-      // The content may still be easing shut: each frame is measured from
-      // where it ends now, so the blank room only ever shrinks
+      // Each frame heads for where things end up now (another change can
+      // land mid-glide)
       const step = (now) => {
         const t = Math.min(1, (now - t0) / MOTION_MS);
-        natural = naturalHeight(); // this frame's, not the last one's
         const to = target();
         window.scrollTo(0, Math.min(window.scrollY, to + extra * (1 - motionEase(t))));
         if (t < 1 && window.scrollY > to + 0.5) {
@@ -124,8 +133,8 @@ export default function App() {
         } else {
           glide = null;
           onScroll();
-          // Still more room below (it kept shrinking): carry on from here
-          if (floor > natural + 1) glideUp();
+          // Still further to go (something else shrank meanwhile): carry on
+          glideUp();
         }
       };
       glide = requestAnimationFrame(step);
@@ -137,7 +146,7 @@ export default function App() {
         floor = Math.min(floor, window.scrollY + window.innerHeight);
       }
       apply();
-      if (floor > natural + 1 || fits()) glideUp();
+      if (window.scrollY > target() + 1) glideUp();
       updateLock();
     };
     natural = naturalHeight();
