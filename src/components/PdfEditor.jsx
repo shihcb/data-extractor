@@ -1,10 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Download, FileUp, Redo2, Undo2, ZoomIn, ZoomOut } from 'lucide-react';
 import { closePdf, loadPdfLib, openPdf, renderPage, isPasswordError } from '../pdf';
 import { baseName, canvasToBlob, downloadBlob, isPdfFile, loadLibrary, useDoneFlags, usePastedFiles } from '../utils';
 import { MOTION_MS, motionEase, prefersReducedMotion } from '../motion';
 import { useToast } from '../toastContext';
-import { cssFont, cssWidthEm, fontInfoOf, originalGlyphs, squeezeFor, standardFontKey } from '../pdfFonts';
+import { cssFont, cssWidthEm, fontInfoOf, originalCanWrite, squeezeFor, standardFontKey, unicodeFontOf } from '../pdfFonts';
 import Count from './Count';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
@@ -235,6 +235,7 @@ export default function PdfEditor({ active }) {
   // The open document, kept for drawing pages sharper when zoomed in
   const viewRef = useRef(null);
   const dropView = () => {
+    viewRef.current?.faces?.forEach(f => document.fonts.delete(f));
     closePdf(viewRef.current?.view);
     viewRef.current = null;
   };
@@ -384,13 +385,30 @@ export default function PdfEditor({ active }) {
       }
       // A new document's pages pop in as the old one's pop out
       const id = nextDocId++;
+      // Each of the PDF's own fonts, as a copy that takes real letters, for
+      // typing, showing and saving new words in it
+      const faces = [];
+      await Promise.all(Object.values(fonts).map(async (info, k) => {
+        const u = unicodeFontOf(info);
+        if (!u || typeof FontFace !== 'function') return;
+        try {
+          const family = `pdf${id}-${k}`;
+          const face = new FontFace(family, u.data);
+          await face.load();
+          document.fonts.add(face);
+          faces.push(face);
+          info.family = family;
+        } catch {
+          // Not a font the browser takes: the stand-in it is
+        }
+      }));
       pages.forEach(p => { p.key = `${id}-${p.num}`; });
       clearTimeout(holdTimer.current);
       setHold(0);
       resetZoom();
       // Kept open to draw the pages sharper when zoomed in
       dropView();
-      viewRef.current = { id, view };
+      viewRef.current = { id, view, faces };
       view = null;
       setDoc(prev => {
         if (prev) releaseLater(prev);
@@ -521,7 +539,7 @@ export default function PdfEditor({ active }) {
           try {
             fontkit = fontkit || (await loadLibrary(() => import('@pdf-lib/fontkit'))).default;
             pdf.registerFontkit(fontkit);
-            font = await pdf.embedFont(doc.fonts[key].data, { subset: false });
+            font = await pdf.embedFont(doc.fonts[key].unicode.data, { subset: false });
           } catch {
             font = null;
           }
@@ -542,12 +560,11 @@ export default function PdfEditor({ active }) {
         const turn = degrees((angle * 180) / Math.PI);
         const at = (along) => ({ x: x + along * cos, y: y + along * sin });
 
-        // Best: the PDF's own font, when it has every letter
+        // Best: the PDF's own font (its real-letter copy), when it has every letter
         const info = doc.fonts?.[item.fontKey];
-        const glyphs = originalGlyphs(info, edit.text);
-        let original = glyphs ? await getOriginal(item.fontKey) : null;
+        let original = originalCanWrite(info, edit.text) ? await getOriginal(item.fontKey) : null;
         const kit = original?.embedder?.font;
-        if (original && kit?.hasGlyphForCodePoint && glyphs.some(g => g != null && !kit.hasGlyphForCodePoint(g))) original = null;
+        if (original && kit?.hasGlyphForCodePoint && [...edit.text].some(ch => ch !== ' ' && ch !== '\u00a0' && !kit.hasGlyphForCodePoint(ch.codePointAt(0)))) original = null;
 
         let runs = []; // [{ text, along }] to write, and how wide it all is
         let newWidth = 0;
@@ -564,9 +581,9 @@ export default function PdfEditor({ active }) {
             newWidth += original.widthOfTextAtSize(word, size);
             word = '';
           };
-          glyphs.forEach((g) => {
-            if (g == null) { flush(); newWidth += space; } else word += String.fromCodePoint(g);
-          });
+          for (const ch of edit.text) {
+            if (ch === ' ' || ch === '\u00a0') { flush(); newWidth += space; } else word += ch;
+          }
           flush();
         } else {
           // Else the closest standard font, squeezed to the original's room
@@ -595,23 +612,6 @@ export default function PdfEditor({ active }) {
         runs.forEach((r) => page.drawText(r.text, { ...at(r.along), size, font, color: color(edit.ink), rotate: turn }));
         if (squeeze !== 1) page.pushOperators(popGraphicsState());
       }
-      // Copying or searching the new words gives the real letters, not the
-      // font's own codes they were written with (the map a PDF reader uses
-      // for that is built from these when the file is saved)
-      originals.forEach((font, key) => {
-        const glyphs = font?.embedder?.glyphCache?.access?.();
-        if (!glyphs) return;
-        const info = doc.fonts[key];
-        const letterOf = new Map();
-        info.codeOf.forEach((code, letter) => {
-          const fc = info.fontChar[code];
-          if (typeof fc === 'number') letterOf.set(fc, letter);
-        });
-        glyphs.forEach((g) => {
-          const real = g?.codePoints?.map(cp => letterOf.get(cp));
-          if (real?.length && real.every(Boolean)) g.codePoints = [...real.join('')].map(c => c.codePointAt(0));
-        });
-      });
       const out = await pdf.save();
       downloadBlob(new Blob([out], { type: 'application/pdf' }), `${baseName(doc.name)}-edited.pdf`);
       flagDone('save');
@@ -623,22 +623,51 @@ export default function PdfEditor({ active }) {
     }
   };
 
-  // How words are shown: in the PDF's own font when it has every letter
-  // (written with that font's own codes), else in the closest standard font
+  // How words are shown: in the PDF's own font when it has every letter,
+  // else in the closest standard font
   // squeezed or stretched to take the original's room
   const lookOf = (item, text, typing = false) => {
     const stand = cssFont(item.font);
     const info = doc?.fonts?.[item.fontKey];
-    const glyphs = typing ? null : originalGlyphs(info, text);
-    if (glyphs && info.loadedName) {
-      return {
-        css: { fontFamily: `"${info.loadedName}", ${stand.fontFamily}`, fontWeight: 400, fontStyle: 'normal' },
-        text: glyphs.map(g => (g == null ? ' ' : String.fromCodePoint(g))).join(''),
-        squeeze: 1,
-      };
+    // The PDF's own font (its real-letter copy): when it has every letter, or
+    // while typing (any letter it lacks shows in the stand-in meanwhile)
+    if (info?.family && (typing || originalCanWrite(info, text))) {
+      return { css: { fontFamily: `"${info.family}", ${stand.fontFamily}`, fontWeight: 400, fontStyle: 'normal' }, text, squeeze: 1 };
     }
     return { css: stand, text, squeeze: squeezeFor(item.pdf.width / item.pdf.size, cssWidthEm(stand, item.str)) };
   };
+
+  // Each changed line's baseline, measured where it's actually drawn, is
+  // nudged onto the PDF's own (ascent below the top of its box). In ems, so
+  // it holds at any zoom; again once fonts have loaded.
+  const alignRuns = useCallback(() => {
+    dropBox.current?.querySelectorAll('.pdf-run').forEach((run) => {
+      const mark = run.lastElementChild;
+      const box = run.parentElement;
+      const px = parseFloat(getComputedStyle(box).fontSize);
+      if (!mark || !(px > 0)) return;
+      // Where the baseline sits from the box's top, in ems, before any
+      // nudge. Straight text: measured exactly (to a fraction of a pixel)
+      // from where it's drawn, less the nudge already on it; turned text:
+      // its layout position (whole pixels). (Both rects carry the box's
+      // lift, so it cancels out.)
+      const before = parseFloat(run.dataset.nudge || 0);
+      const baseline = run.dataset.turned
+        ? mark.offsetTop / px
+        : (mark.getBoundingClientRect().top - box.getBoundingClientRect().top) / px - before;
+      const nudge = parseFloat(run.dataset.asc) - parseFloat(run.dataset.lift || 0) - baseline;
+      run.dataset.nudge = String(nudge);
+      const squeeze = parseFloat(run.dataset.squeeze) || 1;
+      const t = `translateY(${nudge.toFixed(4)}em)${squeeze !== 1 ? ` scaleX(${squeeze})` : ''}`;
+      if (run.style.transform !== t) run.style.transform = t;
+    });
+  }, []);
+  useLayoutEffect(() => { alignRuns(); });
+  useEffect(() => {
+    const again = () => alignRuns();
+    document.fonts?.addEventListener?.('loadingdone', again);
+    return () => document.fonts?.removeEventListener?.('loadingdone', again);
+  }, [alignRuns]);
 
   const editCount = Object.keys(edits).length;
   const textCount = doc ? doc.pages.reduce((n, p) => n + p.items.length, 0) : 0;
@@ -715,7 +744,7 @@ export default function PdfEditor({ active }) {
                       // Turned with the text (about its top-left corner)
                       // (the shift up goes along the text's own up, so after the turn)
                       // (and squeezed to the original's room, when it's a stand-in)
-                      transform: `${item.box.turn ? `rotate(${item.box.turn}deg) ` : ''}translateY(${Math.min(0, shift)}em)${(edit || typing) && look.squeeze !== 1 ? ` scaleX(${look.squeeze})` : ''}`,
+                      transform: `${item.box.turn ? `rotate(${item.box.turn}deg) ` : ''}translateY(${Math.min(0, shift)}em)${typing && look.squeeze !== 1 ? ` scaleX(${look.squeeze})` : ''}`,
                       ...look.css,
                     };
                     if (typing) {
@@ -749,7 +778,14 @@ export default function PdfEditor({ active }) {
                         onClick={() => startEdit(item)}
                         title={edit ? `was: ${item.str}` : 'Change this text'}
                       >
-                        {edit ? look.text : ''}
+                        {edit ? (
+                          // The words, squeezed to the original's room, and a mark on
+                          // their baseline: measured once drawn, they're nudged so it
+                          // lands exactly on the PDF's (whatever the font's proportions)
+                          <span className="pdf-run" data-asc={ascent} data-lift={Math.min(0, shift)} data-squeeze={look.squeeze} data-turned={item.box.turn ? '1' : undefined}>
+                            {look.text}<span className="pdf-base" />
+                          </span>
+                        ) : ''}
                       </button>
                     );
                   })}

@@ -1177,6 +1177,20 @@ kbd {
   transform-origin: 0 0;
 }
 
+.pdf-run {
+  display: inline-block;
+  transform-origin: 0 0;
+  vertical-align: top;
+}
+
+/* A mark on the words' baseline (measured to line them up) */
+.pdf-base {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  vertical-align: baseline;
+}
+
 .pdf-text-item {
   background: transparent;
   border: 0;

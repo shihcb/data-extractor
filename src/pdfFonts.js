@@ -3,8 +3,9 @@
 // Best: the font the PDF itself uses. PDFs carry their fonts (usually only
 // the letters they need), and pdf.js hands them over: the font file, which
 // character codes stand for which letters, and where each code sits inside
-// the font. When every letter of the new words is in there, the new words
-// are drawn in exactly the original font, on screen and in the saved PDF.
+// the font. A copy of the font is made that takes real letters (below), and
+// when every letter of the new words is in it they're typed, shown and
+// saved in exactly the original font.
 //
 // Otherwise: the closest of the standard PDF fonts (Helvetica, Times,
 // Courier, each plain / bold / italic), picked from what the font says it
@@ -40,24 +41,6 @@ export function fontInfoOf(font, cssFamily = '') {
       mono: font.isMonospace,
     }),
   };
-}
-
-// Each letter's code inside the original font (null for a space), or null
-// when a letter isn't in it
-export function originalGlyphs(info, text) {
-  if (!info?.data || !text) return null;
-  const out = [];
-  for (const ch of text) {
-    if (ch === ' ' || ch === ' ') {
-      out.push(null);
-      continue;
-    }
-    const code = info.codeOf.get(ch);
-    const fc = code === undefined ? undefined : info.fontChar[code];
-    if (typeof fc !== 'number') return null;
-    out.push(fc);
-  }
-  return out;
 }
 
 // The closest standard PDF font
@@ -111,4 +94,191 @@ export function cssWidthEm(css, text) {
   const w = ctx.measureText(text).width / 100;
   measured.set(key, w);
   return w;
+}
+
+// ── A copy of the PDF's font that understands real letters ─────────────
+//
+// pdf.js puts a font's letters under private codes of its own, so typing
+// "a" in that font shows nothing. This rewrites the font's character map
+// (its "cmap" table) so each letter sits under its real Unicode instead:
+// then the very same font can be typed in, shown and saved with real text.
+
+const u16 = (dv, o) => dv.getUint16(o);
+const u32 = (dv, o) => dv.getUint32(o);
+
+function tablesOf(data) {
+  const dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  const n = u16(dv, 4);
+  const tables = [];
+  for (let i = 0; i < n; i++) {
+    const r = 12 + i * 16;
+    const tag = String.fromCharCode(data[r], data[r + 1], data[r + 2], data[r + 3]);
+    const offset = u32(dv, r + 8);
+    const length = u32(dv, r + 12);
+    tables.push({ tag, bytes: data.subarray(offset, offset + length) });
+  }
+  return { version: u32(dv, 0), tables };
+}
+
+// Every code the font's cmap knows → its glyph
+function readCmap(cmap) {
+  const dv = new DataView(cmap.buffer, cmap.byteOffset, cmap.byteLength);
+  const glyphOf = new Map();
+  const subs = u16(dv, 2);
+  for (let i = 0; i < subs; i++) {
+    const at = u32(dv, 4 + i * 8 + 4);
+    const format = u16(dv, at);
+    if (format === 4) {
+      const segX2 = u16(dv, at + 6);
+      const ends = at + 14;
+      const starts = ends + segX2 + 2;
+      const deltas = starts + segX2;
+      const ranges = deltas + segX2;
+      for (let s = 0; s < segX2; s += 2) {
+        const end = u16(dv, ends + s);
+        const start = u16(dv, starts + s);
+        const delta = u16(dv, deltas + s);
+        const range = u16(dv, ranges + s);
+        for (let c = start; c <= end && c !== 0xffff; c++) {
+          let g;
+          if (!range) g = (c + delta) & 0xffff;
+          else {
+            const raw = u16(dv, ranges + s + range + 2 * (c - start));
+            g = raw ? (raw + delta) & 0xffff : 0;
+          }
+          if (g && !glyphOf.has(c)) glyphOf.set(c, g);
+        }
+      }
+    } else if (format === 12) {
+      const groups = u32(dv, at + 12);
+      for (let k = 0; k < groups; k++) {
+        const g0 = at + 16 + k * 12;
+        const start = u32(dv, g0);
+        const end = u32(dv, g0 + 4);
+        const glyph = u32(dv, g0 + 8);
+        for (let c = start; c <= end; c++) if (!glyphOf.has(c)) glyphOf.set(c, glyph + (c - start));
+      }
+    }
+  }
+  return glyphOf;
+}
+
+// A cmap from [codePoint, glyph] pairs (format 4 for the basic plane, 12 for the rest)
+function buildCmap(pairs) {
+  const bmp = pairs.filter(([c]) => c < 0xffff);
+  const astral = pairs.filter(([c]) => c > 0xffff);
+  const segCount = bmp.length + 1;
+  const f4Len = 16 + segCount * 8;
+  const f12Len = astral.length ? 16 + astral.length * 12 : 0;
+  const subs = astral.length ? 2 : 1;
+  const head = 4 + subs * 8;
+  const out = new Uint8Array(head + f4Len + f12Len);
+  const dv = new DataView(out.buffer);
+  dv.setUint16(2, subs);
+  dv.setUint16(4, 3); dv.setUint16(6, 1); dv.setUint32(8, head);
+  if (astral.length) { dv.setUint16(12, 3); dv.setUint16(14, 10); dv.setUint32(16, head + f4Len); }
+  // format 4: one segment per letter, then the closing 0xFFFF
+  let o = head;
+  const pow = 2 ** Math.floor(Math.log2(segCount));
+  dv.setUint16(o, 4); dv.setUint16(o + 2, f4Len);
+  dv.setUint16(o + 6, segCount * 2); dv.setUint16(o + 8, pow * 2);
+  dv.setUint16(o + 10, Math.log2(pow)); dv.setUint16(o + 12, segCount * 2 - pow * 2);
+  const ends = o + 14;
+  const starts = ends + segCount * 2 + 2;
+  const deltas = starts + segCount * 2;
+  const ranges = deltas + segCount * 2;
+  bmp.forEach(([c, g], i) => {
+    dv.setUint16(ends + i * 2, c);
+    dv.setUint16(starts + i * 2, c);
+    dv.setUint16(deltas + i * 2, (g - c) & 0xffff);
+    dv.setUint16(ranges + i * 2, 0);
+  });
+  const last = bmp.length;
+  dv.setUint16(ends + last * 2, 0xffff); dv.setUint16(starts + last * 2, 0xffff);
+  dv.setUint16(deltas + last * 2, 1); dv.setUint16(ranges + last * 2, 0);
+  if (astral.length) {
+    o = head + f4Len;
+    dv.setUint16(o, 12); dv.setUint32(o + 4, f12Len); dv.setUint32(o + 12, astral.length);
+    astral.forEach(([c, g], i) => {
+      dv.setUint32(o + 16 + i * 12, c); dv.setUint32(o + 20 + i * 12, c); dv.setUint32(o + 24 + i * 12, g);
+    });
+  }
+  return out;
+}
+
+function checksum(bytes) {
+  let sum = 0;
+  for (let i = 0; i < bytes.length; i += 4) {
+    sum = (sum + (((bytes[i] << 24) | ((bytes[i + 1] || 0) << 16) | ((bytes[i + 2] || 0) << 8) | (bytes[i + 3] || 0)) >>> 0)) >>> 0;
+  }
+  return sum;
+}
+
+// The font again, with this cmap in place of its own
+function withCmap(data, cmap) {
+  const { version, tables } = tablesOf(data);
+  const list = tables.map(t => (t.tag === 'cmap' ? { tag: 'cmap', bytes: cmap } : t));
+  const n = list.length;
+  const headerLen = 12 + n * 16;
+  const size = list.reduce((s, t) => s + ((t.bytes.length + 3) & ~3), headerLen);
+  const out = new Uint8Array(size);
+  const dv = new DataView(out.buffer);
+  const pow = 2 ** Math.floor(Math.log2(n));
+  dv.setUint32(0, version); dv.setUint16(4, n);
+  dv.setUint16(6, pow * 16); dv.setUint16(8, Math.log2(pow)); dv.setUint16(10, n * 16 - pow * 16);
+  let at = headerLen;
+  list.forEach((t, i) => {
+    const r = 12 + i * 16;
+    for (let k = 0; k < 4; k++) out[r + k] = t.tag.charCodeAt(k);
+    dv.setUint32(r + 4, checksum(t.bytes));
+    dv.setUint32(r + 8, at);
+    dv.setUint32(r + 12, t.bytes.length);
+    out.set(t.bytes, at);
+    at += (t.bytes.length + 3) & ~3;
+  });
+  return out;
+}
+
+// The real-letter copy of a font, and which letters it has (once per font)
+export function unicodeFontOf(info) {
+  if (!info?.data) return null;
+  if (info.unicode !== undefined) return info.unicode;
+  let result = null;
+  try {
+    const { tables } = tablesOf(info.data);
+    const cmap = tables.find(t => t.tag === 'cmap');
+    if (cmap) {
+      const glyphOf = readCmap(cmap.bytes);
+      const pairs = [];
+      const letters = new Set();
+      info.codeOf.forEach((code, letter) => {
+        const chars = [...letter];
+        if (chars.length !== 1) return;
+        const fc = info.fontChar[code];
+        const g = typeof fc === 'number' ? glyphOf.get(fc) : undefined;
+        const cp = letter.codePointAt(0);
+        if (g && !letters.has(cp)) {
+          letters.add(cp);
+          pairs.push([cp, g]);
+        }
+      });
+      pairs.sort((a, b) => a[0] - b[0]);
+      if (pairs.length) result = { data: withCmap(info.data, buildCmap(pairs)), letters };
+    }
+  } catch {
+    result = null;
+  }
+  info.unicode = result;
+  return result;
+}
+
+// Whether the real-letter copy can write all of this text (spaces aside)
+export function originalCanWrite(info, text) {
+  const u = info?.unicode;
+  if (!u || !text) return false;
+  for (const ch of text) {
+    if (ch === ' ' || ch === ' ') continue;
+    if (!u.letters.has(ch.codePointAt(0))) return false;
+  }
+  return true;
 }
