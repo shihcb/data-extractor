@@ -5,13 +5,15 @@
 // (older iPhones fail). Its fonts, character maps and image decoders are
 // copied to /pdfjs/ by the build (see vite.config.js).
 
+import { loadLibrary } from './utils';
+
 let pdfjsPromise = null;
 export function loadPdfjs() {
   if (!pdfjsPromise) {
-    pdfjsPromise = Promise.all([
+    pdfjsPromise = loadLibrary(() => Promise.all([
       import('pdfjs-dist/legacy/build/pdf.min.mjs'),
       import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'),
-    ]).then(([pdfjs, worker]) => {
+    ])).then(([pdfjs, worker]) => {
       pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
       return pdfjs;
     }).catch((err) => {
@@ -25,7 +27,7 @@ export function loadPdfjs() {
 let pdfLibPromise = null;
 export function loadPdfLib() {
   if (!pdfLibPromise) {
-    pdfLibPromise = import('pdf-lib').catch((err) => {
+    pdfLibPromise = loadLibrary(() => import('pdf-lib')).catch((err) => {
       pdfLibPromise = null;
       throw err;
     });

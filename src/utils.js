@@ -123,3 +123,31 @@ export function usePastedFiles(active, accept, onFiles) {
     return () => window.removeEventListener('paste', onPaste);
   }, [active, accept]);
 }
+
+// A file this page needs (a library loaded on first use) is gone: the app
+// was updated since the page opened, and each update renames those files.
+// Reload once to pick up the new version (not again within half a minute,
+// so a real network problem can't loop). True when it's reloading.
+export function reloadForUpdate() {
+  try {
+    const last = Number(sessionStorage.getItem('reloaded-for-update')) || 0;
+    if (Date.now() - last < 30000) return false;
+    sessionStorage.setItem('reloaded-for-update', String(Date.now()));
+  } catch {
+    return false;
+  }
+  window.location.reload();
+  return true;
+}
+
+// Loads a library on first use; if its file is missing because the app was
+// updated, the page reloads (and this never settles) instead of failing
+export function loadLibrary(load) {
+  return load().catch((err) => {
+    if (reloadForUpdate()) return new Promise(() => {});
+    const e = new Error("couldn't load this tool — check your connection");
+    e.code = 'library';
+    e.cause = err;
+    throw e;
+  });
+}

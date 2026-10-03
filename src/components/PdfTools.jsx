@@ -102,6 +102,11 @@ export default function PdfTools({ active }) {
           closePdf(view);
           if (srcId !== null) sources.current.delete(srcId);
         }
+        if (err?.code === 'library') {
+          // Not the file's fault: the PDF reader itself didn't load
+          toast(err.message, { warn: true });
+          break;
+        }
         const why = err?.message === 'password' || isPasswordError(err)
           ? 'is password-protected'
           : "isn't a PDF this can open";

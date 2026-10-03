@@ -192,6 +192,11 @@ export default function PdfEditor({ active }) {
       requestAnimationFrame(() => fadeIn(pagesRef.current));
       if (!pages.some(p => p.items.length)) toast('no text to change in this PDF (is it a scan?)', { warn: true });
     } catch (err) {
+      if (err?.code === 'library') {
+        // Not the file's fault: the PDF reader itself didn't load
+        toast(err.message, { warn: true });
+        return;
+      }
       const why = err?.message === 'password' || isPasswordError(err) ? 'is password-protected' : "isn't a PDF this can open";
       toast(`${file.name} ${why}`, { warn: true });
     } finally {
