@@ -10,6 +10,8 @@ import { animateTo, drawnValue, isMoving, stop } from '../engine';
 // until the close finishes, then hides. Driven by the motion engine.
 // variant="slide": the content instead slides down from under what's above
 // it (clipped at its top edge, like a list row) and back up under it.
+// variant="pop": the content pops in like the PDF pages (from 14px down at
+// 95%, fading in) and leaves the same way.
 export default function Collapse({ open, children, className = '', variant = 'fade' }) {
   const outerRef = useRef(null);
   const innerRef = useRef(null);
@@ -59,9 +61,10 @@ export default function Collapse({ open, children, className = '', variant = 'fa
         animateTo(content, 'ty', 0, { from: drawnValue(content, 'ty', fromNothing ? -to : 0) });
         animateTo(content, 'clip', 0, { from: drawnValue(content, 'clip', fromNothing ? to : 0) });
       } else {
-        animateTo(content, 'opacity', 1, { from: fromNothing ? 0 : 1 });
-        animateTo(content, 'ty', 0, { from: fromNothing ? -10 : 0 });
-        animateTo(content, 'scale', 1, { from: fromNothing ? 0.96 : 1 });
+        const pop = variant === 'pop';
+        animateTo(content, 'opacity', 1, { from: drawnValue(content, 'opacity', fromNothing ? 0 : 1) });
+        animateTo(content, 'ty', 0, { from: drawnValue(content, 'ty', fromNothing ? (pop ? 14 : -10) : 0) });
+        animateTo(content, 'scale', 1, { from: drawnValue(content, 'scale', fromNothing ? (pop ? 0.95 : 0.96) : 1) });
       }
     } else {
       if (variant === 'slide') {
@@ -69,9 +72,10 @@ export default function Collapse({ open, children, className = '', variant = 'fa
         animateTo(content, 'ty', -h, { from: drawnValue(content, 'ty', 0) });
         animateTo(content, 'clip', h, { from: drawnValue(content, 'clip', 0) });
       } else {
-        animateTo(content, 'opacity', 0, { from: 1 });
-        animateTo(content, 'ty', -10, { from: 0 });
-        animateTo(content, 'scale', 0.96, { from: 1 });
+        const pop = variant === 'pop';
+        animateTo(content, 'opacity', 0, { from: drawnValue(content, 'opacity', 1) });
+        animateTo(content, 'ty', pop ? 14 : -10, { from: drawnValue(content, 'ty', 0) });
+        animateTo(content, 'scale', pop ? 0.95 : 0.96, { from: drawnValue(content, 'scale', 1) });
       }
       animateTo(box, 'height', 0, {
         from: box.offsetHeight,

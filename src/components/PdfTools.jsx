@@ -359,9 +359,9 @@ export default function PdfTools({ active }) {
         </button>
       </FlipRow>
       {/* Selecting and clearing: the instagram repo's bulk bar (the count
-          outlined, plain buttons, delete in red), sliding down from under
-          the buttons above once there's more than one page */}
-      <Collapse open={pages.length > 1} variant="slide" className="bulk-collapse">
+          outlined, plain buttons, delete in red), popping in like the pages
+          once there's more than one page */}
+      <Collapse open={pages.length > 1} variant="pop" className="bulk-collapse">
         <div className="bulk-bar">
           <span className="bulk-count"><Count value={selected.size} />{'\u00a0selected'}</span>
           <button

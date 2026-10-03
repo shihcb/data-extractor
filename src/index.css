@@ -888,8 +888,8 @@ kbd {
   box-shadow: 0 6px 18px -10px rgba(0, 0, 0, 0.22);
 }
 
-/* Room for the bar's shadow inside the slide's clip (clipped, the shadow
-   only showed once the slide had finished); the page keeps the same room */
+/* Room for the bar's shadow (and its pop from 14px down) inside the box
+   that eases open, which clips while it moves; the page keeps the same room */
 .tool > .bulk-collapse > .auto-height-inner {
   padding-bottom: 16px;
 }
