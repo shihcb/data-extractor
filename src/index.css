@@ -568,6 +568,8 @@ button:disabled {
 /* ── Drop boxes (image, pdf, qr scan) ─────────────────────────── */
 
 .drop-box {
+  /* The leaving picture is pinned against the box itself */
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -590,7 +592,6 @@ button:disabled {
   max-height: 100%;
   object-fit: contain;
   border-radius: 8px;
-  animation: fadeIn var(--motion-duration) var(--motion-easing);
 }
 
 @keyframes fadeIn {

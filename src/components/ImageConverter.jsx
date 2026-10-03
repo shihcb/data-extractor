@@ -7,6 +7,7 @@ import { MOTION_MS } from '../motion';
 import { useToast } from '../toastContext';
 import TabSwitcher from './TabSwitcher';
 import MotionList from './MotionList';
+import PopImage from './PopImage';
 import Collapse from './Collapse';
 import Count from './Count';
 import AutoHeight from './AutoHeight';
@@ -253,7 +254,8 @@ export default function ImageConverter({ active }) {
         aria-label="Add images"
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inputRef.current?.click(); } }}
       >
-        {selected && <img key={selected.id} src={selected.url} alt={selected.file.name} className="drop-preview" />}
+        {/* The picture pops in and out (and swaps with the pop when another is picked) */}
+        <PopImage id={selected?.id ?? null} src={selected?.url} alt={selected?.file.name} className="drop-preview" />
         <FadeText k={selected ? '' : 'hint'} className="tool-hint">{selected ? null : 'drop, paste or click to add images'}</FadeText>
         <input
           ref={inputRef}
