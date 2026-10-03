@@ -18,6 +18,10 @@
   --color-emerald-light: #ecfdf5;
 
   --border-subtle: #e6e5e0;
+
+  /* Shared motion timing (matches instagram-follower-checker) */
+  --motion-duration: 0.45s;
+  --motion-easing: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 * {
@@ -89,7 +93,7 @@ button {
   /* allow text selection in textarea */
   -webkit-user-select: text !important;
   user-select: text !important;
-  transition: border-color 0.2s ease;
+  transition: border-color var(--motion-duration) var(--motion-easing);
 }
 
 .case-converter-textarea::placeholder {
@@ -118,7 +122,10 @@ button {
   background: #ffffff;
   border: 1.5px solid #000000;
   color: #000000;
-  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease, opacity 0.18s ease;
+  transition: background-color var(--motion-duration) var(--motion-easing),
+              color var(--motion-duration) var(--motion-easing),
+              border-color var(--motion-duration) var(--motion-easing),
+              opacity var(--motion-duration) var(--motion-easing);
   cursor: pointer;
 }
 
