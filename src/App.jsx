@@ -48,29 +48,46 @@ export default function App() {
   }, [activeTab]);
 
   // Content shrinking (a file row deleted near the bottom of the page) must
-  // not pull the page down: the page is kept at least as tall as the bottom
-  // of the view, so the browser never has to scroll up to fit it. The extra
-  // room goes once it's out of sight (scrolling up gives it back).
+  // not pull the page down. The page always has a floor at the bottom of the
+  // view — but never taller than its content, so on its own it adds nothing.
+  // It's in place before anything shrinks, so a shorter page keeps exactly the
+  // room it needs to stay put; scrolling up gives that room back. Scrolling
+  // can never raise it past the content (an earlier version followed every
+  // scroll, and iPhone's growing view as its toolbar hides made it add blank
+  // space without end).
   const shellRef = useRef(null);
   useEffect(() => {
     const shell = shellRef.current;
-    let queued = false;
-    const hold = () => {
-      queued = false;
-      shell.style.minHeight = `${Math.ceil(window.scrollY + window.innerHeight)}px`;
+    const content = shell.firstElementChild;
+    let natural = 0;
+    let floor = 0;
+    const naturalHeight = () => {
+      const cs = getComputedStyle(shell);
+      return content.offsetHeight + (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
     };
-    const queue = () => {
-      if (!queued) {
-        queued = true;
-        requestAnimationFrame(hold);
+    const apply = () => { shell.style.minHeight = floor ? `${Math.floor(floor)}px` : ''; };
+    const onScroll = () => {
+      // Held room (floor above the content) can only shrink; otherwise the
+      // floor follows the view, capped at the content
+      floor = Math.min(window.scrollY + window.innerHeight, Math.max(natural, floor));
+      apply();
+    };
+    const onResize = () => {
+      natural = naturalHeight();
+      if (floor > natural) {
+        // Shorter content: hold what's in view, no more
+        floor = Math.min(floor, window.scrollY + window.innerHeight);
       }
+      apply();
     };
-    hold();
-    window.addEventListener('scroll', queue, { passive: true });
-    window.addEventListener('resize', queue);
+    natural = naturalHeight();
+    onScroll();
+    const ro = new ResizeObserver(onResize);
+    ro.observe(content);
+    window.addEventListener('scroll', onScroll, { passive: true });
     return () => {
-      window.removeEventListener('scroll', queue);
-      window.removeEventListener('resize', queue);
+      ro.disconnect();
+      window.removeEventListener('scroll', onScroll);
     };
   }, []);
 
