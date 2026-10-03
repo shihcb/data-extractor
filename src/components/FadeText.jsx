@@ -6,6 +6,8 @@ import { MOTION, canAnimate, fadeIn } from '../motion';
 // was drawn and fades out (captureGhost), while the new text fades in
 // (fadeEmptyIn) — 450ms, cubic-bezier(0.4, 0, 0.2, 1), no rise. Same `k`:
 // it stays as it is. Its box's height eases separately (AutoHeight).
+// `quiet`: the old text just goes, no fading copy (when something else is
+// coming in where it was drawn).
 function captureGhost(el) {
   if (!el || !el.getClientRects().length || !el.textContent.trim() || !canAnimate(el)) return null;
   const host = el.parentElement?.closest('.btn, .field-grid, .tool-meta, .tool-box, .tool') || document.body;
@@ -42,7 +44,7 @@ export default class FadeText extends React.Component {
   ref = React.createRef();
 
   getSnapshotBeforeUpdate(prev) {
-    return prev.k === this.props.k ? null : captureGhost(this.ref.current);
+    return prev.k === this.props.k || this.props.quiet ? null : captureGhost(this.ref.current);
   }
 
   componentDidUpdate(prev, _state, playGhost) {

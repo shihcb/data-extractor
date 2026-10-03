@@ -30,6 +30,7 @@ export default function PdfTools({ active }) {
   const [done, flagDone] = useDoneFlags();
   const sources = useRef(new Map()); // srcId -> { name, bytes, view (pdf.js), lib (pdf-lib) }
   const inputRef = useRef(null);
+  const removed = useRef(new Set()); // ids of pages deleted (a picture still being drawn is thrown away)
   const pagesRef = useRef(pages);
   pagesRef.current = pages;
   const toast = useToast();
@@ -37,6 +38,7 @@ export default function PdfTools({ active }) {
   const addFiles = useCallback(async (fileList) => {
     const files = [...fileList].filter(isPdfFile);
     if (!files.length) return;
+    setLoading('loading');
     for (const file of files) {
       let view = null;
       let added = 0;
@@ -56,16 +58,24 @@ export default function PdfTools({ active }) {
         // Both libraries must agree the page is there (a damaged file can
         // look longer to the forgiving one)
         const count = Math.min(view.numPages, lib.getPageCount());
+        // Every page goes in at once as a blank card, so the box eases once
+        // to its final height (one by one, it shrank to a row, then grew);
+        // the pictures fill in as they're drawn
+        const ids = Array.from({ length: count }, () => nextPageId++);
+        setPages(prev => [...prev, ...ids.map((id, i) => ({ id, srcId, index: i, rotation: 0, thumb: null }))]);
+        added = count;
         for (let i = 0; i < count; i++) {
-          setLoading(`${file.name}: page ${i + 1} of ${count}`);
+          if (removed.current.has(ids[i])) continue; // deleted before its picture was drawn
           const page = await view.getPage(i + 1);
           const { canvas } = await renderPage(page, { cssWidth: THUMB_CSS_WIDTH });
           const thumb = URL.createObjectURL(await canvasToBlob(canvas, 'image/jpeg', 0.8));
           canvas.width = canvas.height = 0;
           page.cleanup();
-          // Pages arrive one by one (each pops in)
-          setPages(prev => [...prev, { id: nextPageId++, srcId, index: i, rotation: 0, thumb }]);
-          added++;
+          if (removed.current.has(ids[i])) {
+            URL.revokeObjectURL(thumb);
+            continue;
+          }
+          setPages(prev => prev.map(p => (p.id === ids[i] ? { ...p, thumb } : p)));
         }
       } catch (err) {
         // Pages already added keep their document; otherwise let it go
@@ -95,11 +105,12 @@ export default function PdfTools({ active }) {
     });
   };
 
-  const releaseThumbs = (list) => setTimeout(() => list.forEach(p => URL.revokeObjectURL(p.thumb)), MOTION_MS + 300);
+  const releaseThumbs = (list) => setTimeout(() => list.forEach(p => p.thumb && URL.revokeObjectURL(p.thumb)), MOTION_MS + 300);
 
   const removePages = (ids) => {
     const gone = pages.filter(p => ids.has(p.id));
     const rest = pages.filter(p => !ids.has(p.id));
+    ids.forEach(id => removed.current.add(id));
     setPages(rest);
     setSelected(sel => new Set([...sel].filter(id => !ids.has(id))));
     releaseThumbs(gone);
@@ -108,13 +119,14 @@ export default function PdfTools({ active }) {
 
   const clearAll = () => {
     releaseThumbs(pages);
+    pages.forEach(p => removed.current.add(p.id));
     setPages([]);
     setSelected(new Set());
     if (!loading) dropUnusedSources([]);
   };
 
   useEffect(() => () => {
-    pagesRef.current.forEach(p => URL.revokeObjectURL(p.thumb));
+    pagesRef.current.forEach(p => p.thumb && URL.revokeObjectURL(p.thumb));
     sources.current.forEach(src => closePdf(src.view));
   }, []);
 
@@ -225,7 +237,8 @@ export default function PdfTools({ active }) {
         onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false); }}
         onDrop={(e) => { e.preventDefault(); setDragging(false); addFiles(e.dataTransfer?.files || []); }}
       >
-        <FadeText k={!pages.length && !loading ? 'hint' : ''} className="tool-hint">{!pages.length && !loading ? 'drop, paste or click to add PDFs' : null}</FadeText>
+        {/* When pages come in, the hint just goes: its fading copy would sit over them */}
+        <FadeText k={!pages.length && !loading ? 'hint' : ''} quiet={pages.length > 0} className="tool-hint">{!pages.length && !loading ? 'drop, paste or click to add PDFs' : null}</FadeText>
         {!pages.length && loading && <span className="spinner" aria-label="loading" />}
         <MotionList
           items={pages}
@@ -243,7 +256,7 @@ export default function PdfTools({ active }) {
                   aria-pressed={isSel}
                   title={isSel ? 'Unselect page' : 'Select page'}
                 >
-                  <img src={p.thumb} alt={`Page ${n + 1}`} style={{ transform: `rotate(${p.rotation}deg)` }} draggable={false} />
+                  {p.thumb && <img src={p.thumb} alt={`Page ${n + 1}`} style={{ transform: `rotate(${p.rotation}deg)` }} draggable={false} />}
                 </button>
                 <div className="page-label">
                   <span>{n >= 0 ? n + 1 : ''}</span>
@@ -271,8 +284,10 @@ export default function PdfTools({ active }) {
       </AutoHeight>
 
       <AutoHeight className="tool-meta" aria-live="polite">
-        <FadeText k={loading ? 'loading' : pages.length ? `pages-${selected.size > 0}` : 'empty'}>
-        {loading ? `loading ${loading}` : pages.length ? (
+        {/* No per-page loading line: the cards show it, and a line changing
+            every page piled its fading copies on top of each other */}
+        <FadeText k={pages.length ? `pages-${selected.size > 0}` : 'empty'}>
+        {pages.length ? (
           <>
             <Count value={pages.length} /> {plural(pages.length, 'page')} from <Count value={fileCount} /> {plural(fileCount, 'file')}
             <SlideText show={selected.size > 0}>{'\u00a0·\u00a0'}<Count value={selected.size} />{'\u00a0selected'}</SlideText>
