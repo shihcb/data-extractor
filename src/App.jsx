@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import CaseConverter from './components/CaseConverter';
 import ImageConverter from './components/ImageConverter';
 import TabSwitcher from './components/TabSwitcher';
+import TabPanes from './components/TabPanes';
 
 const TABS = [
   { key: 'case',  label: 'case converter' },
@@ -34,9 +35,10 @@ export default function App() {
         <div className="flex justify-center mb-5">
           <TabSwitcher tabs={TABS} active={activeTab} onChange={setActiveTab} />
         </div>
-        <div key={activeTab} className="tab-pane">
-          {activeTab === 'case' ? <CaseConverter /> : <ImageConverter />}
-        </div>
+        <TabPanes tabs={TABS} active={activeTab}>
+          <CaseConverter />
+          <ImageConverter active={activeTab === 'image'} />
+        </TabPanes>
       </div>
     </div>
   );

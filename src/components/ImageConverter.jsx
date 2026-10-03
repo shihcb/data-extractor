@@ -14,7 +14,7 @@ const loadImage = (url) => new Promise((resolve, reject) => {
   img.src = url;
 });
 
-export default function ImageConverter() {
+export default function ImageConverter({ active }) {
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState('');
   const [dragging, setDragging] = useState(false);
@@ -29,6 +29,7 @@ export default function ImageConverter() {
 
   // Paste an image anywhere on the page while this tab is open
   useEffect(() => {
+    if (!active) return;
     const onPaste = (e) => {
       const item = [...(e.clipboardData?.files || [])].find(f => f.type.startsWith('image/'));
       if (item) {
@@ -38,7 +39,7 @@ export default function ImageConverter() {
     };
     window.addEventListener('paste', onPaste);
     return () => window.removeEventListener('paste', onPaste);
-  }, []);
+  }, [active]);
 
   useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
 
