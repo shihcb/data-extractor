@@ -888,6 +888,15 @@ kbd {
   box-shadow: 0 6px 18px -10px rgba(0, 0, 0, 0.22);
 }
 
+/* Room for the bar's shadow inside the slide's clip (clipped, the shadow
+   only showed once the slide had finished); the page keeps the same room */
+.tool > .bulk-collapse > .auto-height-inner {
+  padding-bottom: 16px;
+}
+.tool > .bulk-collapse {
+  margin-bottom: -16px;
+}
+
 .bulk-count,
 .bulk-btn {
   height: 32px;

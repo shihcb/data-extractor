@@ -356,14 +356,9 @@ export default function PdfTools({ active }) {
           pages to PNG
         </button>
       </FlipRow>
-      <FlipRow>
-        <button className="btn btn-sm" onClick={(e) => { e.currentTarget.blur(); clearAll(); }} disabled={none}>
-          clear
-        </button>
-      </FlipRow>
-      {/* Selecting: the instagram repo's bulk bar (the count outlined, plain
-          buttons, delete in red), sliding in from under clear once there's
-          more than one page to choose from */}
+      {/* Selecting and clearing: the instagram repo's bulk bar (the count
+          outlined, plain buttons, delete in red), sliding down from under
+          the buttons above once there's more than one page */}
       <Collapse open={pages.length > 1} variant="slide" className="bulk-collapse">
         <div className="bulk-bar">
           <span className="bulk-count"><Count value={selected.size} />{'\u00a0selected'}</span>
@@ -376,6 +371,9 @@ export default function PdfTools({ active }) {
           </button>
           <button className="bulk-btn bulk-delete" onClick={(e) => { e.currentTarget.blur(); removePages(new Set(selected)); }} disabled={none || !selected.size}>
             delete
+          </button>
+          <button className="bulk-btn" onClick={(e) => { e.currentTarget.blur(); clearAll(); }} disabled={none}>
+            clear
           </button>
         </div>
       </Collapse>
