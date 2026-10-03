@@ -184,6 +184,14 @@ button {
 
 /* ── Tab Switcher (matches instagram-follower-checker's instructions tabs) ── */
 
+/* A real rule, not a Tailwind margin utility: the unlayered `* { margin: 0 }`
+   above overrides Tailwind's layered utilities. */
+.tab-switcher-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
 .tab-switcher {
   --tab-radius: 12px;
   display: inline-flex;
@@ -287,8 +295,7 @@ button {
 
 .image-converter-drop {
   width: 100%;
-  min-height: max(320px, 60vh);
-  height: max(320px, 60vh);
+  /* height is set inline (fits the image) and eases with the shared timing */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -298,7 +305,9 @@ button {
   border-radius: 16px;
   box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.03), 0 1px 3px rgba(15, 23, 42, 0.01);
   cursor: pointer;
-  transition: border-color var(--motion-duration) var(--motion-easing);
+  overflow: hidden;
+  transition: height var(--motion-duration) var(--motion-easing),
+              border-color var(--motion-duration) var(--motion-easing);
 }
 
 .image-converter-drop.dragging {
@@ -316,4 +325,10 @@ button {
   max-height: 100%;
   object-fit: contain;
   border-radius: 8px;
+  animation: imageFadeIn var(--motion-duration) var(--motion-easing);
+}
+
+@keyframes imageFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
