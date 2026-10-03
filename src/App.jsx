@@ -10,6 +10,7 @@ import TabSwitcher from './components/TabSwitcher';
 import TabPanes from './components/TabPanes';
 import Modal from './components/Modal';
 import { ToastProvider } from './components/Toast';
+import { MOTION_MS, motionEase, prefersReducedMotion } from './motion';
 
 const TABS = [
   { key: 'case',      label: 'case converter' },
@@ -71,6 +72,35 @@ export default function App() {
       // floor follows the view, capped at the content
       floor = Math.min(window.scrollY + window.innerHeight, Math.max(natural, floor));
       apply();
+      updateLock();
+    };
+    // When everything fits on screen again (the last image removed), the page
+    // slides back to the top on the app's curve and stops scrolling until
+    // there's more than a screenful; it scrolls again as soon as it needs to.
+    const root = document.documentElement;
+    let glide = null;
+    // (the breathing room below the content doesn't count: only the content)
+    const fits = () => {
+      const cs = getComputedStyle(shell);
+      return content.offsetHeight + (parseFloat(cs.paddingTop) || 0) <= window.innerHeight + 1;
+    };
+    const updateLock = () => root.classList.toggle('page-fits', fits() && window.scrollY < 1 && !glide);
+    const glideToTop = () => {
+      if (glide || window.scrollY < 1) return;
+      const from = window.scrollY;
+      const t0 = performance.now();
+      const step = (now) => {
+        const t = Math.min(1, (now - t0) / MOTION_MS);
+        window.scrollTo(0, from * (1 - motionEase(t)));
+        if (t < 1 && fits()) {
+          glide = requestAnimationFrame(step);
+        } else {
+          glide = null;
+          onScroll();
+        }
+      };
+      glide = prefersReducedMotion() ? (window.scrollTo(0, 0), null) : requestAnimationFrame(step);
+      if (!glide) onScroll();
     };
     const onResize = () => {
       natural = naturalHeight();
@@ -79,15 +109,22 @@ export default function App() {
         floor = Math.min(floor, window.scrollY + window.innerHeight);
       }
       apply();
+      if (fits()) glideToTop();
+      updateLock();
     };
     natural = naturalHeight();
     onScroll();
     const ro = new ResizeObserver(onResize);
     ro.observe(content);
     window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onResize);
+    updateLock();
     return () => {
       ro.disconnect();
+      cancelAnimationFrame(glide);
       window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onResize);
+      root.classList.remove('page-fits');
     };
   }, []);
 

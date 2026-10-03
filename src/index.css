@@ -1226,3 +1226,24 @@ a.btn {
 .btn {
   position: relative;
 }
+
+/* ── Page scrolling ───────────────────────────────────────────── */
+
+/* No scroll indicators anywhere */
+html,
+body,
+* {
+  scrollbar-width: none;
+}
+::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Everything fits on screen: no scrolling (or bounce) until it doesn't */
+html.page-fits,
+html.page-fits body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
