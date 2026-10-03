@@ -436,6 +436,7 @@ button:disabled {
 .count-num {
   display: inline-block;
   white-space: nowrap;
+  vertical-align: baseline;
   font-variant-numeric: tabular-nums;
 }
 

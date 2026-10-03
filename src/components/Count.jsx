@@ -52,5 +52,5 @@ export default function Count({ value, format = (n) => n.toLocaleString() }) {
     return () => cancelAnimationFrame(raf.current);
   }, [value]);
 
-  return <span ref={boxRef} className="count-num">{format(shown)}</span>;
+  return <span ref={(el) => { boxRef.current = el; if (el) el._noClip = true; }} className="count-num">{format(shown)}</span>;
 }

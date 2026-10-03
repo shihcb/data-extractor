@@ -339,7 +339,7 @@ export default function ImageConverter({ active }) {
         <FadeText k={!selected ? 'empty' : estimate ? `est-${estimate.pdf}-${!!estimate.clamped}` : 'wait'}>
         {selected && estimate ? (
           <>
-            {original.width} × {original.height} → <Count value={estimate.width} /> × <Count value={estimate.height} /> · <Count value={estimate.size} format={formatBytes} />
+            {original.width} × {original.height} → <Count value={estimate.width} format={String} /> × <Count value={estimate.height} format={String} /> · <Count value={estimate.size} format={formatBytes} />
             {estimate.pdf ? ' per page' : ''}
             {estimate.clamped ? ' (largest this device can make)' : ''}
           </>

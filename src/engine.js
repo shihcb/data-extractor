@@ -49,7 +49,9 @@ function write(el, s, now) {
   for (const name in s.props) v[name] = valueOf(s.props[name], now);
   if ('height' in v) el.style.height = `${Math.max(0, v.height)}px`;
   if ('width' in v) el.style.width = `${Math.max(0, v.width)}px`;
-  if ('height' in v || 'width' in v) el.style.overflow = 'hidden';
+  // Clipped while it resizes — except text (a clipped inline box drops to a
+  // different baseline, so a counting number would jump up off its line)
+  if (('height' in v || 'width' in v) && !el._noClip) el.style.overflow = 'hidden';
   if ('tx' in v || 'ty' in v || 'scale' in v) {
     const tx = v.tx ?? 0;
     const ty = v.ty ?? 0;
