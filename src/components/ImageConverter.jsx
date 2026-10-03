@@ -193,7 +193,7 @@ export default function ImageConverter({ active }) {
       </div>
       <div className="case-converter-actions">
         <button
-          className="case-btn case-btn-paste case-btn-icon-only"
+          className="case-btn case-btn-icon-only"
           onClick={(e) => { e.currentTarget.blur(); inputRef.current?.click(); }}
           title="Choose an image"
         >
@@ -202,7 +202,7 @@ export default function ImageConverter({ active }) {
         {FORMATS.map(format => (
           <button
             key={format.key}
-            className={`case-btn case-btn-upper ${doneFormat === format.key ? 'case-btn-copied' : ''}`}
+            className={`case-btn ${doneFormat === format.key ? 'case-btn-copied' : ''}`}
             onClick={(e) => handleConvert(e, format)}
             disabled={!file}
           >

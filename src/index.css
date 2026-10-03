@@ -112,69 +112,48 @@ button {
 }
 
 .case-btn {
+  /* instagram-follower-checker's .btn.btn-secondary.btn-sm */
   display: inline-flex;
   align-items: center;
-  padding: 9px 22px;
-  border-radius: 9999px;
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
   background: #ffffff;
-  border: 1.5px solid #000000;
-  color: #000000;
+  border: 1px solid #d1d5db;
+  color: #09090b;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   transition: background-color var(--motion-duration) var(--motion-easing),
               color var(--motion-duration) var(--motion-easing),
               border-color var(--motion-duration) var(--motion-easing),
+              box-shadow var(--motion-duration) var(--motion-easing),
               opacity var(--motion-duration) var(--motion-easing);
   cursor: pointer;
 }
 
-/* Only apply hover on real pointer devices — prevents mobile tap leaving button stuck black */
+/* Only apply hover on real pointer devices — prevents a mobile tap leaving it stuck */
 @media (hover: hover) and (pointer: fine) {
   .case-btn:hover:not(:disabled) {
-    background: #000000;
-    border-color: #000000;
-    color: #ffffff;
+    border-color: #09090b;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
   }
 }
 
 .case-btn:disabled {
-  opacity: 0.35;
-  cursor: default;
+  opacity: 0.45;
+  box-shadow: none;
+  cursor: not-allowed;
 }
 
-/* Paste button — same default style as lowercase/uppercase buttons */
-.case-btn-paste {
-  /* inherits all .case-btn defaults: white bg, black border */
-}
-
-/* Icon-only square variant for the paste button */
+/* Icon-only variant for the paste / choose image buttons */
 .case-btn-icon-only {
-  padding: 9px 22px;
-  justify-content: center;
+  padding: 8px 14px;
 }
 
 /* Green confirm state */
-.case-btn-paste.case-btn-copied {
-  background: #ecfdf5 !important;
-  border-color: #a7f3d0 !important;
-  color: #059669 !important;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .case-btn-paste:hover:not(:disabled) {
-    background: #000000;
-    border-color: #000000;
-    color: #ffffff;
-  }
-}
-
-.case-btn-upper {
-  /* UPPERCASE variant uses same B&W palette */
-  font-weight: 900;
-  letter-spacing: 0.07em;
-}
-
 .case-btn-copied {
   background: #ecfdf5 !important;
   border-color: #a7f3d0 !important;

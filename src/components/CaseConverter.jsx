@@ -60,7 +60,7 @@ export default function CaseConverter() {
       <div className="case-converter-actions">
         {/* Paste icon button */}
         <button
-          className={`case-btn case-btn-paste case-btn-icon-only ${pastedConfirm ? 'case-btn-copied' : ''}`}
+          className={`case-btn case-btn-icon-only ${pastedConfirm ? 'case-btn-copied' : ''}`}
           onClick={handlePaste}
           title="Paste from clipboard"
         >
@@ -75,7 +75,7 @@ export default function CaseConverter() {
           lowercase
         </button>
         <button
-          className={`case-btn case-btn-upper ${copiedUpper ? 'case-btn-copied' : ''}`}
+          className={`case-btn ${copiedUpper ? 'case-btn-copied' : ''}`}
           onClick={(e) => handleConvert(e, 'upper')}
           disabled={!text.trim()}
         >
