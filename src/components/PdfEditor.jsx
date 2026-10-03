@@ -2,12 +2,13 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Download, FileUp, Undo2 } from 'lucide-react';
 import { closePdf, loadPdfLib, openPdf, renderPage, isPasswordError } from '../pdf';
 import { baseName, canvasToBlob, downloadBlob, isPdfFile, useDoneFlags, usePastedFiles } from '../utils';
-import { fadeIn } from '../motion';
+import { MOTION_MS } from '../motion';
 import { useToast } from '../toastContext';
 import Count from './Count';
 import AutoHeight from './AutoHeight';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
+import MotionList from './MotionList';
 
 // Changing text in a PDF the reliable way (what browser PDF editors do):
 // the old words are covered with a patch the colour of the paper behind
@@ -18,6 +19,8 @@ const PAGE_CSS_WIDTH = 820;
 const PAD = 0.12; // patch margin, as a share of the font size
 
 const plural = (n, word) => (n === 1 ? word : `${word}s`);
+
+let nextDocId = 1;
 
 // Which standard PDF font is closest to the original
 function pickFont(realName = '', family = '') {
@@ -105,7 +108,7 @@ function encodable(font, text) {
 }
 
 export default function PdfEditor({ active }) {
-  const [doc, setDoc] = useState(null); // { name, bytes, pages: [{ num, url, items, width, height }] }
+  const [doc, setDoc] = useState(null); // { id, name, bytes, pages: [{ key, num, url, items, width, height }] }
   const [edits, setEdits] = useState({}); // item id -> { text, bg, ink }
   const [editing, setEditing] = useState(null); // item id
   const [draft, setDraft] = useState('');
@@ -115,12 +118,26 @@ export default function PdfEditor({ active }) {
   const [done, flagDone] = useDoneFlags();
   const inputRef = useRef(null);
   const imgRefs = useRef({});
-  const pagesRef = useRef(null);
+  // Closing: the box's content holds its height while the pages pop out
+  // where they are, then the box goes back to empty (PDF tools' clear)
+  const dropBox = useRef(null);
+  const [hold, setHold] = useState(0);
+  const holdTimer = useRef(null);
+  const holdWhileLeaving = () => {
+    const inner = dropBox.current?.firstElementChild;
+    if (!inner) return;
+    setHold(inner.offsetHeight);
+    clearTimeout(holdTimer.current);
+    holdTimer.current = setTimeout(() => setHold(0), MOTION_MS + 100);
+  };
+  useEffect(() => () => clearTimeout(holdTimer.current), []);
   const docRef = useRef(doc);
   docRef.current = doc;
   const toast = useToast();
 
   const release = (d) => d?.pages.forEach(p => URL.revokeObjectURL(p.url));
+  // Once a document's pages have popped out (they show their pictures until then)
+  const releaseLater = (d) => setTimeout(() => release(d), MOTION_MS + 300);
 
   const openFile = useCallback(async (files) => {
     const file = [...files].find(isPdfFile);
@@ -181,13 +198,17 @@ export default function PdfEditor({ active }) {
         page.cleanup();
         pages.push({ num: n, url, items, width: viewport.width, height: viewport.height });
       }
+      // A new document's pages pop in as the old one's pop out
+      const id = nextDocId++;
+      pages.forEach(p => { p.key = `${id}-${p.num}`; });
+      clearTimeout(holdTimer.current);
+      setHold(0);
       setDoc(prev => {
-        release(prev);
-        return { name: file.name, bytes, pages };
+        if (prev) releaseLater(prev);
+        return { id, name: file.name, bytes, pages };
       });
       setEdits({});
       setEditing(null);
-      requestAnimationFrame(() => fadeIn(pagesRef.current));
       if (!pages.some(p => p.items.length)) toast('no text to change in this PDF (is it a scan?)', { warn: true });
     } catch (err) {
       if (err?.code === 'library') {
@@ -212,7 +233,7 @@ export default function PdfEditor({ active }) {
     let colors = edit;
     if (!colors) {
       try {
-        colors = sampleColors(imgRefs.current[item.page], item.box);
+        colors = sampleColors(imgRefs.current[`${doc.id}-${item.page + 1}`], item.box);
       } catch {
         colors = { bg: [255, 255, 255], ink: [0, 0, 0] };
       }
@@ -287,7 +308,8 @@ export default function PdfEditor({ active }) {
 
   const editCount = Object.keys(edits).length;
   const close = () => {
-    release(doc);
+    releaseLater(doc);
+    holdWhileLeaving();
     setDoc(null);
     setEdits({});
     setEditing(null);
@@ -295,27 +317,34 @@ export default function PdfEditor({ active }) {
 
   return (
     <div className="tool">
-      <AutoHeight className="editor-area">
-        {!doc ? (
-          <div
-            className={`tool-box drop-box drop-box-empty ${dragging ? 'dragging' : ''}`}
-            onClick={() => inputRef.current?.click()}
-            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-            onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false); }}
-            onDrop={(e) => { e.preventDefault(); setDragging(false); openFile(e.dataTransfer?.files || []); }}
-            role="button"
-            tabIndex={0}
-            aria-label="Open a PDF"
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inputRef.current?.click(); } }}
-          >
-            <FadeText k="hint" className="tool-hint">drop, paste or click to open a PDF</FadeText>
-          </div>
-        ) : (
-          <div ref={pagesRef} className="pdf-pages">
-            {doc.pages.map(p => (
-              <div key={p.num} className="tool-box pdf-page" style={{ aspectRatio: `${p.width} / ${p.height}` }}>
+      {/* The same box as PDF tools: a fixed size that scrolls inside (the
+          page stays still); the pages pop in and out like PDF tools' cards */}
+      <div
+        ref={dropBox}
+        className={`tool-box pdf-drop editor-drop ${doc ? 'has-pages' : ''} ${dragging ? 'dragging' : ''}`}
+        // Empty: anywhere opens the picker; with a PDF, only the space around it
+        onClick={(e) => { if (!doc || e.target === e.currentTarget || e.target.classList.contains('pdf-drop-inner')) inputRef.current?.click(); }}
+        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false); }}
+        onDrop={(e) => { e.preventDefault(); setDragging(false); openFile(e.dataTransfer?.files || []); }}
+        aria-label="Open a PDF"
+      >
+        <div
+          className={`pdf-drop-inner ${doc || hold ? 'full' : 'drop-box-empty'}`}
+          style={hold ? { minHeight: `${hold}px` } : undefined}
+        >
+          <FadeText k={!doc && !hold ? 'hint' : ''} quiet={!!doc} className="tool-hint">{!doc && !hold ? 'drop, paste or click to open a PDF' : null}</FadeText>
+          <MotionList
+            items={doc ? doc.pages : []}
+            getKey={p => p.key}
+            motion="pop"
+            className="pdf-pages"
+            renderItem={(p) => (
+              <div className="tool-box pdf-page" style={{ aspectRatio: `${p.width} / ${p.height}` }}>
                 <img
-                  ref={el => { imgRefs.current[p.num - 1] = el; }}
+                  // By the page's own key: an old document's pages still popping
+                  // out mustn't stand in for (or clear) the new one's
+                  ref={el => { if (el) imgRefs.current[p.key] = el; else delete imgRefs.current[p.key]; }}
                   src={p.url}
                   alt={`Page ${p.num}`}
                   className="pdf-page-img"
@@ -369,10 +398,10 @@ export default function PdfEditor({ active }) {
                   })}
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </AutoHeight>
+            )}
+          />
+        </div>
+      </div>
       <input
         ref={inputRef}
         type="file"

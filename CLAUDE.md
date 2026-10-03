@@ -29,9 +29,10 @@ of restarting it. When the user names one of these, this is what they mean:
 | **the tab push** | switching tabs: the old pane slides out sideways as the new one slides in, the area easing to the new height; the tab outline slides along | `TabPanes`, `TabSwitcher` |
 | **the pop** | pop-ups and toasts come in from 14px down at 95% scale and leave the same way; so do the PDF pages and the image converter's image cards | `Modal`, `Toast`, `MotionList` |
 | **the glide to top** | a box easing shut: the page's bottom follows the content's bottom frame by frame, so no blank room opens below (a sudden shrink glides up instead); when everything fits on screen again it glides back to the top and stops scrolling until it needs to | `App.jsx` |
-| **the clear** | the last PDF pages leaving: they pop out in place while the box's content holds its height, then the box goes back to empty | `PdfTools.jsx` |
+| **the clear** | the last PDF pages / images leaving (or the PDF editor closing its PDF): they pop out in place while the box's content holds its height, then the box goes back to empty | `PdfTools.jsx`, `ImageConverter.jsx`, `PdfEditor.jsx` |
 
-PDF tools and the image converter are the same layout: one box size (the
+PDF tools and the image converter are the same layout (and the PDF editor
+shares their box, its pages popping in and out the same way): one box size (the
 screen minus `--box-room`, ~380px, which leaves room for the floating bar) that scrolls inside so the page stays still,
 the same cards (picture, label row, small buttons; tap to select, several at
 once), the same buttons, and the same bulk bar. Keep them matching.
