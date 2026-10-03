@@ -1,13 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { MOTION, MOTION_MS, canAnimate, motionEase, prefersReducedMotion } from '../motion';
 
-// A number that counts to its new value on the app's curve, while its
+// A number that counts up when it appears, and to each new value after, on
+// the app's curve (instagram-follower-checker's stat boxes), while its
 // width eases from the old number's to the new one's so the words beside
 // it slide rather than jump (the source repo's setCountBadge). A change
 // mid-count carries on from what's shown.
 export default function Count({ value, format = (n) => n.toLocaleString() }) {
-  const [shown, setShown] = useState(value);
-  const shownRef = useRef(value);
+  // A number that appears counts up from 0, like the source repo's stat boxes
+  const start = value > 0 && !prefersReducedMotion() ? 0 : value;
+  const [shown, setShown] = useState(start);
+  const shownRef = useRef(start);
   const boxRef = useRef(null);
   const raf = useRef(null);
   const widthAnim = useRef(null);
