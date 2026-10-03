@@ -125,23 +125,29 @@ export default function ImageConverter({ active }) {
   }, [selected]);
 
   // What the selected image comes out as with these settings (encoded for
-  // real, a moment after the last change)
+  // real, a moment after the last change). A newly picked image waits until
+  // the rows and boxes have finished moving (encoding a big image blocks the
+  // page, which stuttered the slide-in); a settings change is quick, so the
+  // size doesn't sit on the old format's number.
+  const estimatedFor = useRef(null);
   useEffect(() => {
     if (!selected) {
       setEstimate(null);
+      estimatedFor.current = null;
       return;
     }
     let cancelled = false;
+    const newImage = estimatedFor.current !== selected.id;
     const t = setTimeout(async () => {
       try {
         const out = await encodeImage(selected.img, settings);
-        if (!cancelled) setEstimate({ width: out.width, height: out.height, size: out.blob.size, ext: out.ext, fellBack: out.fellBack, clamped: out.clamped });
+        if (cancelled) return;
+        estimatedFor.current = selected.id;
+        setEstimate({ width: out.width, height: out.height, size: out.blob.size, ext: out.ext, fellBack: out.fellBack, clamped: out.clamped, pdf: settings.format === 'pdf' });
       } catch {
         if (!cancelled) setEstimate(null);
       }
-      // After the rows and boxes have finished moving: encoding a big image
-      // blocks the page, which stuttered the slide-in
-    }, MOTION_MS + 150);
+    }, newImage ? MOTION_MS + 150 : 120);
     return () => { cancelled = true; clearTimeout(t); };
   }, [selected, settings]);
 
@@ -330,11 +336,11 @@ export default function ImageConverter({ active }) {
       </Collapse>
 
       <AutoHeight className="tool-meta" aria-live="polite">
-        <FadeText k={!selected ? 'empty' : estimate ? `est-${format === 'pdf'}-${!!estimate.clamped}` : 'wait'}>
+        <FadeText k={!selected ? 'empty' : estimate ? `est-${estimate.pdf}-${!!estimate.clamped}` : 'wait'}>
         {selected && estimate ? (
           <>
             {original.width} × {original.height} → <Count value={estimate.width} /> × <Count value={estimate.height} /> · <Count value={estimate.size} format={formatBytes} />
-            {format === 'pdf' ? ' per page' : ''}
+            {estimate.pdf ? ' per page' : ''}
             {estimate.clamped ? ' (largest this device can make)' : ''}
           </>
         ) : selected ? '…' : 'png, jpg, webp, gif, avif and more'}
