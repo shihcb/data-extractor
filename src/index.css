@@ -844,7 +844,7 @@ kbd {
   max-width: 100%;
   margin: 0 auto;
   padding: 4px;
-  border-radius: 10px;
+  border-radius: var(--radius);
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   box-shadow: 0 6px 18px -10px rgba(0, 0, 0, 0.22);
@@ -868,7 +868,9 @@ kbd {
   white-space: nowrap;
   font-size: 0.78rem;
   font-weight: 600;
-  border-radius: var(--radius);
+  /* The bar's radius minus its 4px padding and 1px border, so the corners
+     run parallel to the bar's (as in the instagram repo) */
+  border-radius: calc(var(--radius) - 5px);
 }
 
 .bulk-count {
