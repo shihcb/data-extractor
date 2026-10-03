@@ -6,7 +6,6 @@ import PdfTools from './components/PdfTools';
 import PdfEditor from './components/PdfEditor';
 import QrTool from './components/QrTool';
 import TextDiff from './components/TextDiff';
-import Formatter from './components/Formatter';
 import TabSwitcher from './components/TabSwitcher';
 import TabPanes from './components/TabPanes';
 import Modal from './components/Modal';
@@ -19,7 +18,6 @@ const TABS = [
   { key: 'pdfedit',   label: 'pdf editor' },
   { key: 'qr',        label: 'qr code' },
   { key: 'diff',      label: 'text diff' },
-  { key: 'format',    label: 'formatter' },
 ];
 
 const readTab = () => {
@@ -49,7 +47,7 @@ export default function App() {
     }
   }, [activeTab]);
 
-  // Shift+1..7 switch tabs, ? shows the shortcuts (not while typing)
+  // Shift+1..6 switch tabs, ? shows the shortcuts (not while typing)
   useEffect(() => {
     const onKey = (e) => {
       if (e.ctrlKey || e.metaKey || e.altKey || isTyping()) return;
@@ -85,7 +83,6 @@ export default function App() {
             <PdfEditor active={activeTab === 'pdfedit'} />
             <QrTool active={activeTab === 'qr'} />
             <TextDiff active={activeTab === 'diff'} />
-            <Formatter active={activeTab === 'format'} />
           </TabPanes>
         </div>
       </div>

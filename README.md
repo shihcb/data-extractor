@@ -8,9 +8,8 @@ Quick tools that run entirely in the browser — nothing is uploaded.
 - **pdf editor** — change text by covering it and retyping it in a matching standard font
 - **qr code** — make (PNG / SVG) and scan (image or camera)
 - **text diff** — compare by lines, words or characters
-- **formatter** — JSON pretty / minify, URL and Base64 encode / decode
 
-Shift+1…7 switch tabs, `?` lists the shortcuts. Light/dark follows the device. Installable and works offline (the service worker is generated at build time from `sw.template.js`).
+Shift+1…6 switch tabs, `?` lists the shortcuts. Light/dark follows the device. Installable and works offline (the service worker is generated at build time from `sw.template.js`).
 
 ## Motion
 
