@@ -32,7 +32,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#faf9f6] text-[#0f172a] px-4 sm:px-6 w-full flex flex-col items-center justify-center py-20 sm:py-24 relative">
       <div className="app-container my-auto">
-        <div className="flex justify-center mb-5">
+        <div className="flex justify-center mb-[14px]">
           <TabSwitcher tabs={TABS} active={activeTab} onChange={setActiveTab} />
         </div>
         <TabPanes tabs={TABS} active={activeTab}>
