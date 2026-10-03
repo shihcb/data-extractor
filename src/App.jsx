@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Keyboard } from 'lucide-react';
 import CaseConverter from './components/CaseConverter';
 import ImageConverter from './components/ImageConverter';
@@ -47,6 +47,33 @@ export default function App() {
     }
   }, [activeTab]);
 
+  // Content shrinking (a file row deleted near the bottom of the page) must
+  // not pull the page down: the page is kept at least as tall as the bottom
+  // of the view, so the browser never has to scroll up to fit it. The extra
+  // room goes once it's out of sight (scrolling up gives it back).
+  const shellRef = useRef(null);
+  useEffect(() => {
+    const shell = shellRef.current;
+    let queued = false;
+    const hold = () => {
+      queued = false;
+      shell.style.minHeight = `${Math.ceil(window.scrollY + window.innerHeight)}px`;
+    };
+    const queue = () => {
+      if (!queued) {
+        queued = true;
+        requestAnimationFrame(hold);
+      }
+    };
+    hold();
+    window.addEventListener('scroll', queue, { passive: true });
+    window.addEventListener('resize', queue);
+    return () => {
+      window.removeEventListener('scroll', queue);
+      window.removeEventListener('resize', queue);
+    };
+  }, []);
+
   // Shift+1..6 switch tabs, ? shows the shortcuts (not while typing)
   useEffect(() => {
     const onKey = (e) => {
@@ -71,7 +98,7 @@ export default function App() {
 
   return (
     <ToastProvider>
-      <div className="app-shell">
+      <div ref={shellRef} className="app-shell">
         <div className="app-container">
           <div className="tab-switcher-row page-tabs">
             <TabSwitcher tabs={TABS} active={activeTab} onChange={setActiveTab} />
