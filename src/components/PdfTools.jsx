@@ -32,6 +32,7 @@ export default function PdfTools({ active }) {
   const inputRef = useRef(null);
   const labels = useRef(new Map()); // page id -> { num, name } as last shown (a leaving card keeps its own)
   const removed = useRef(new Set()); // ids of pages deleted (a picture still being drawn is thrown away)
+  const poppedOut = useRef(new Set()); // ids deleted with their own x: they fade and drop away instead of sliding up
   // The last pages leaving: the box holds its height while they fade out
   // where they are (the way they came in, reversed), then eases shut
   const dropBox = useRef(null);
@@ -127,6 +128,7 @@ export default function PdfTools({ active }) {
   const releaseThumbs = (list) => setTimeout(() => list.forEach(p => {
     if (p.thumb) URL.revokeObjectURL(p.thumb);
     labels.current.delete(p.id);
+    poppedOut.current.delete(p.id);
   }), MOTION_MS + 300);
 
   const removePages = (ids) => {
@@ -273,6 +275,7 @@ export default function PdfTools({ active }) {
           getKey={p => p.id}
           variant="grid"
           motion="slide"
+          exitMotion={(id) => (poppedOut.current.has(id) ? 'pop' : null)}
           className="page-grid"
           renderItem={(p, { leaving }) => {
             const n = pages.findIndex(q => q.id === p.id);
@@ -304,7 +307,7 @@ export default function PdfTools({ active }) {
                   <button className="btn btn-sm btn-icon" onClick={(e) => { e.currentTarget.blur(); rotate(p.id, 90); }} title="Rotate right" aria-label="Rotate right"><RotateCw size={12} /></button>
                   <button className="btn btn-sm btn-icon" onClick={(e) => { e.currentTarget.blur(); move(p.id, -1); }} disabled={n <= 0} title="Move earlier" aria-label="Move earlier"><ChevronLeft size={12} /></button>
                   <button className="btn btn-sm btn-icon" onClick={(e) => { e.currentTarget.blur(); move(p.id, 1); }} disabled={n >= pages.length - 1} title="Move later" aria-label="Move later"><ChevronRight size={12} /></button>
-                  <button className="btn btn-sm btn-icon" onClick={(e) => { e.currentTarget.blur(); removePages(new Set([p.id])); }} title="Delete page" aria-label="Delete page"><X size={12} /></button>
+                  <button className="btn btn-sm btn-icon" onClick={(e) => { e.currentTarget.blur(); poppedOut.current.add(p.id); removePages(new Set([p.id])); }} title="Delete page" aria-label="Delete page"><X size={12} /></button>
                 </div>
               </div>
             );

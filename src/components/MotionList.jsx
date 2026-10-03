@@ -13,7 +13,7 @@ import AutoHeight from './AutoHeight';
 // Either way the items around it slide from where they were drawn to their
 // new places (FLIP), and the list's height eases to its new size (AutoHeight). Changes
 // mid-slide carry on from where everything is drawn right now.
-export default function MotionList({ items, getKey, renderItem, variant = 'rows', motion, className = '', itemClassName = '' }) {
+export default function MotionList({ items, getKey, renderItem, variant = 'rows', motion, exitMotion, className = '', itemClassName = '' }) {
   const pops = (motion || (variant === 'grid' ? 'pop' : 'slide')) === 'pop';
   const containerRef = useRef(null);
   const nodes = useRef(new Map());     // key -> element (current items)
@@ -113,7 +113,9 @@ export default function MotionList({ items, getKey, renderItem, variant = 'rows'
       done();
       return;
     }
-    if (pops) {
+    // `exitMotion(key)` can pick how one item leaves ('pop' or 'slide')
+    const popsOut = exitMotion?.(key) ? exitMotion(key) === 'pop' : pops;
+    if (popsOut) {
       animateTo(el, 'opacity', 0, { from: 1 });
       animateTo(el, 'scale', 0.95, { from: 1 });
       animateTo(el, 'ty', 14, { from: 0, onSettle: done });
