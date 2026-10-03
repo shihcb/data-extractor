@@ -339,7 +339,12 @@ export default function PdfTools({ active }) {
           <FilePlus size={14} />
         </button>
         <button className={`btn btn-primary ${done.save ? 'btn-done' : ''}`} onClick={saveAll} disabled={none || !!busy}>
-          <Download size={14} /> {label('save', fileCount > 1 ? 'save merged pdf' : 'save pdf')}
+          <Download size={14} />{' '}
+          {/* "merged" comes and goes with the word slide (a cross-fade of the
+              whole label inside a button easing its width was choppy) */}
+          <FadeText k={busy === 'save' ? 'busy' : 'idle'} className="btn-label">
+            {busy === 'save' ? 'working…' : <>save<SlideText show={fileCount > 1}>{'\u00a0merged'}</SlideText> pdf</>}
+          </FadeText>
         </button>
         <button className={`btn ${done.extract ? 'btn-done' : ''}`} onClick={saveSelected} disabled={none || !selected.size || !!busy}>
           {label('extract', 'save selected')}

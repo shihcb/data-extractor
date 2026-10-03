@@ -62,7 +62,40 @@ export default function FlipRow({ className = 'tool-actions', children }) {
     // partway too (the row re-centres as it eases), so nothing is remembered
     const settling = els.some(el => isMoving(el, 'width') || [...el.querySelectorAll('*')].some(d => isMoving(d, 'width')));
     last.current = settling ? new Map() : now;
+    if (settling) watchRewrap();
   });
+
+  // While a control is easing its width, the row can rewrap partway (a
+  // button no longer fits and drops to the next line, the others
+  // re-centring) — between renders, so the slide above never sees it and
+  // the buttons jumped. Watched frame by frame: a button whose spot jumps
+  // slides from where it was drawn instead.
+  const watching = useRef(0);
+  const watchRewrap = () => {
+    if (watching.current) return;
+    const row = ref.current;
+    const spots = new Map([...row.children].map(el => [el, { left: el.offsetLeft, top: el.offsetTop }]));
+    let quiet = 0;
+    const step = () => {
+      if (!row.isConnected) { watching.current = 0; return; }
+      const els = [...row.children];
+      els.forEach(el => {
+        const n = { left: el.offsetLeft, top: el.offsetTop };
+        const p = spots.get(el);
+        // An ease moves a spot a few px a frame; a rewrap moves it at once
+        if (p && (Math.abs(p.left - n.left) > 12 || Math.abs(p.top - n.top) > 12) && canAnimate(row)) {
+          shift(el, 'tx', p.left - n.left);
+          shift(el, 'ty', p.top - n.top);
+        }
+        spots.set(el, n);
+      });
+      const moving = els.some(el => isMoving(el, 'width') || [...el.querySelectorAll('*')].some(d => isMoving(d, 'width')));
+      quiet = moving ? 0 : quiet + 1;
+      watching.current = quiet < 3 ? requestAnimationFrame(step) : 0;
+    };
+    watching.current = requestAnimationFrame(step);
+  };
+  useLayoutEffect(() => () => cancelAnimationFrame(watching.current), []);
 
   // Positioned, so its children measure their spots against the row itself:
   // the row moving with the boxes above it (a file row deleted) must not
