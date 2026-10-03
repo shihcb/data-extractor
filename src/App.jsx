@@ -79,8 +79,10 @@ export default function App() {
       apply();
       updateLock();
     };
-    // When everything fits on screen again (the last image removed), the page
-    // slides back to the top on the app's curve and stops scrolling until
+    // When something is deleted and blank room opens up below the content,
+    // the page slides up on the app's curve until that room is gone (instead
+    // of holding it until you scroll it away). When everything fits on screen
+    // again it slides all the way to the top and stops scrolling until
     // there's more than a screenful; it scrolls again as soon as it needs to.
     const root = document.documentElement;
     let glide = null;
@@ -89,26 +91,44 @@ export default function App() {
       const cs = getComputedStyle(shell);
       return content.offsetHeight + (parseFloat(cs.paddingTop) || 0) <= window.innerHeight + 1;
     };
+    // Where the page belongs: the content's bottom at the view's bottom
+    const target = () => (fits() ? 0 : Math.max(0, natural - window.innerHeight));
     const updateLock = () => {
       const lock = fits() && window.scrollY < 1 && !glide;
       if (root.classList.contains('page-fits') !== lock) root.classList.toggle('page-fits', lock);
     };
-    const glideToTop = () => {
-      if (glide || window.scrollY < 1) return;
-      const from = window.scrollY;
+    const stopGlide = () => {
+      if (!glide) return;
+      cancelAnimationFrame(glide);
+      glide = null;
+    };
+    const glideUp = () => {
+      if (glide || window.scrollY <= target() + 1) return;
+      // The room to give back, which shrinks to nothing on the curve
+      const extra = window.scrollY - target();
       const t0 = performance.now();
+      if (prefersReducedMotion()) {
+        window.scrollTo(0, target());
+        onScroll();
+        return;
+      }
+      // The content may still be easing shut: each frame is measured from
+      // where it ends now, so the blank room only ever shrinks
       const step = (now) => {
         const t = Math.min(1, (now - t0) / MOTION_MS);
-        window.scrollTo(0, from * (1 - motionEase(t)));
-        if (t < 1 && fits()) {
+        natural = naturalHeight(); // this frame's, not the last one's
+        const to = target();
+        window.scrollTo(0, Math.min(window.scrollY, to + extra * (1 - motionEase(t))));
+        if (t < 1 && window.scrollY > to + 0.5) {
           glide = requestAnimationFrame(step);
         } else {
           glide = null;
           onScroll();
+          // Still more room below (it kept shrinking): carry on from here
+          if (floor > natural + 1) glideUp();
         }
       };
-      glide = prefersReducedMotion() ? (window.scrollTo(0, 0), null) : requestAnimationFrame(step);
-      if (!glide) onScroll();
+      glide = requestAnimationFrame(step);
     };
     const onResize = () => {
       natural = naturalHeight();
@@ -117,7 +137,7 @@ export default function App() {
         floor = Math.min(floor, window.scrollY + window.innerHeight);
       }
       apply();
-      if (fits()) glideToTop();
+      if (floor > natural + 1 || fits()) glideUp();
       updateLock();
     };
     natural = naturalHeight();
@@ -126,10 +146,15 @@ export default function App() {
     ro.observe(content);
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onResize);
+    // Your own scrolling takes over from a glide
+    window.addEventListener('wheel', stopGlide, { passive: true });
+    window.addEventListener('touchstart', stopGlide, { passive: true });
     updateLock();
     return () => {
       ro.disconnect();
       cancelAnimationFrame(glide);
+      window.removeEventListener('wheel', stopGlide);
+      window.removeEventListener('touchstart', stopGlide);
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onResize);
       root.classList.remove('page-fits');
