@@ -8,6 +8,7 @@ import { useToast } from '../toastContext';
 import MotionList from './MotionList';
 import AutoHeight from './AutoHeight';
 import Count from './Count';
+import FadeText from './FadeText';
 
 const THUMB_CSS_WIDTH = 160;
 const IMAGE_SCALE = 2; // pages to images: 144 dpi
@@ -218,7 +219,7 @@ export default function PdfTools({ active }) {
         onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false); }}
         onDrop={(e) => { e.preventDefault(); setDragging(false); addFiles(e.dataTransfer?.files || []); }}
       >
-        {!pages.length && !loading && <span className="tool-hint">drop, paste or click to add PDFs</span>}
+        <FadeText k={!pages.length && !loading ? 'hint' : ''} className="tool-hint">{!pages.length && !loading ? 'drop, paste or click to add PDFs' : null}</FadeText>
         {!pages.length && loading && <span className="spinner" aria-label="loading" />}
         <MotionList
           items={pages}
@@ -263,7 +264,8 @@ export default function PdfTools({ active }) {
         />
       </AutoHeight>
 
-      <p className="tool-meta" aria-live="polite">
+      <AutoHeight className="tool-meta" aria-live="polite">
+        <FadeText k={loading ? 'loading' : pages.length ? `pages-${selected.size > 0}` : 'empty'}>
         {loading ? `loading ${loading}` : pages.length ? (
           <>
             <Count value={pages.length} /> {plural(pages.length, 'page')} from <Count value={fileCount} /> {plural(fileCount, 'file')}
@@ -271,7 +273,8 @@ export default function PdfTools({ active }) {
             {' · tap a page to select it'}
           </>
         ) : 'merge, split, reorder, rotate, delete pages, or turn them into images'}
-      </p>
+      </FadeText>
+      </AutoHeight>
 
       <div className="tool-actions">
         <button className="btn btn-icon" onClick={(e) => { e.currentTarget.blur(); inputRef.current?.click(); }} title="Add PDFs" aria-label="Add PDFs">

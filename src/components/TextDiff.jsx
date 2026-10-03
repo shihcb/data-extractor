@@ -1,11 +1,11 @@
-import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { ArrowLeftRight } from 'lucide-react';
 import { diffChars, diffLines, diffWordsWithSpace } from 'diff';
-import { fadeIn } from '../motion';
 import TabSwitcher from './TabSwitcher';
 import Count from './Count';
 import AutoHeight from './AutoHeight';
 import Collapse from './Collapse';
+import FadeText from './FadeText';
 
 const MODES = [
   { key: 'lines', label: 'lines' },
@@ -66,7 +66,6 @@ export default function TextDiff() {
   const a = useDeferredValue(left);
   const b = useDeferredValue(right);
   const result = useMemo(() => compare(a, b, mode), [a, b, mode]);
-  const statusRef = useRef(null);
 
   const empty = !left && !right;
   const same = result && !empty && !result.changed;
@@ -79,13 +78,6 @@ export default function TextDiff() {
   }, [hasOutput, result, mode]);
   const view = hasOutput ? { result, mode } : lastView;
 
-  // The status text fades to its new words
-  const prevStatus = useRef(status);
-  useEffect(() => {
-    if (prevStatus.current === status) return;
-    prevStatus.current = status;
-    fadeIn(statusRef.current);
-  }, [status]);
 
   return (
     <div className="tool">
@@ -124,8 +116,8 @@ export default function TextDiff() {
         </button>
       </div>
 
-      <p className="tool-meta" aria-live="polite">
-        <span ref={statusRef}>
+      <AutoHeight className="tool-meta" aria-live="polite">
+        <FadeText k={status}>
           {status === 'empty' && 'paste two texts to compare'}
           {status === 'slow' && 'too different to compare this way — try lines'}
           {status === 'same' && 'no differences'}
@@ -135,8 +127,8 @@ export default function TextDiff() {
               <span className="diff-count-del">−<Count value={result.removed} /></span> {unit(mode, result.removed)} removed
             </>
           )}
-        </span>
-      </p>
+        </FadeText>
+      </AutoHeight>
 
       {/* Grows in from nothing, eases to each new size, and keeps showing
           the last comparison while it closes */}

@@ -9,6 +9,8 @@ import TabSwitcher from './TabSwitcher';
 import MotionList from './MotionList';
 import Collapse from './Collapse';
 import Count from './Count';
+import AutoHeight from './AutoHeight';
+import FadeText from './FadeText';
 
 // Box padding (matches .drop-box) and the smallest it shrinks to
 const PAD_X = 24;
@@ -226,11 +228,8 @@ export default function ImageConverter({ active }) {
         aria-label="Add images"
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inputRef.current?.click(); } }}
       >
-        {selected ? (
-          <img key={selected.id} src={selected.url} alt={selected.file.name} className="drop-preview" />
-        ) : (
-          <span className="tool-hint">drop, paste or click to add images</span>
-        )}
+        {selected && <img key={selected.id} src={selected.url} alt={selected.file.name} className="drop-preview" />}
+        <FadeText k={selected ? '' : 'hint'} className="tool-hint">{selected ? null : 'drop, paste or click to add images'}</FadeText>
         <input
           ref={inputRef}
           type="file"
@@ -322,7 +321,8 @@ export default function ImageConverter({ active }) {
         </div>
       </Collapse>
 
-      <p className="tool-meta" aria-live="polite">
+      <AutoHeight className="tool-meta" aria-live="polite">
+        <FadeText k={!selected ? 'empty' : estimate ? `est-${format === 'pdf'}-${!!estimate.clamped}` : 'wait'}>
         {selected && estimate ? (
           <>
             {original.width} × {original.height} → <Count value={estimate.width} /> × <Count value={estimate.height} /> · <Count value={estimate.size} format={formatBytes} />
@@ -330,7 +330,8 @@ export default function ImageConverter({ active }) {
             {estimate.clamped ? ' (largest this device can make)' : ''}
           </>
         ) : selected ? '…' : 'png, jpg, webp, gif, avif and more'}
-      </p>
+      </FadeText>
+      </AutoHeight>
 
       <div className="tool-actions">
         <button

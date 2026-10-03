@@ -10,6 +10,7 @@ import TabSwitcher from './TabSwitcher';
 import TabPanes from './TabPanes';
 import AutoHeight from './AutoHeight';
 import Collapse from './Collapse';
+import FadeText from './FadeText';
 
 const MODES = [
   { key: 'make', label: 'make' },
@@ -127,12 +128,14 @@ function MakeQr() {
       <div className="tool-actions">
         <TabSwitcher className="tab-switcher-sm" tabs={LEVELS} active={level} onChange={setLevel} />
       </div>
-      <p className="tool-meta">
+      <AutoHeight className="tool-meta" >
+        <FadeText k={error ? 'error' : text ? 'level' : 'empty'}>
         {error || (text ? 'higher levels still scan when part of the code is covered or damaged' : 'the code updates as you type')}
-      </p>
+      </FadeText>
+      </AutoHeight>
       <AutoHeight className="tool-box qr-box-outer" innerClassName={`qr-box ${hasCode ? '' : 'qr-box-empty'}`}>
         <canvas ref={canvasRef} className="qr-canvas" style={{ display: hasCode ? undefined : 'none' }} aria-label="QR code" />
-        {!hasCode && <span className="tool-hint">your QR code shows here</span>}
+        <FadeText k={hasCode ? '' : 'hint'} className="tool-hint">{hasCode ? null : 'your QR code shows here'}</FadeText>
       </AutoHeight>
       <div className="tool-actions">
         <button className={`btn btn-primary ${done.png ? 'btn-done' : ''}`} onClick={downloadPng} disabled={!hasCode}>
@@ -252,11 +255,8 @@ function ScanQr({ active }) {
         aria-label="Choose an image with a QR code"
         onKeyDown={(e) => { if (!camera && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); inputRef.current?.click(); } }}
       >
-        {camera ? (
-          <video ref={videoRef} className="qr-video drop-preview" playsInline muted />
-        ) : (
-          <span className="tool-hint">drop, paste or click to scan an image</span>
-        )}
+        {camera && <video ref={videoRef} className="qr-video drop-preview" playsInline muted />}
+        <FadeText k={camera ? '' : 'hint'} className="tool-hint">{camera ? null : 'drop, paste or click to scan an image'}</FadeText>
         <input
           ref={inputRef}
           type="file"
@@ -281,10 +281,10 @@ function ScanQr({ active }) {
       <Collapse open={!!result} className="qr-result-collapse">
         <AutoHeight boxRef={resultRef} className="tool-box qr-result-box" innerClassName="qr-result">
           {!shown ? null : shown.none ? (
-            <p className="tool-hint">no QR code found — try a sharper or closer picture</p>
+            <FadeText as="p" k="none" className="tool-hint">no QR code found — try a sharper or closer picture</FadeText>
           ) : (
             <>
-              <p className="qr-result-text selectable">{shown.text}</p>
+              <FadeText as="p" k={shown.text} className="qr-result-text selectable">{shown.text}</FadeText>
               <div className="tool-actions">
                 <button
                   className={`btn ${done.copy ? 'btn-done' : ''}`}

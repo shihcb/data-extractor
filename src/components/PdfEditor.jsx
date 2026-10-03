@@ -6,6 +6,7 @@ import { fadeIn } from '../motion';
 import { useToast } from '../toastContext';
 import Count from './Count';
 import AutoHeight from './AutoHeight';
+import FadeText from './FadeText';
 
 // Changing text in a PDF the reliable way (what browser PDF editors do):
 // the old words are covered with a patch the colour of the paper behind
@@ -304,7 +305,8 @@ export default function PdfEditor({ active }) {
             aria-label="Open a PDF"
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inputRef.current?.click(); } }}
           >
-            {loading ? <span className="spinner" aria-label="loading" /> : <span className="tool-hint">drop, paste or click to open a PDF</span>}
+            {loading && <span className="spinner" aria-label="loading" />}
+            <FadeText k={loading ? '' : 'hint'} className="tool-hint">{loading ? null : 'drop, paste or click to open a PDF'}</FadeText>
           </div>
         ) : (
           <div ref={pagesRef} className="pdf-pages">
@@ -377,13 +379,15 @@ export default function PdfEditor({ active }) {
         onChange={(e) => { openFile(e.target.files || []); e.target.value = ''; }}
       />
 
-      <p className="tool-meta" aria-live="polite">
+      <AutoHeight className="tool-meta" aria-live="polite">
+        <FadeText k={loading ? 'loading' : doc ? 'doc' : 'empty'}>
         {loading ? `loading ${loading}` : doc ? (
           <>
             <Count value={doc.pages.length} /> {plural(doc.pages.length, 'page')} · <Count value={editCount} /> {plural(editCount, 'change')} · click any text to change it
           </>
         ) : 'changes text by covering it and retyping it in a matching standard font'}
-      </p>
+      </FadeText>
+      </AutoHeight>
 
       <div className="tool-actions">
         <button className="btn btn-icon" onClick={(e) => { e.currentTarget.blur(); inputRef.current?.click(); }} title="Open a PDF" aria-label="Open a PDF">

@@ -1164,3 +1164,20 @@ a.btn {
   text-decoration: line-through;
   text-decoration-color: currentColor;
 }
+
+/* ── Changing text (instagram-follower-checker's empty-text fade) ── */
+
+/* Hosts for the fading-out copy of old text (FadeText) */
+.tool,
+.tool-box,
+.tool-meta {
+  position: relative;
+}
+
+.fade-text:empty {
+  display: none;
+}
+
+.tool-meta .fade-text {
+  display: block;
+}
