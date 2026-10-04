@@ -593,7 +593,8 @@ export default function PdfEditor({ active }) {
       });
       resetEdits();
       setEditing(null);
-      if (!pages.some(p => p.items.length)) toast('no text to change in this PDF (is it a scan?)', { warn: true });
+      // (a scanned page is read next, and says so itself if nothing reads)
+      if (!pages.some(p => p.items.length || p.scan)) toast('no text to change in this PDF', { warn: true });
     } catch (err) {
       if (err?.code === 'library') {
         // Not the file's fault: the PDF reader itself didn't load
@@ -1039,54 +1040,74 @@ export default function PdfEditor({ active }) {
     const open = viewRef.current;
     if (!doc || !open || open.id !== doc.id || !doc.pages.some(p => p.scan)) return undefined;
     let stop = false;
+    let found = 0;
+    let problem = null;
     (async () => {
       for (const p of doc.pages) {
         if (stop || !p.scan) continue;
-        let canvas = null;
+        // Drawn about 5000px on its long side (small print reads; larger
+        // read no better); if that's more than the device can take (a
+        // phone's memory), again at a smaller size
+        const readAt = async (maxPixels) => {
+          let canvas = null;
+          try {
+            const page = await open.view.getPage(p.num);
+            const base = page.getViewport({ scale: 1 });
+            const scale = Math.min(4, 5000 / Math.max(base.width, base.height));
+            const drawn = await renderPage(page, { scale, maxPixels });
+            canvas = drawn.canvas;
+            page.cleanup();
+            if (stop) return null;
+            return { lines: await readPage(canvas), viewport: drawn.viewport };
+          } finally {
+            if (canvas) canvas.width = canvas.height = 0;
+          }
+        };
+        let got = null;
         try {
-          const page = await open.view.getPage(p.num);
-          const base = page.getViewport({ scale: 1 });
-          // About 5000px on its long side: small print reads (larger read
-          // no better), big scans stay quick
-          const scale = Math.min(4, 5000 / Math.max(base.width, base.height));
-          const drawn = await renderPage(page, { scale, maxPixels: 12e6 });
-          canvas = drawn.canvas;
-          const { viewport } = drawn;
-          page.cleanup();
-          if (stop) return;
-          const lines = await readPage(canvas);
-          if (stop || viewRef.current !== open) return;
-          // Canvas pixels → the PDF's units
-          const [a, b, c, d, e0, f0] = viewport.transform;
-          const det = a * d - b * c;
-          const toPdf = (px, py) => [(d * (px - e0) - c * (py - f0)) / det, (-b * (px - e0) + a * (py - f0)) / det];
-          const items = lines.map((l, k) => {
-            const [x, y] = toPdf(l.x0, l.y0);
-            const [x1, y1] = toPdf(l.x1, l.y1);
-            const size = Math.max(2, l.cap / viewport.scale / 0.72); // tall letters stand ~0.72 of the size
-            // (a shallow tail below: printed lines sit close, the patch mustn't cut into the next)
-            const pdf = { x, y, size, width: Math.hypot(x1 - x, y1 - y), ascent: 0.9, descent: -0.15, angle: Math.atan2(y1 - y, x1 - x) };
-            return {
-              id: `${p.num}-s${k}`,
-              page: p.num - 1,
-              str: l.text,
-              scan: true,
-              view: p.view,
-              pdf,
-              box: boxFor(pdf, p.view),
-              fontKey: null,
-              font: { base: l.mono ? 'Courier' : 'Helvetica', bold: false, italic: false },
-            };
-          });
-          setDoc(prev => (!prev || prev.id !== doc.id ? prev : {
-            ...prev,
-            pages: prev.pages.map(q => (q.num !== p.num ? q : { ...q, scan: false, items: [...q.items, ...items] })),
-          }));
-        } catch {
-          // Not read: that page stays as it is
-        } finally {
-          if (canvas) canvas.width = canvas.height = 0;
+          got = await readAt(12e6);
+        } catch (err) {
+          if (err?.code === 'library') { problem = err.message; break; }
+          try {
+            got = await readAt(4e6);
+          } catch (again) {
+            problem = again?.code === 'library' ? again.message : problem;
+          }
         }
+        if (stop || viewRef.current !== open) return;
+        if (!got) continue;
+        const { lines, viewport } = got;
+        found += lines.length;
+        // Canvas pixels → the PDF's units
+        const [a, b, c, d, e0, f0] = viewport.transform;
+        const det = a * d - b * c;
+        const toPdf = (px, py) => [(d * (px - e0) - c * (py - f0)) / det, (-b * (px - e0) + a * (py - f0)) / det];
+        const items = lines.map((l, k) => {
+          const [x, y] = toPdf(l.x0, l.y0);
+          const [x1, y1] = toPdf(l.x1, l.y1);
+          const size = Math.max(2, l.cap / viewport.scale / 0.72); // tall letters stand ~0.72 of the size
+          // (a shallow tail below: printed lines sit close, the patch mustn't cut into the next)
+          const pdf = { x, y, size, width: Math.hypot(x1 - x, y1 - y), ascent: 0.9, descent: -0.15, angle: Math.atan2(y1 - y, x1 - x) };
+          return {
+            id: `${p.num}-s${k}`,
+            page: p.num - 1,
+            str: l.text,
+            scan: true,
+            view: p.view,
+            pdf,
+            box: boxFor(pdf, p.view),
+            fontKey: null,
+            font: { base: l.mono ? 'Courier' : 'Helvetica', bold: false, italic: false },
+          };
+        });
+        setDoc(prev => (!prev || prev.id !== doc.id ? prev : {
+          ...prev,
+          pages: prev.pages.map(q => (q.num !== p.num ? q : { ...q, scan: false, items: [...q.items, ...items] })),
+        }));
+      }
+      // Nothing came of it (and nothing else on the pages to change): said once
+      if (!stop && viewRef.current === open && !found && !doc.pages.some(p => p.items.length)) {
+        toast(problem || "couldn't find words to change on this scan", { warn: true });
       }
     })();
     return () => { stop = true; };
