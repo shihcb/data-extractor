@@ -53,7 +53,9 @@ Words that are pictures (an email's From/Subject/Date/To header printed by
 Mail) are found as wide, short images with no text on them; tapping one reads
 it with Tesseract (`src/ocr.js`, files served from `/ocr/`, fetched only on
 first use, not precached) and the new words are drawn over a cover in the
-picture's background colour.
+picture's background colour. The picture is redrawn from the PDF just for the
+read (letters ~100px tall, alone on a white margin) so tiny text reads too, and
+its colours are taken from that sharp copy, not the blurry page on screen.
 
 Every stats line in the app is label first ("characters 3 · words 1", "added 2 ·
 removed 1") so only the numbers change, counting.

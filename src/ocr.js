@@ -42,7 +42,13 @@ export async function readLine(canvas) {
   const { data } = await worker.recognize(canvas, {}, { text: true, blocks: true });
   const lines = (data.blocks || []).flatMap(b => b.paragraphs.flatMap(p => p.lines));
   const line = lines.find(l => l.text.trim()) || null;
-  const text = (line ? line.text : data.text || '').replace(/\s+/g, ' ').trim();
+  // Specks at the ends read as lone marks or letters ("~ From:", "h From:"):
+  // short words Tesseract isn't sure of are dropped from either end
+  const words = line ? line.words.map(w => ({ text: w.text.trim(), sure: w.confidence, bbox: w.bbox })).filter(w => w.text) : [];
+  const speck = (w) => w.text.length <= 2 && (w.sure < 60 || !/[\p{L}\p{N}]/u.test(w.text));
+  while (words.length > 1 && speck(words[0])) words.shift();
+  while (words.length > 1 && speck(words[words.length - 1])) words.pop();
+  const text = line ? words.map(w => w.text).join(' ') : (data.text || '').replace(/\s+/g, ' ').trim();
   if (!text) return null;
   if (!line) return { text };
   const { bbox, baseline } = line;
@@ -50,8 +56,8 @@ export async function readLine(canvas) {
   return {
     text,
     baseline: base,
-    left: bbox.x0,
-    right: bbox.x1,
+    left: words.length ? words[0].bbox.x0 : bbox.x0,
+    right: words.length ? words[words.length - 1].bbox.x1 : bbox.x1,
     top: bbox.y0,
   };
 }

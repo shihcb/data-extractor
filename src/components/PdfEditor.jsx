@@ -58,12 +58,17 @@ function sampleColors(img, box) {
   const y = Math.max(0, Math.floor(box.top * scaleY) - 2);
   const w = Math.min(img.naturalWidth - x, Math.ceil(box.width * scaleX) + 4);
   const h = Math.min(img.naturalHeight - y, Math.ceil(box.height * scaleY) + 4);
+  return colorsIn(img, x, y, w, h);
+}
+
+// The same, from a region of any picture or canvas, in its pixels
+function colorsIn(source, x, y, w, h) {
   if (w <= 0 || h <= 0) return { bg: [255, 255, 255], ink: [0, 0, 0] };
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  ctx.drawImage(img, x, y, w, h, 0, 0, w, h);
+  ctx.drawImage(source, x, y, w, h, 0, 0, w, h);
   const { data } = ctx.getImageData(0, 0, w, h);
   const px = (i, j) => { const k = (j * w + i) * 4; return [data[k], data[k + 1], data[k + 2]]; };
   const counts = new Map();
@@ -255,7 +260,7 @@ function pictureItems(pictures, texts, view, n) {
     const w = r.x1 - r.x0;
     const h = r.y1 - r.y0;
     // A line of text: short and wide (not a photo, a logo block or a rule)
-    if (h < 4 || h > 60 || w < 12 || w / h < 1.6) return;
+    if (h < 2 || h > 60 || w < 6 || w / h < 1.6) return;
     // Real text already there: nothing to read
     if (texts.some(t => t.pdf.x >= r.x0 && t.pdf.x <= r.x1 && t.pdf.y >= r.y0 && t.pdf.y <= r.y1)) return;
     // Until it's read: a box over the whole picture (baseline a fifth up)
@@ -301,6 +306,8 @@ export default function PdfEditor({ active }) {
     setHistory({ past: [], future: [] });
   };
   const [editing, setEditing] = useState(null); // item id
+  const editingRef = useRef(null);
+  editingRef.current = editing;
   const [draft, setDraft] = useState('');
   const [draftColors, setDraftColors] = useState(null); // { bg, ink } of the text being edited
   const [busy, setBusy] = useState(false);
@@ -622,24 +629,64 @@ export default function PdfEditor({ active }) {
   // A picture of text, tapped for the first time: its words are read and
   // put in the box (unless you've started typing), and the item takes their
   // size and line, so the new words sit where the old ones were
-  const readPicture = async (item) => {
-    const img = imgRefs.current[`${doc.id}-${item.page + 1}`];
-    if (!img?.naturalWidth) return;
+  // The picture as Tesseract reads it best: drawn fresh from the PDF so its
+  // letters stand ~100px tall however small they are on the page (an
+  // upscaled crop of the page on screen is a blur of a few pixels), with a
+  // white margin around it. Falls back to the page on screen.
+  const pictureCanvas = async (item) => {
     const r = item.picture.rect;
-    const sx = (r.left / 100) * img.naturalWidth;
-    const sy = (r.top / 100) * img.naturalHeight;
+    const hUnits = item.picture.y1 - item.picture.y0;
+    const wUnits = item.picture.x1 - item.picture.x0;
+    const scale = Math.max(1, Math.min(16, 100 / hUnits, 6000 / wUnits));
+    const make = (w, h) => {
+      const pad = Math.round(h * 0.25);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(w) + 2 * pad);
+      canvas.height = Math.max(1, Math.round(h) + 2 * pad);
+      canvas.pad = pad;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      return { canvas, ctx, pad };
+    };
+    const open = viewRef.current;
+    if (open && open.id === doc.id) {
+      try {
+        const page = await open.view.getPage(item.page + 1);
+        const viewport = page.getViewport({ scale, rotation: page.rotate });
+        const left = (r.left / 100) * viewport.width;
+        const top = (r.top / 100) * viewport.height;
+        // Just the picture (its neighbours would read as more words), then
+        // onto the white margin
+        const crop = document.createElement('canvas');
+        crop.width = Math.max(1, Math.round((r.width / 100) * viewport.width));
+        crop.height = Math.max(1, Math.round((r.height / 100) * viewport.height));
+        const cropCtx = crop.getContext('2d');
+        cropCtx.fillStyle = '#ffffff';
+        cropCtx.fillRect(0, 0, crop.width, crop.height);
+        await page.render({ canvasContext: cropCtx, canvas: crop, viewport, transform: [1, 0, 0, 1, -left, -top] }).promise;
+        const { canvas, ctx, pad } = make(crop.width, crop.height);
+        ctx.drawImage(crop, pad, pad);
+        crop.width = crop.height = 0;
+        return canvas;
+      } catch {
+        // Drawn from the page on screen instead
+      }
+    }
+    const img = imgRefs.current[`${doc.id}-${item.page + 1}`];
+    if (!img?.naturalWidth) return null;
     const sw = (r.width / 100) * img.naturalWidth;
     const sh = (r.height / 100) * img.naturalHeight;
-    // Read larger: small text reads better at a few times its size
-    const k = Math.max(1, Math.min(4, 64 / Math.max(1, sh)));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(sw * k));
-    canvas.height = Math.max(1, Math.round(sh * k));
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const k = Math.max(1, Math.min(4, 100 / Math.max(1, sh)));
+    const { canvas, ctx, pad } = make(sw * k, sh * k);
     ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, (r.left / 100) * img.naturalWidth, (r.top / 100) * img.naturalHeight, sw, sh, pad, pad, canvas.width - 2 * pad, canvas.height - 2 * pad);
+    return canvas;
+  };
+
+  const readPicture = async (item) => {
+    const canvas = await pictureCanvas(item);
+    if (!canvas) return;
     let found = null;
     try {
       found = await readLine(canvas);
@@ -650,8 +697,9 @@ export default function PdfEditor({ active }) {
     if (!found?.text) return;
     // Canvas pixels → the PDF's units
     const { x0, x1, y0, y1 } = item.picture;
-    const toX = (px) => x0 + (px / canvas.width) * (x1 - x0);
-    const toY = (py) => y1 - (py / canvas.height) * (y1 - y0);
+    const { pad } = canvas;
+    const toX = (px) => x0 + ((px - pad) / (canvas.width - 2 * pad)) * (x1 - x0);
+    const toY = (py) => y1 - ((py - pad) / (canvas.height - 2 * pad)) * (y1 - y0);
     let pdf = item.pdf;
     if (Number.isFinite(found.baseline)) {
       const baseY = toY(found.baseline);
@@ -663,7 +711,16 @@ export default function PdfEditor({ active }) {
       ...prev,
       pages: prev.pages.map(p => (p.num !== item.page + 1 ? p : { ...p, items: p.items.map(q => (q.id === item.id ? read : q)) })),
     }));
-    setDraft(d => (d === '' ? found.text : d));
+    // Still being changed: its words, and its colours read sharp (small
+    // letters blur on the page on screen)
+    if (editingRef.current === item.id) {
+      setDraft(d => (d === '' ? found.text : d));
+      if (!edits[item.id]) {
+        const { pad } = canvas;
+        setDraftColors(colorsIn(canvas, pad, pad, canvas.width - 2 * pad, canvas.height - 2 * pad));
+      }
+    }
+    canvas.width = canvas.height = 0;
   };
 
   const commit = (item) => {
