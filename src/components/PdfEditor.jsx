@@ -1372,7 +1372,7 @@ export default function PdfEditor({ active }) {
             pdf,
             box: boxFor(pdf, p.view),
             fontKey: null,
-            font: { base: l.mono ? 'Courier' : 'Helvetica', bold: false, italic: false },
+            font: { base: l.mono ? 'Courier' : 'Helvetica', bold: !!l.bold, italic: false },
           };
         });
         // A line already there as the page's own text (a searchable scan's

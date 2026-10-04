@@ -215,9 +215,15 @@ export async function readPage(canvas) {
       const base = bottoms[Math.floor((bottoms.length - 1) * 0.3)];
       const top = tops[Math.ceil((tops.length - 1) / 2)]; // (of two, the lower: a smudge above one word can't stretch it)
       // Each letter's room: the same in every word, for a fixed-width font
-      const per = ws.filter(w => w.text.length >= 2).map(w => (w.bbox.x1 - w.bbox.x0) / w.text.length);
-      const mean = per.reduce((t, v) => t + v, 0) / (per.length || 1);
-      const spread = per.length >= 2 ? Math.sqrt(per.reduce((t, v) => t + (v - mean) ** 2, 0) / per.length) / mean : 1;
+      // — and fitting that better than a proportional font's widths do (a
+      // few plain words came out alike enough by letter count alone)
+      const long = ws.filter(w => w.text.length >= 2);
+      const spreadOf = (per) => {
+        const mean = per.reduce((t, v) => t + v, 0) / (per.length || 1);
+        return per.length >= 2 && mean > 0 ? Math.sqrt(per.reduce((t, v) => t + (v - mean) ** 2, 0) / per.length) / mean : 1;
+      };
+      const spread = spreadOf(long.map(w => (w.bbox.x1 - w.bbox.x0) / w.text.length));
+      const spreadProp = spreadOf(long.map(w => (w.bbox.x1 - w.bbox.x0) / proportionalWidth(w.text)));
       out.push({
         text,
         x0,
@@ -225,7 +231,7 @@ export async function readPage(canvas) {
         y0: base,
         y1: base + slope * (x1 - x0),
         cap: Math.max(2, base - top),
-        mono: spread < 0.12,
+        mono: spread < 0.12 && spread < spreadProp * 0.75,
         sure: ws.reduce((t, w) => t + w.sure, 0) / ws.length,
         // Words far taller than the print: rows packed close together, run
         // into one by Tesseract (worked out again below)
@@ -245,7 +251,62 @@ export async function readPage(canvas) {
     delete l.tall;
     delete l.span;
   }
+  // Bold print: its strokes are thicker for its height than the page's
+  // usual print (Tesseract doesn't say)
+  kept.forEach((l) => { l.stroke = strokeOf(canvas, l); });
+  const strokes = kept.map(l => l.stroke).filter(v => v > 0).sort((p, q) => p - q);
+  const usualStroke = strokes[Math.floor((strokes.length - 1) / 2)] || 0;
+  kept.forEach((l) => {
+    l.bold = usualStroke > 0 && l.stroke > Math.max(0.13, usualStroke * 1.3);
+    delete l.stroke;
+  });
   return { lines: kept, raw, ink: canvas };
+}
+
+// About how wide a word is in a proportional font (Helvetica's widths, by
+// kind of letter), in ems
+function proportionalWidth(text) {
+  let w = 0;
+  for (const ch of text) {
+    if (/[ilj.,'|!:;]/.test(ch)) w += 0.25;
+    else if (/[frtI\-()]/.test(ch)) w += 0.33;
+    else if (/[mw]/.test(ch)) w += 0.83;
+    else if (/[MW]/.test(ch)) w += 0.88;
+    else if (/[A-Z]/.test(ch)) w += 0.69;
+    else if (/[0-9]/.test(ch)) w += 0.556;
+    else w += 0.54;
+  }
+  return w || 1;
+}
+
+// How thick a line's strokes are for its height: the usual length of the
+// ink's runs across its middle rows (crossing a letter's upright, a run is
+// as long as the stroke is thick), over the height of its tall letters.
+// Read on the page made black on white; 0 when there's too little to tell.
+function strokeOf(ink, l) {
+  const x0 = Math.max(0, Math.floor(l.x0));
+  const x1 = Math.min(ink.width, Math.ceil(l.x1));
+  if (x1 - x0 < 4 || l.cap < 6) return 0;
+  const counts = [];
+  const rows = 6;
+  const ctx = ink.getContext('2d', { willReadFrequently: true });
+  for (let r = 0; r < rows; r++) {
+    // Rows from 30% to 70% of the way up its letters, following its slope
+    const up = l.cap * (0.3 + (0.4 * r) / (rows - 1));
+    const yAt = (x) => Math.round(l.y0 + ((l.y1 - l.y0) * (x - l.x0)) / Math.max(1, l.x1 - l.x0) - up);
+    const y = yAt((x0 + x1) / 2);
+    if (y < 0 || y >= ink.height) continue;
+    const row = ctx.getImageData(x0, y, x1 - x0, 1).data;
+    let run = 0;
+    for (let k = 0; k <= x1 - x0; k++) {
+      const dark = k < x1 - x0 && row[k * 4] < 128;
+      if (dark) run++;
+      else if (run) { counts.push(run); run = 0; }
+    }
+  }
+  if (counts.length < 8) return 0;
+  counts.sort((p, q) => p - q);
+  return counts[Math.floor(counts.length / 2)] / l.cap;
 }
 
 // How alike two readings are (0..1): 1 less their edit distance, as a

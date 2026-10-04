@@ -100,6 +100,9 @@ Editing in the PDF editor:
   and the reading most of the three agree on is kept (`rereadLine`,
   `agreedReading`), updating the line in place unless it's being changed.
   A read line lying on the page's own text (a searchable scan) isn't added.
+  Bold print is found by stroke thickness for its height against the page's
+  usual (`strokeOf`); Courier only when word widths fit fixed-width letters
+  better than proportional ones (a few plain words passed by letter count).
 - Searchable scans' invisible words (`3 Tr`) are cut on save but the line
   keeps its patch: the picture's words are still there.
 - Letter-spaced words that pdf.js reads as "T r a c k e d" are joined; a
