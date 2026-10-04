@@ -41,8 +41,17 @@ function read(canvas, psm) {
       await worker.setParameters({ tessedit_pageseg_mode: psm, preserve_interword_spaces: '1' });
       mode = psm;
     }
-    const { data } = await worker.recognize(canvas, {}, { text: true, blocks: true });
-    return data;
+    try {
+      const { data } = await worker.recognize(canvas, {}, { text: true, blocks: true });
+      return data;
+    } catch (err) {
+      // A worker that failed (out of memory on a phone, say) isn't used
+      // again: the next read starts a fresh one
+      workerPromise = null;
+      mode = null;
+      worker.terminate().catch(() => {});
+      throw err;
+    }
   });
   queue = run.catch(() => {});
   return run;

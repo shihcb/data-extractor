@@ -21,7 +21,7 @@ of restarting it. When the user names one of these, this is what they mean:
 | **the word swap** | the word slide's swap form: one word changing to another inside a line ("%" ↔ "px wide") — both share one spot, the old fading out as the new fades in, while the space eases from one word's width to the other's | `SlideSwap` |
 | **the text swap** | text that changes: the old words fade out exactly where they were while the new ones fade in (the source repo's empty-text fade) | `FadeText` |
 | **the box ease** | a box whose content changes size eases to its new height; nested boxes: only the outermost moves | `AutoHeight`, `heightMotion.js` |
-| **the bulk bar** | PDF tools' and the image converter's select/delete/clear: the instagram repo's bulk bar (count outlined, plain buttons, delete red), where it sits there too: floating at the bottom of the screen (18px up), centered; it pops in like the pages when its tab is showing and there's more than one page/image | `BulkBar` |
+| **the bottom bar** | every tab's "what's open" actions, the instagram repo's bulk bar (count outlined, plain buttons, delete red, a switched-on one outlined), floating at the bottom of the screen (18px up), centered; it pops in like the pages while its tab is showing and there's something to act on. The button that ends it — **clear** or **close** — is always last, on the right. Case converter: clear. Image converter: count · select all · delete · clear. PDF tools: count · select all · save (the selection) · delete · clear. PDF editor: undo · redo · add text · find · close. QR: clear. Text diff: swap · clear. Toasts sit above it (`body.has-bar`); the page keeps room under its end for it | `ActionBar`, `BulkBar` |
 | **the panel open** | a panel opens from nothing / closes to nothing: height eases, content fades in from 10px up at 96% (the quality slider, image options) | `Collapse` |
 | **the row slide** | a list row slides in from under the row above / out under it, the rows around it shifting (the source repo's list 3 rows / username boxes); grid items (the PDF pages, the image cards) pop instead | `MotionList` |
 | **the button glide** | a row of buttons/controls never snaps: a button whose label changes eases its width, the others slide along | `FlipRow` |
@@ -74,6 +74,15 @@ Editing in the PDF editor:
   Ctrl + Shift + Z undo / redo; Ctrl + F (or the button) opens find and
   replace (the panel open; matches tinted on the pages; replace all is one
   undo; open, it reads the pictures of text too).
+- A change appears and goes through a blank (`TextItem`): the patch fades in
+  over the old words, then the new words fade in on it (reversed as it
+  goes) — never old and new words at once (a cross-fade, or the patch's
+  colour easing alone, jumbled them on undo / replace all). Browser
+  animations, not the engine (it clears a settled element's transform).
+  The patch reaches 0.06em past its box; its colour is the most common in
+  the whole box (the edge alone was a table cell's border).
+- Find and replace matches case unless "Aa" is switched off; its count is
+  "· matches N" sliding into the stats line while it's open.
 - Double-click an empty spot (or tap one with "add text" on) to add a line,
   in the size and font of the nearest line; left empty, it goes again.
 - Scanned / photographed pages (one picture over most of the page, no text

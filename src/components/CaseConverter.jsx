@@ -7,8 +7,9 @@ import { useToast } from '../toastContext';
 import Count from './Count';
 import AutoHeight from './AutoHeight';
 import FlipRow from './FlipRow';
+import ActionBar from './ActionBar';
 
-export default function CaseConverter() {
+export default function CaseConverter({ active }) {
   const [text, setText] = useState('');
   const [done, flagDone] = useDoneFlags();
   const textareaRef = useRef(null);
@@ -85,6 +86,7 @@ export default function CaseConverter() {
           </button>
         ))}
       </FlipRow>
+      <ActionBar active={active} open={!!text} onClose={() => setText('')} label="Text" />
     </div>
   );
 }

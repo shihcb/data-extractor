@@ -159,11 +159,15 @@ button:disabled {
   margin-left: auto;
   margin-right: auto;
   padding: 0 20px;
+  /* Room under the last of a tab for the bottom bar, so nothing has to
+     sit under it */
+  padding-bottom: calc(76px + env(safe-area-inset-bottom));
 }
 
 @media (max-width: 480px) {
   .app-container {
-    padding: 0 16px;
+    padding-left: 16px;
+    padding-right: 16px;
   }
 }
 
@@ -503,8 +507,23 @@ button:disabled {
   border-color: var(--text-main);
 }
 
-.find-input {
-  width: 150px;
+/* Find and replace: [find][Aa] over [replace with][replace all] */
+.find-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--button-gap);
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+.find-grid .btn {
+  justify-content: center;
+}
+
+.btn.match-case {
+  font-size: 0.8rem;
+  min-width: 36px;
 }
 
 .btn-icon {
@@ -767,6 +786,11 @@ kbd {
 
 /* ── Toast (instagram-follower-checker's .feature-toast) ──────── */
 
+/* Above the bottom bar while one shows */
+body.has-bar .feature-toast {
+  bottom: calc(18px + 52px + env(safe-area-inset-bottom));
+}
+
 .feature-toast {
   position: fixed;
   left: 50%;
@@ -922,12 +946,48 @@ kbd {
   cursor: pointer;
   transition: color var(--motion-duration) var(--motion-easing),
               opacity var(--motion-duration) var(--motion-easing),
-              background-color var(--motion-duration) var(--motion-easing);
+              background-color var(--motion-duration) var(--motion-easing),
+              border-color var(--motion-duration) var(--motion-easing),
+              box-shadow var(--motion-duration) var(--motion-easing);
 }
 
 .bulk-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* A bar button that's switched on (the PDF editor's find, add text):
+   outlined like the count */
+.bulk-btn.on {
+  color: var(--text-main);
+  border-color: var(--text-main);
+  box-shadow: inset 0 0 0 0.5px var(--text-main);
+}
+
+/* Just an icon (undo, redo) */
+.bulk-btn.bulk-icon {
+  padding: 0 9px;
+}
+
+/* A phone's width: a little tighter, so a full bar fits */
+@media (max-width: 420px) {
+  .bulk-btn,
+  .bulk-count {
+    padding: 0 8px;
+    font-size: 0.74rem;
+  }
+
+  .bulk-btn.bulk-icon {
+    padding: 0 7px;
+  }
+}
+
+.bulk-btn svg {
+  flex-shrink: 0;
+}
+
+.bulk-btn {
+  gap: 5px;
 }
 
 .bulk-delete {
@@ -1229,8 +1289,9 @@ kbd {
   outline: 1px dashed transparent;
   outline-offset: 0;
   cursor: text;
+  /* (not its background: a change's patch fades in with its words, as one —
+     TextItem) */
   transition: outline-color var(--motion-duration) var(--motion-easing),
-              background-color var(--motion-duration) var(--motion-easing),
               box-shadow var(--motion-duration) var(--motion-easing);
 }
 

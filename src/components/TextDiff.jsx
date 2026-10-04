@@ -8,6 +8,7 @@ import AutoHeight from './AutoHeight';
 import Collapse from './Collapse';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
+import ActionBar from './ActionBar';
 
 const MODES = [
   { key: 'lines', label: 'lines' },
@@ -56,7 +57,7 @@ function LineRows({ parts }) {
   return rows;
 }
 
-export default function TextDiff() {
+export default function TextDiff({ active }) {
   const [left, setLeft] = useState('');
   const [right, setRight] = useState('');
   const [mode, setMode] = useState('lines');
@@ -108,19 +109,13 @@ export default function TextDiff() {
 
       <FlipRow>
         <TabSwitcher className="tab-switcher-sm" tabs={MODES} active={mode} onChange={setMode} />
-        <button
-          className="btn btn-icon"
-          onClick={(e) => { e.currentTarget.blur(); setLeft(right); setRight(left); }}
-          disabled={empty}
-          title="Swap the two texts"
-          aria-label="Swap the two texts"
-        >
-          <ArrowLeftRight size={14} />
-        </button>
-        <button className="btn" onClick={(e) => { e.currentTarget.blur(); setLeft(''); setRight(''); }} disabled={empty}>
-          clear
-        </button>
       </FlipRow>
+      {/* Swapping and clearing: in the bottom bar, like every tab */}
+      <ActionBar active={active} open={!empty} onClose={() => { setLeft(''); setRight(''); }} label="Texts">
+        <button className="bulk-btn" onClick={(e) => { e.currentTarget.blur(); setLeft(right); setRight(left); }} title="Swap the two texts">
+          <ArrowLeftRight size={13} /> swap
+        </button>
+      </ActionBar>
 
       <AutoHeight className="tool-meta" aria-live="polite">
         <FadeText k={status}>

@@ -13,6 +13,7 @@ import Collapse from './Collapse';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
 import usePop from './usePop';
+import ActionBar from './ActionBar';
 
 const MODES = [
   { key: 'make', label: 'make' },
@@ -57,7 +58,7 @@ const asWebLink = (text) => {
   }
 };
 
-function MakeQr() {
+function MakeQr({ active }) {
   const [text, setText] = useState('');
   const [level, setLevel] = useState('M');
   const [error, setError] = useState('');
@@ -146,6 +147,7 @@ function MakeQr() {
           <Copy size={14} /> copy
         </button>
       </FlipRow>
+      <ActionBar active={active} open={!!text} onClose={() => setText('')} label="QR code" />
     </div>
   );
 }
@@ -311,6 +313,12 @@ function ScanQr({ active }) {
           )}
         </AutoHeight>
       </Collapse>
+      <ActionBar
+        active={active}
+        open={!!result || camera}
+        onClose={() => { stopCamera(); setResult(null); }}
+        label="Scan"
+      />
     </div>
   );
 }
@@ -322,7 +330,7 @@ export default function QrTool({ active }) {
       <TabSwitcher className="tab-switcher-sm" tabs={MODES} active={mode} onChange={setMode} />
       <div className="qr-panes">
         <TabPanes tabs={MODES} active={mode}>
-          <MakeQr />
+          <MakeQr active={active && mode === 'make'} />
           <ScanQr active={active && mode === 'scan'} />
         </TabPanes>
       </div>

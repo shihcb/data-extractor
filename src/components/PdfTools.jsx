@@ -341,14 +341,11 @@ export default function PdfTools({ active }) {
               whole label inside a button easing its width was choppy) */}
           <span className="btn-label">save<SlideText show={fileCount > 1}>{'\u00a0merged'}</SlideText> pdf</span>
         </button>
-        <button className={`btn ${done.extract ? 'btn-done' : ''}`} onClick={saveSelected} disabled={none || !selected.size || !!busy}>
-          save selected
-        </button>
         <button className={`btn ${done.split ? 'btn-done' : ''}`} onClick={split} disabled={none || !!busy}>
-          split into pages
+          split
         </button>
         <button className={`btn ${done.images ? 'btn-done' : ''}`} onClick={toImages} disabled={none || !!busy}>
-          pages to PNG
+          to PNG
         </button>
       </FlipRow>
       {/* Selecting, deleting, clearing: the bulk bar (shared with the image converter) */}
@@ -360,7 +357,12 @@ export default function PdfTools({ active }) {
         onSelectAll={(all) => setSelected(all ? new Set(pages.map(p => p.id)) : new Set())}
         onDelete={() => removePages(new Set(selected))}
         onClear={clearAll}
-      />
+      >
+        {/* The selected pages, as a PDF of their own */}
+        <button className="bulk-btn" onClick={saveSelected} disabled={none || !selected.size || !!busy}>
+          save
+        </button>
+      </BulkBar>
     </div>
   );
 }

@@ -1,14 +1,16 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Download, FileUp, Redo2, Replace, Type, Undo2, ZoomIn, ZoomOut } from 'lucide-react';
+import { Download, FileUp, Redo2, Undo2, ZoomIn, ZoomOut } from 'lucide-react';
 import { closePdf, loadPdfLib, loadPdfjs, openPdf, renderPage, isPasswordError } from '../pdf';
 import { readBlock, readLine, readPage } from '../ocr';
 import { removeText } from '../pdfText';
 import { baseName, canvasToBlob, downloadBlob, isPdfFile, loadLibrary, useDoneFlags, usePastedFiles } from '../utils';
-import { MOTION_MS, motionEase, prefersReducedMotion } from '../motion';
+import { MOTION, MOTION_MS, canAnimate, motionEase, prefersReducedMotion } from '../motion';
 import { useToast } from '../toastContext';
 import { cssFont, cssWidthEm, fontInfoOf, originalCanWrite, squeezeFor, standardFontKey, unicodeFontOf } from '../pdfFonts';
+import ActionBar from './ActionBar';
 import Collapse from './Collapse';
 import Count from './Count';
+import SlideText from './SlideText';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
 import MotionList from './MotionList';
@@ -50,9 +52,8 @@ function baselineOf(css) {
   return value;
 }
 
-// The paper colour around the words (most common colour along the box's
-// edge) and the ink colour (the pixel inside that differs most from it),
-// read from the drawn page.
+// The paper colour around the words (the most common colour in their box)
+// and the ink colour (a solid stroke's), read from the drawn page.
 function sampleColors(img, box) {
   const scaleX = img.naturalWidth / 100;
   const scaleY = img.naturalHeight / 100;
@@ -80,8 +81,9 @@ function colorsIn(source, x, y, w, h) {
     e.n++;
     counts.set(key, e);
   };
-  for (let i = 0; i < w; i++) { vote(px(i, 0)); vote(px(i, h - 1)); }
-  for (let j = 0; j < h; j++) { vote(px(0, j)); vote(px(w - 1, j)); }
+  // Every pixel votes: letters cover far less of their box than the paper
+  // does (its edge alone was a table cell's border, and a grey patch)
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) vote(px(i, j));
   let bg = [255, 255, 255];
   let best = -1;
   counts.forEach(({ n, c }) => { if (n > best) { best = n; bg = c; } });
@@ -325,6 +327,70 @@ function pictureItems(pictures, texts, view, n) {
 }
 
 let nextAdded = 1;
+
+// A line on the page, and its change. A change comes and goes through a
+// blank: the patch fades in over the old words first, then the new words
+// fade in on it (and the other way round as it goes, keeping how it looked)
+// — never both words at once: the patch easing in on its own while the
+// words switched at once (and a cross-fade too) showed old and new words
+// jumbled over each other (an undo or a replace all, most of all). The
+// browser's own animations, not the motion engine: that one clears a
+// settled element's transform, which turns the line with its text.
+const HALF = { duration: MOTION.duration / 2, easing: MOTION.easing };
+function TextItem({ edited, editStyle, plainStyle, content, className, ...rest }) {
+  const ref = useRef(null);
+  const kept = useRef(null);
+  const anims = useRef([]);
+  const was = useRef(edited);
+  const [leaving, setLeaving] = useState(false);
+  if (edited) kept.current = { style: editStyle, content };
+  const stopAll = () => {
+    anims.current.forEach(x => x.cancel());
+    anims.current = [];
+  };
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || was.current === edited) return;
+    was.current = edited;
+    stopAll();
+    if (!canAnimate(el)) {
+      setLeaving(false);
+      return;
+    }
+    const patch = (from, to, opts) => el.animate([
+      { backgroundColor: from ? kept.current.style.background : 'transparent', boxShadow: from ? kept.current.style.boxShadow : 'none' },
+      { backgroundColor: to ? kept.current.style.background : 'transparent', boxShadow: to ? kept.current.style.boxShadow : 'none' },
+    ], opts);
+    const words = (from, to, opts) => el.firstElementChild?.animate([{ opacity: from }, { opacity: to }], opts);
+    if (edited) {
+      setLeaving(false);
+      anims.current = [
+        patch(false, true, { ...HALF, fill: 'backwards' }),
+        words(0, 1, { ...HALF, delay: HALF.duration, fill: 'backwards' }),
+      ].filter(Boolean);
+    } else {
+      setLeaving(true);
+      const last = patch(true, false, { ...HALF, delay: HALF.duration, fill: 'forwards' });
+      anims.current = [words(1, 0, { ...HALF, fill: 'forwards' }), last].filter(Boolean);
+      last.finished.then(() => { if (!was.current && anims.current.includes(last)) setLeaving(false); }, () => {});
+    }
+  }, [edited]);
+  // Gone: its look dropped while still faded out, then the fade let go
+  useLayoutEffect(() => {
+    if (!leaving && !edited && anims.current.length) stopAll();
+  }, [leaving, edited]);
+  const showing = edited || leaving;
+  return (
+    <button
+      ref={ref}
+      className={`${className} ${showing ? 'edited' : ''}`}
+      style={edited ? editStyle : leaving ? kept.current.style : plainStyle}
+      {...rest}
+    >
+      {edited ? content : leaving ? kept.current.content : ''}
+    </button>
+  );
+}
 
 export default function PdfEditor({ active }) {
   const [doc, setDoc] = useState(null); // { id, name, bytes, pages: [{ key, num, url, items, width, height }] }
@@ -1191,17 +1257,20 @@ export default function PdfEditor({ active }) {
   const [findOpen, setFindOpen] = useState(false);
   const [findText, setFindText] = useState('');
   const [replaceText, setReplaceText] = useState('');
+  // Match case: on unless switched off ("h" doesn't take the H of "Hide")
+  const [matchCase, setMatchCase] = useState(true);
   const textOf = (item) => edits[item.id]?.text ?? item.str;
-  const findKey = findOpen && doc ? findText.toLowerCase() : '';
+  const fold = (t) => (matchCase ? t : t.toLowerCase());
+  const findKey = findOpen && doc ? fold(findText) : '';
   const matches = new Set();
   if (findKey.trim()) {
     doc.pages.forEach(p => p.items.forEach((item) => {
-      if (textOf(item).toLowerCase().includes(findKey)) matches.add(item.id);
+      if (fold(textOf(item)).includes(findKey)) matches.add(item.id);
     }));
   }
   const replaceAll = () => {
     if (!matches.size) return;
-    const re = new RegExp(findText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    const re = new RegExp(findText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), matchCase ? 'g' : 'gi');
     const next = { ...edits };
     doc.pages.forEach(p => p.items.forEach((item) => {
       if (!matches.has(item.id)) return;
@@ -1263,6 +1332,8 @@ export default function PdfEditor({ active }) {
     setDoc(null);
     resetEdits();
     setEditing(null);
+    setFindOpen(false);
+    setAdding(false);
   };
 
   return (
@@ -1360,7 +1431,15 @@ export default function PdfEditor({ active }) {
                         <input
                           key={item.id}
                           className="pdf-text-input"
-                          style={{ ...pos, background: rgbCss(colors.bg), color: rgbCss(colors.ink), width: `${cssWidthEm(look.css, draft, { cache: false }) + 0.3}em` }}
+                          style={{
+                            ...pos,
+                            background: rgbCss(colors.bg),
+                            color: rgbCss(colors.ink),
+                            width: `${cssWidthEm(look.css, draft, { cache: false }) + 0.3}em`,
+                            // A picture still being read: just its outline (its box is the
+                            // whole picture, so a caret there stood a few lines tall)
+                            ...(item.picture && !item.read ? { color: 'transparent', caretColor: 'transparent', background: 'transparent' } : null),
+                          }}
                           value={draft}
                           autoFocus
                           onChange={(e) => setDraft(e.target.value)}
@@ -1387,22 +1466,30 @@ export default function PdfEditor({ active }) {
                       )];
                     }
                     return [cover, (
-                      <button
+                      <TextItem
                         key={item.id}
-                        className={`pdf-text-item ${edit ? 'edited' : ''} ${!gone && matches.has(item.id) ? 'match' : ''}`}
-                        style={edit ? { ...pos, background: rgbCss(edit.bg), color: rgbCss(edit.ink) } : pos}
+                        className={`pdf-text-item ${!gone && matches.has(item.id) ? 'match' : ''}`}
+                        edited={!!edit}
+                        // (the patch reaches a little past its box: the old words' tails
+                        // and soft edges peeked out under it; a found line keeps its tint)
+                        editStyle={edit ? {
+                          ...pos,
+                          background: rgbCss(edit.bg),
+                          color: rgbCss(edit.ink),
+                          boxShadow: `${!gone && matches.has(item.id) ? 'inset 0 0 0 100vmax rgba(250, 204, 21, 0.28), ' : ''}0 0 0 0.06em ${rgbCss(edit.bg)}`,
+                        } : null}
+                        plainStyle={pos}
                         onClick={(e) => startEdit(item, e)}
                         title={edit ? `was: ${item.str || 'a picture of text'}` : item.picture ? 'Change the words in this picture' : 'Change this text'}
-                      >
-                        {edit ? (
+                        content={edit ? (
                           // The words, squeezed to the original's room, and a mark on
                           // their baseline: measured once drawn, they're nudged so it
                           // lands exactly on the PDF's (whatever the font's proportions)
                           <span className="pdf-run" data-asc={ascent} data-lift={Math.min(0, shift)} data-squeeze={look.squeeze} data-turned={item.box.turn ? '1' : undefined}>
                             {look.text}<span className="pdf-base" />
                           </span>
-                        ) : ''}
-                      </button>
+                        ) : null}
+                      />
                     )];
                   })}
                 </div>
@@ -1429,40 +1516,48 @@ export default function PdfEditor({ active }) {
       {/* The stats: always there, only the numbers change (counting from 0) */}
       <div className="tool-meta tool-stats" aria-live="polite">
         pages <Count value={doc ? doc.pages.length : 0} /> · texts <Count value={textCount} /> · changes <Count value={editCount} />
+        {/* While find is open: how many lines hold the words (the word slide) */}
+        <SlideText show={!!doc && findOpen}>{'\u00a0· matches\u00a0'}<Count value={matches.size} /></SlideText>
       </div>
 
       {/* Find and replace: opens like the image options (the panel open) */}
       <Collapse open={!!doc && findOpen} className="options-collapse">
         <div className="options-panel">
-          <FlipRow className="field-grid">
-            <label className="field">
-              find
-              <input
-                ref={findRef}
-                className="text-input find-input"
-                value={findText}
-                onChange={(e) => setFindText(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Escape') setFindOpen(false); }}
-                spellCheck={false}
-                aria-label="Find"
-              />
-            </label>
-            <label className="field">
-              with
-              <input
-                className="text-input find-input"
-                value={replaceText}
-                onChange={(e) => setReplaceText(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') replaceAll(); if (e.key === 'Escape') setFindOpen(false); }}
-                spellCheck={false}
-                aria-label="Replace with"
-              />
-            </label>
-            <span className="field">matches <Count value={matches.size} /></span>
+          {/* Two rows: what to find (and whether case counts), then what
+              goes in its place */}
+          <div className="find-grid">
+            <input
+              ref={findRef}
+              className="text-input"
+              value={findText}
+              onChange={(e) => setFindText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Escape') setFindOpen(false); }}
+              placeholder="find"
+              spellCheck={false}
+              aria-label="Find"
+            />
+            <button
+              className={`btn btn-icon match-case ${matchCase ? 'btn-on' : ''}`}
+              onClick={(e) => { e.currentTarget.blur(); setMatchCase(m => !m); }}
+              title={matchCase ? 'Match case: on' : 'Match case: off'}
+              aria-label="Match case"
+              aria-pressed={matchCase}
+            >
+              Aa
+            </button>
+            <input
+              className="text-input"
+              value={replaceText}
+              onChange={(e) => setReplaceText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') replaceAll(); if (e.key === 'Escape') setFindOpen(false); }}
+              placeholder="replace with"
+              spellCheck={false}
+              aria-label="Replace with"
+            />
             <button className="btn" onClick={(e) => { e.currentTarget.blur(); replaceAll(); }} disabled={!matches.size}>
               replace all
             </button>
-          </FlipRow>
+          </div>
         </div>
       </Collapse>
 
@@ -1473,42 +1568,38 @@ export default function PdfEditor({ active }) {
         <button className={`btn btn-primary ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!doc || !editCount || busy}>
           <Download size={14} /> save pdf
         </button>
-        {/* One change at a time, back and forth */}
-        <button className="btn btn-icon" onClick={(e) => { e.currentTarget.blur(); undo(); }} disabled={!doc || !history.past.length} title="Undo" aria-label="Undo">
+      </FlipRow>
+      {/* Undo / redo (one change at a time), adding text, find and replace,
+          and close: the bottom bar, like every tab */}
+      <ActionBar active={active} open={!!doc} closeLabel="close" onClose={close} label="Editing">
+        <button className="bulk-btn bulk-icon" onClick={(e) => { e.currentTarget.blur(); undo(); }} disabled={!history.past.length} title="Undo (Ctrl + Z)" aria-label="Undo">
           <Undo2 size={14} />
         </button>
-        <button className="btn btn-icon" onClick={(e) => { e.currentTarget.blur(); redo(); }} disabled={!doc || !history.future.length} title="Redo" aria-label="Redo">
+        <button className="bulk-btn bulk-icon" onClick={(e) => { e.currentTarget.blur(); redo(); }} disabled={!history.future.length} title="Redo (Ctrl + Shift + Z)" aria-label="Redo">
           <Redo2 size={14} />
         </button>
         <button
-          className={`btn btn-icon ${adding && doc ? 'btn-on' : ''}`}
+          className={`bulk-btn ${adding ? 'on' : ''}`}
           onClick={(e) => { e.currentTarget.blur(); setAdding(a => !a); }}
-          disabled={!doc}
           title="Add text: tap a spot on a page (or double-click one)"
-          aria-label="Add text"
-          aria-pressed={adding && !!doc}
+          aria-pressed={adding}
         >
-          <Type size={14} />
+          add text
         </button>
         <button
-          className={`btn btn-icon ${findOpen && doc ? 'btn-on' : ''}`}
+          className={`bulk-btn ${findOpen ? 'on' : ''}`}
           onClick={(e) => {
             e.currentTarget.blur();
             const open = !findOpen;
             setFindOpen(open);
             if (open) requestAnimationFrame(() => findRef.current?.focus({ preventScroll: true }));
           }}
-          disabled={!doc}
           title="Find and replace (Ctrl + F)"
-          aria-label="Find and replace"
-          aria-pressed={findOpen && !!doc}
+          aria-pressed={findOpen}
         >
-          <Replace size={14} />
+          find
         </button>
-        <button className="btn" onClick={(e) => { e.currentTarget.blur(); close(); }} disabled={!doc}>
-          close
-        </button>
-      </FlipRow>
+      </ActionBar>
     </div>
   );
 }
