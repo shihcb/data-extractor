@@ -1,5 +1,5 @@
-import React, { useLayoutEffect, useReducer, useRef } from 'react';
-import { canAnimate } from '../motion';
+import React, { useEffect, useLayoutEffect, useReducer, useRef } from 'react';
+import { MOTION_MS, canAnimate } from '../motion';
 import { animateTo, shift, stop } from '../engine';
 import AutoHeight from './AutoHeight';
 
@@ -13,6 +13,11 @@ import AutoHeight from './AutoHeight';
 // Either way the items around it slide from where they were drawn to their
 // new places (FLIP), and the list's height eases to its new size (AutoHeight). Changes
 // mid-slide carry on from where everything is drawn right now.
+// Items that swap places aren't moved in the page while anything moves:
+// the browser drops a moved element's CSS transitions and starts its CSS
+// animations over (a card's picture faded in again, its buttons snapped
+// dim). They're placed with CSS `order` instead, and the page's own order
+// catches up once everything has settled (for the keyboard's order).
 export default function MotionList({ items, getKey, renderItem, variant = 'rows', motion, exitMotion, className = '', itemClassName = '' }) {
   const pops = (motion || (variant === 'grid' ? 'pop' : 'slide')) === 'pop';
   const containerRef = useRef(null);
@@ -21,6 +26,8 @@ export default function MotionList({ items, getKey, renderItem, variant = 'rows'
   const prevKeys = useRef(null);
   const prevItems = useRef(new Map()); // key -> item (last commit)
   const exiting = useRef(new Map());   // key -> { item, pos, index }
+  const domOrder = useRef([]);          // keys, in the order they sit in the page
+  const settle = useRef(null);
   const [, rerender] = useReducer(x => x + 1, 0);
   // The effect reads these through a ref: it should run when the items change, not on every render
   const opts = useRef({ getKey, pops });
@@ -83,7 +90,19 @@ export default function MotionList({ items, getKey, renderItem, variant = 'rows'
     prevItems.current = new Map(items.map(item => [getKey(item), item]));
 
     if (exiting.current.size) rerender();
+
+    // Once it's all still, the page's order catches up with the drawn one
+    clearTimeout(settle.current);
+    settle.current = setTimeout(() => {
+      if (exiting.current.size || !prevKeys.current) return;
+      const now = prevKeys.current;
+      if (now.length === domOrder.current.length && now.every((k, i) => k === domOrder.current[i])) return;
+      domOrder.current = now;
+      rerender();
+    }, MOTION_MS + 150);
   }, [items]);
+
+  useEffect(() => () => clearTimeout(settle.current), []);
 
   // Keep the remembered spots right when the page resizes
   useLayoutEffect(() => {
@@ -147,11 +166,17 @@ export default function MotionList({ items, getKey, renderItem, variant = 'rows'
     .forEach(([key, info]) => {
       rendered.splice(Math.min(info.index, rendered.length), 0, { key, item: info.item, leaving: { key, ...info } });
     });
+  // Drawn in this order (CSS `order`), sitting in the page in the order they
+  // already had: ones already there keep their places, new ones go last
+  rendered.forEach((r, i) => { r.order = i; });
+  const had = new Map(domOrder.current.map((k, i) => [k, i]));
+  const inPage = [...rendered].sort((a, b) => (had.get(a.key) ?? Infinity) - (had.get(b.key) ?? Infinity) || a.order - b.order);
+  domOrder.current = inPage.map(r => r.key);
 
   return (
     <AutoHeight className="motion-list-box">
       <div ref={containerRef} className={`motion-list motion-list-${variant} ${className}`}>
-        {rendered.map(({ key, item, leaving }) => (
+        {inPage.map(({ key, item, leaving, order }) => (
           <div
             key={key}
             className={`motion-item ${itemClassName} ${leaving ? 'motion-item-leaving' : ''}`}
@@ -165,7 +190,7 @@ export default function MotionList({ items, getKey, renderItem, variant = 'rows'
               margin: 0,
               pointerEvents: 'none',
               zIndex: 0,
-            } : undefined}
+            } : { order }}
             ref={el => {
               if (leaving) {
                 playExit(leaving.key, el);

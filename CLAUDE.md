@@ -75,3 +75,10 @@ Rules that keep it smooth (each was a real bug):
 - Heavy work (encoding an image) never runs on the page's thread while
   something moves (the size estimate runs in `estimateWorker.js`).
 - Text being clipped while it resizes must not change its baseline.
+- Nothing in a list is moved in the page while it moves on screen: the
+  browser restarts a moved element's CSS animations and drops its
+  transitions (PDF pages' pictures flickered on every reorder). `MotionList`
+  places items with CSS `order` and fixes the page's order once still; a
+  picture that fades in when loaded does it from script, once.
+- A hint centred over a box that eases is centred in the outer box, not
+  the inner one that changes size at once (the QR hint jumped 24px).

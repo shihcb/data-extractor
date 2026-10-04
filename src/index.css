@@ -640,6 +640,12 @@ button:disabled {
   z-index: 1;
 }
 
+/* Laid out as flex/grid so `order` places the items (see MotionList) */
+.motion-list-rows {
+  display: flex;
+  flex-direction: column;
+}
+
 .motion-list-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
@@ -995,7 +1001,6 @@ kbd {
 }
 
 .page-thumb img {
-  animation: fadeIn var(--motion-duration) var(--motion-easing);
   width: 100%;
   height: 100%;
   object-fit: contain;
@@ -1241,8 +1246,11 @@ kbd {
   min-height: 280px;
 }
 
-.qr-box,
-.qr-scan-box {
+/* The hint is centred in the outer box, whose height eases: in the inner
+   one it jumped 24px when the code / camera, done popping out, left the
+   layout and the inner box shrank at once */
+.qr-box-outer,
+.qr-scan-outer {
   position: relative;
 }
 
@@ -1267,6 +1275,7 @@ kbd {
 
 .qr-scan-box {
   min-height: 280px;
+  position: static; /* its hint centres in .qr-scan-outer */
 }
 
 .qr-video {
