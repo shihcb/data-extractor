@@ -10,7 +10,7 @@ export function splitWords(line) {
   return line
     .replace(/([\p{Ll}\p{N}])(\p{Lu})/gu, '$1 $2')
     .replace(/(\p{Lu}+)(\p{Lu}\p{Ll})/gu, '$1 $2')
-    .split(/[^\p{L}\p{N}]+/u)
+    .split(/[^\p{L}\p{M}\p{N}]+/u) // (accents and vowel signs are part of their letter)
     .filter(Boolean);
 }
 
@@ -29,7 +29,7 @@ export const toSentence = (text) =>
   text
     .toLowerCase()
     .replace(/(^|[.!?]\s+|\n\s*)(\p{L})/gu, (_, before, letter) => before + letter.toUpperCase())
-    .replace(/(^|[^\p{L}\p{N}'’])i(?=$|[^\p{L}\p{N}])/gu, '$1I');
+    .replace(/(^|[^\p{L}\p{N}'’.])i(?=$|[^\p{L}\p{N}.])/gu, '$1I'); // (not "i.e.")
 
 export const toCamel = perLine((line) => {
   const words = splitWords(line).map(w => w.toLowerCase());

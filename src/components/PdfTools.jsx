@@ -23,6 +23,7 @@ export default function PdfTools({ active }) {
   const [pages, setPages] = useState([]);
   const [selected, setSelected] = useState(() => new Set());
   const [loading, setLoading] = useState('');
+  const loadingCount = useRef(0);
   const [busy, setBusy] = useState('');
   const [dragging, setDragging] = useState(false);
   const [done, flagDone] = useDoneFlags();
@@ -54,6 +55,8 @@ export default function PdfTools({ active }) {
   const addFiles = useCallback(async (fileList) => {
     const files = [...fileList].filter(isPdfFile);
     if (!files.length) return;
+    // (a count: two drops at once are both loading until both are done)
+    loadingCount.current += 1;
     setLoading('loading');
     stopHolding();
     for (const file of files) {
@@ -111,7 +114,8 @@ export default function PdfTools({ active }) {
         toast(`${file.name} ${why}`, { warn: true });
       }
     }
-    setLoading('');
+    loadingCount.current -= 1;
+    if (!loadingCount.current) setLoading('');
   }, [toast]);
 
   usePastedFiles(active, isPdfFile, addFiles);
@@ -140,7 +144,7 @@ export default function PdfTools({ active }) {
     setPages(rest);
     setSelected(sel => new Set([...sel].filter(id => !ids.has(id))));
     releaseThumbs(gone);
-    if (!loading) dropUnusedSources(rest);
+    if (!loading && !busy) dropUnusedSources(rest);
   };
 
   const clearAll = () => {
@@ -149,15 +153,16 @@ export default function PdfTools({ active }) {
     holdWhileLeaving();
     setPages([]);
     setSelected(new Set());
-    if (!loading) dropUnusedSources([]);
+    if (!loading && !busy) dropUnusedSources([]);
   };
 
-  // Pages deleted while files were still loading: their documents are let go
-  // once loading is done (closing one mid-load broke the file being drawn)
+  // Pages deleted while files were still loading, or while a save, split or
+  // export was reading them: their documents are let go once that's done
+  // (closing one mid-way broke the file being drawn or made)
   useEffect(() => {
-    if (!loading) dropUnusedSources(pagesRef.current);
+    if (!loading && !busy) dropUnusedSources(pagesRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading]);
+  }, [loading, busy]);
 
   useEffect(() => () => {
     pagesRef.current.forEach(p => p.thumb && URL.revokeObjectURL(p.thumb));

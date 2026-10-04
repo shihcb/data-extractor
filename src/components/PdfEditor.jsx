@@ -580,10 +580,13 @@ export default function PdfEditor({ active }) {
     };
   }, []);
 
+  const opening = useRef(0); // the latest file being opened (an older one finishing later is dropped)
   const openFile = useCallback(async (files) => {
     const file = [...files].find(isPdfFile);
     if (!file) return;
+    const ticket = ++opening.current;
     let view = null;
+    let made = [];
     try {
       const bytes = await file.arrayBuffer();
       const { PDFDocument } = await loadPdfLib();
@@ -596,6 +599,7 @@ export default function PdfEditor({ active }) {
       view = await openPdf(bytes, undefined, { fontExtraProperties: true });
       const fonts = {};
       const pages = [];
+      made = pages;
       for (let n = 1; n <= view.numPages; n++) {
         const page = await view.getPage(n);
         const { canvas, viewport } = await renderPage(page, { cssWidth: PAGE_CSS_WIDTH });
@@ -642,6 +646,13 @@ export default function PdfEditor({ active }) {
           // Not a font the browser takes: the stand-in it is
         }
       }));
+      // A file opened after this one is showing instead: this one goes
+      if (ticket !== opening.current) {
+        faces.forEach(f => document.fonts.delete(f));
+        pages.forEach(p => URL.revokeObjectURL(p.url));
+        return;
+      }
+      made = [];
       pages.forEach(p => { p.key = `${id}-${p.num}`; });
       clearTimeout(holdTimer.current);
       setHold(0);
@@ -662,6 +673,9 @@ export default function PdfEditor({ active }) {
       // (a scanned page is read next, and says so itself if nothing reads)
       if (!pages.some(p => p.items.length || p.scan)) toast('no text to change in this PDF', { warn: true });
     } catch (err) {
+      // The pages drawn before it failed
+      made.forEach(p => URL.revokeObjectURL(p.url));
+      if (ticket !== opening.current) return;
       if (err?.code === 'library') {
         // Not the file's fault: the PDF reader itself didn't load
         toast(err.message, { warn: true });
@@ -814,13 +828,14 @@ export default function PdfEditor({ active }) {
     return canvas;
   };
 
-  const reading = useRef(new Map()); // picture id -> its read, under way
+  const reading = useRef(new Map()); // document and picture id -> its read, under way
   const readPicture = (item, opts) => {
-    if (!reading.current.has(item.id)) {
-      const run = readPictureNow(item, opts).finally(() => reading.current.delete(item.id));
-      reading.current.set(item.id, run);
+    const key = `${doc.id}:${item.id}`;
+    if (!reading.current.has(key)) {
+      const run = readPictureNow(item, opts).finally(() => reading.current.delete(key));
+      reading.current.set(key, run);
     }
-    return reading.current.get(item.id);
+    return reading.current.get(key);
   };
   const readPictureNow = async (item, { quiet = false } = {}) => {
     const canvas = await pictureCanvas(item);
@@ -832,15 +847,24 @@ export default function PdfEditor({ active }) {
       lines = await readBlock(canvas);
       if (!lines.length) {
         const found = await readLine(canvas);
-        if (found?.text && Number.isFinite(found.baseline)) {
+        if (found?.text && Number.isFinite(found.baseline) && found.baseline > found.top) {
           lines = [{ text: found.text, x0: found.left, x1: found.right, y0: found.baseline, y1: found.baseline, cap: found.baseline - found.top }];
         }
       }
     } catch (err) {
       if (!quiet) toast(err?.code === 'library' ? err.message : "couldn't read this picture — type the new words", { warn: true });
+      lines = [];
+    }
+    if (!lines.length) {
+      // Nothing read: typed into as it is (its box was kept see-through
+      // while it was being read)
+      canvas.width = canvas.height = 0;
+      setDoc(prev => (!prev || prev.id !== doc.id ? prev : {
+        ...prev,
+        pages: prev.pages.map(p => (p.num !== item.page + 1 ? p : { ...p, items: p.items.map(q => (q.id === item.id ? { ...q, read: true } : q)) })),
+      }));
       return;
     }
-    if (!lines.length) return;
     // Canvas pixels → the PDF's units
     const { x0, x1, y0, y1 } = item.picture;
     const { pad } = canvas;
@@ -878,11 +902,23 @@ export default function PdfEditor({ active }) {
       ...prev,
       pages: prev.pages.map(p => (p.num !== item.page + 1 ? p : { ...p, items: p.items.flatMap(q => (q.id === item.id ? reads : [q])) })),
     }));
-    // Still being changed: the line that was tapped (the tap's height in
-    // the picture), its words and colours
+    if (docRef.current?.id !== doc.id) return;
+    // The line that was tapped (the tap's height in the picture)
+    const at = tapAt.current?.id === item.id ? tapAt.current.y : 0;
+    const pick = reads.find(r => (y1 - r.picture.y1) / (y1 - y0) <= at && at <= (y1 - r.picture.y0) / (y1 - y0) + 1e-6) || reads[0];
+    // A change typed in before its lines were read goes onto that line (and
+    // so do the undo steps that name it)
+    if (pick.id !== item.id) {
+      const move = (e) => {
+        if (!e[item.id]) return e;
+        const { [item.id]: change, ...rest } = e;
+        return { ...rest, [pick.id]: change };
+      };
+      setEdits(move);
+      setHistory(h => ({ past: h.past.map(move), future: h.future.map(move) }));
+    }
+    // Still being changed: that line, its words and colours
     if (editingRef.current === item.id) {
-      const at = tapAt.current?.id === item.id ? tapAt.current.y : 0;
-      const pick = reads.find(r => (y1 - r.picture.y1) / (y1 - y0) <= at && at <= (y1 - r.picture.y0) / (y1 - y0) + 1e-6) || reads[0];
       if (pick.id !== item.id) setEditing(pick.id);
       setDraft(d => (d === '' ? pick.str : d));
       if (!editsRef.current[item.id]) setDraftColors(pick.colors);
@@ -891,6 +927,9 @@ export default function PdfEditor({ active }) {
 
   // The line being changed, saved; the box closes on blur (Enter, a tap
   // elsewhere), or moves on to the next line (Tab)
+  // A new line an undo or redo still names isn't dropped (it'd come back
+  // with nothing to show it on)
+  const inHistory = (id) => history.past.some(e => e[id]) || history.future.some(e => e[id]);
   const commit = (item) => {
     if (cancelled.current) { // Escape: the blur that follows doesn't save
       cancelled.current = false;
@@ -904,7 +943,7 @@ export default function PdfEditor({ active }) {
   const finish = (item) => {
     const text = draft;
     if (item.added && !text.trim() && !edits[item.id]) {
-      dropAdded(item);
+      if (!inHistory(item.id)) dropAdded(item);
       return;
     }
     const colors = draftColors;
@@ -1002,7 +1041,10 @@ export default function PdfEditor({ active }) {
           font = await getFont(standardFontKey(item.font));
           const safe = encodable(font, edit.text);
           lost = lost || safe.lost;
-          squeeze = item.str ? squeezeFor(width, font.widthOfTextAtSize(item.str, size)) : 1;
+          // (the old words measured in the stand-in too: any letter it can't
+          // write, a minus sign say, threw and the whole save failed)
+          const was = item.str ? encodable(font, item.str).text : '';
+          squeeze = was ? squeezeFor(width, font.widthOfTextAtSize(was, size)) : 1;
           if (safe.text) runs = [{ text: safe.text, along: 0 }];
           newWidth = safe.text ? font.widthOfTextAtSize(safe.text, size) * squeeze : 0;
         }
@@ -1279,6 +1321,9 @@ export default function PdfEditor({ active }) {
       if (text === item.str) delete next[item.id];
       else next[item.id] = { text, bg: colors.bg, ink: colors.ink };
     }));
+    // Only a real change is a step to undo
+    const ids = new Set([...Object.keys(edits), ...Object.keys(next)]);
+    if ([...ids].every(id => (edits[id]?.text ?? null) === (next[id]?.text ?? null))) return;
     changeEdits(next);
   };
   const pictureIds = doc ? doc.pages.flatMap(p => p.items.filter(item => item.picture && !item.read).map(item => item.id)).join(',') : '';
@@ -1449,7 +1494,8 @@ export default function PdfEditor({ active }) {
                             if (e.key === 'Tab') {
                               // On to the next line (Shift: the one before), saving this one
                               e.preventDefault();
-                              const all = doc.pages.flatMap(pg => pg.items);
+                              // (not new lines with nothing in them: not shown, nothing to change)
+                              const all = doc.pages.flatMap(pg => pg.items).filter(q => q.id === item.id || !q.added || edits[q.id]);
                               const next = all[all.findIndex(q => q.id === item.id) + (e.shiftKey ? -1 : 1)];
                               finish(item);
                               if (next) startEdit(next);
@@ -1458,6 +1504,8 @@ export default function PdfEditor({ active }) {
                             if (e.key === 'Escape') {
                               cancelled.current = true;
                               setEditing(null);
+                              // A new line given nothing: gone again
+                              if (item.added && !edits[item.id] && !inHistory(item.id)) dropAdded(item);
                             }
                           }}
                           aria-label="Change text"
@@ -1479,7 +1527,7 @@ export default function PdfEditor({ active }) {
                           boxShadow: `${!gone && matches.has(item.id) ? 'inset 0 0 0 100vmax rgba(250, 204, 21, 0.28), ' : ''}0 0 0 0.06em ${rgbCss(edit.bg)}`,
                         } : null}
                         plainStyle={pos}
-                        onClick={(e) => startEdit(item, e)}
+                        onClick={(e) => { if (!leaving) startEdit(item, e); }}
                         title={edit ? `was: ${item.str || 'a picture of text'}` : item.picture ? 'Change the words in this picture' : 'Change this text'}
                         content={edit ? (
                           // The words, squeezed to the original's room, and a mark on

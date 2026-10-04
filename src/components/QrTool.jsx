@@ -199,19 +199,32 @@ function ScanQr({ active }) {
     setCamera(false);
   }, []);
 
+  const asking = useRef(false);
+  const activeRef = useRef(active);
+  activeRef.current = active;
   const startCamera = async (e) => {
     e.currentTarget.blur();
     if (!navigator.mediaDevices?.getUserMedia) {
       toast('no camera access in this browser', { warn: true });
       return;
     }
+    // One ask at a time; a camera that arrives after the tab was left (or
+    // after a second tap) is turned straight off, not left running unseen
+    if (asking.current) return;
+    asking.current = true;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+      if (!activeRef.current || streamRef.current) {
+        stream.getTracks().forEach(t => t.stop());
+        return;
+      }
       streamRef.current = stream;
       setResult(null);
       setCamera(true);
     } catch {
       toast('camera not allowed', { warn: true });
+    } finally {
+      asking.current = false;
     }
   };
 

@@ -93,13 +93,19 @@ export default function MotionList({ items, getKey, renderItem, variant = 'rows'
 
     // Once it's all still, the page's order catches up with the drawn one
     clearTimeout(settle.current);
-    settle.current = setTimeout(() => {
-      if (exiting.current.size || !prevKeys.current) return;
+    const catchUp = () => {
+      if (!prevKeys.current) return;
+      // Something still leaving: again a little later
+      if (exiting.current.size) {
+        settle.current = setTimeout(catchUp, 200);
+        return;
+      }
       const now = prevKeys.current;
       if (now.length === domOrder.current.length && now.every((k, i) => k === domOrder.current[i])) return;
       domOrder.current = now;
       rerender();
-    }, MOTION_MS + 150);
+    };
+    settle.current = setTimeout(catchUp, MOTION_MS + 150);
   }, [items]);
 
   useEffect(() => () => clearTimeout(settle.current), []);

@@ -59,7 +59,7 @@ function ocrAssets() {
     configureServer(server) {
       server.middlewares.use('/ocr', (req, res, next) => {
         const name = decodeURIComponent((req.url || '').split('?')[0]).replace(/^\/+/, '')
-        const file = OCR_FILES[name]
+        const file = Object.hasOwn(OCR_FILES, name) && OCR_FILES[name]
         if (!file) return next()
         res.setHeader('Content-Type', name.endsWith('.gz') ? 'application/octet-stream' : 'text/javascript')
         fs.createReadStream(path.resolve(file)).pipe(res)

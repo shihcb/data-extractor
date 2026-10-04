@@ -26,7 +26,9 @@ export default function ActionBar({ active, open: wanted, children, closeLabel =
     if (was.current === open) return;
     was.current = open;
     if (!canAnimate(el)) {
+      // (and its starting opacity 0 gone: with reduced motion it stayed invisible)
       el.style.visibility = open ? '' : 'hidden';
+      el.style.opacity = open ? '' : '0';
       return;
     }
     if (open) {

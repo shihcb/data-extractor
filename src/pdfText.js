@@ -129,7 +129,8 @@ function metricsOf(lib, context, fontDict) {
   const subtype = get(fontDict, 'Subtype')?.toString();
   if (subtype === '/Type0') {
     const enc = get(fontDict, 'Encoding')?.toString();
-    if (enc !== '/Identity-H' && enc !== '/Identity-V') return null;
+    // (vertical writing, Identity-V, moves down its column: not measured here)
+    if (enc !== '/Identity-H') return null;
     const desc = get(fontDict, 'DescendantFonts');
     const cid = desc instanceof PDFArray ? context.lookup(desc.get(0)) : null;
     if (!cid) return null;
@@ -217,13 +218,16 @@ export function removeText(lib, page, boxes) {
   });
 
   let ctm = [1, 0, 0, 1, 0, 0];
-  let ts = { Tc: 0, Tw: 0, Th: 1, TL: 0, font: null, size: 0 };
+  let ts = { Tc: 0, Tw: 0, Th: 1, TL: 0, font: null, size: 0, rise: 0 };
+  // After a run whose width couldn't be known, where the next one starts
+  // isn't known either (until the position is set again): nothing's cut then
+  let lost = false;
   const saved = [];
   let tm = [1, 0, 0, 1, 0, 0];
   let tlm = [1, 0, 0, 1, 0, 0];
   const cuts = []; // { start, end, text }
 
-  const nextLine = (tx, ty) => { tlm = mul([1, 0, 0, 1, tx, ty], tlm); tm = tlm; };
+  const nextLine = (tx, ty) => { tlm = mul([1, 0, 0, 1, tx, ty], tlm); tm = tlm; lost = false; };
 
   // Follows one run of text; returns how far it moved (text space, already
   // times the horizontal scale), or null when its width can't be known
@@ -247,16 +251,29 @@ export function removeText(lib, page, boxes) {
   // One run: taken out when it lies wholly inside a box
   const show = (o, parts, lead) => {
     const trm = mul(tm, ctm);
-    const from = apply(trm, 0, 0);
+    // (raised or lowered text — a superscript — sits off the baseline)
+    const from = apply(trm, 0, ts.rise);
     const tx = advanceOf(parts);
     const hits = (p) => frames.filter(f => f.inside(f.local(p)));
-    if (tx === null) {
+    if (tx === null || lost) {
       hits(from).forEach((f) => { f.kept = true; });
+      if (tx === null) lost = true;
+      else tm = mul([1, 0, 0, 1, tx, 0], tm);
       return;
     }
-    const to = apply(trm, tx, 0);
+    const to = apply(trm, tx, ts.rise);
     tm = mul([1, 0, 0, 1, tx, 0], tm);
-    const both = hits(from).filter(f => f.inside(f.local(to)));
+    // Only a run of the line's own size, starting and ending within it: a
+    // short run just past its end (a bold "*", a footnote mark) is another
+    // line's, however close
+    const size = ts.size * Math.hypot(trm[2], trm[3]);
+    const within = (f) => {
+      const a = f.local(from)[0];
+      const z = f.local(to)[0];
+      const edge = f.b.size * 0.1;
+      return Math.abs(size - f.b.size) <= f.b.size * 0.08 && Math.min(a, z) < f.b.width - edge && Math.max(a, z) > edge;
+    };
+    const both = hits(from).filter(f => f.inside(f.local(to)) && within(f));
     const hasText = parts.some(p => p && p.str && p.str.length);
     if (!both.length || !hasText || !(ts.size * ts.Th)) {
       // A run reaching into a box from outside it stays: that box needs a patch
@@ -285,7 +302,7 @@ export function removeText(lib, page, boxes) {
       case 'q': saved.push({ ctm, ts: { ...ts } }); break;
       case 'Q': { const s = saved.pop(); if (s) { ctm = s.ctm; ts = s.ts; } break; }
       case 'cm': if (a.length === 6 && a.every(v => typeof v === 'number')) ctm = mul(a, ctm); break;
-      case 'BT': tm = [1, 0, 0, 1, 0, 0]; tlm = tm; break;
+      case 'BT': tm = [1, 0, 0, 1, 0, 0]; tlm = tm; lost = false; break;
       case 'Tf': ts.font = a[0]?.name ?? null; ts.size = typeof a[1] === 'number' ? a[1] : 0; break;
       case 'Tc': ts.Tc = a[0] || 0; break;
       case 'Tw': ts.Tw = a[0] || 0; break;
@@ -293,7 +310,8 @@ export function removeText(lib, page, boxes) {
       case 'TL': ts.TL = a[0] || 0; break;
       case 'Td': nextLine(a[0] || 0, a[1] || 0); break;
       case 'TD': ts.TL = -(a[1] || 0); nextLine(a[0] || 0, a[1] || 0); break;
-      case 'Tm': if (a.length === 6) { tlm = a.slice(); tm = tlm; } break;
+      case 'Tm': if (a.length === 6) { tlm = a.slice(); tm = tlm; lost = false; } break;
+      case 'Ts': ts.rise = a[0] || 0; break;
       case 'T*': nextLine(0, -ts.TL); break;
       case 'Tj': show(o, [a[0]], ''); break;
       case 'TJ': show(o, Array.isArray(a[0]) ? a[0] : [], ''); break;

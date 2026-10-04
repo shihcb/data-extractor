@@ -37,11 +37,11 @@ let mode = null;
 function read(canvas, psm) {
   const run = queue.then(async () => {
     const worker = await ocrWorker();
-    if (mode !== psm) {
-      await worker.setParameters({ tessedit_pageseg_mode: psm, preserve_interword_spaces: '1' });
-      mode = psm;
-    }
     try {
+      if (mode !== psm) {
+        await worker.setParameters({ tessedit_pageseg_mode: psm, preserve_interword_spaces: '1' });
+        mode = psm;
+      }
       const { data } = await worker.recognize(canvas, {}, { text: true, blocks: true });
       return data;
     } catch (err) {
@@ -62,7 +62,8 @@ const wordsOf = (line) => line.words.map(w => ({ text: w.text.trim(), sure: w.co
 // Where a line's baseline is at x (it may slope: a scan is rarely straight)
 const baselineAt = (line, x) => {
   const b = line.baseline;
-  if (!b || !Number.isFinite(b.y0) || !Number.isFinite(b.y1)) return line.bbox.y1;
+  // (none found: the line's bottom)
+  if (!b || b.has_baseline === false || !Number.isFinite(b.y0) || !Number.isFinite(b.y1)) return line.bbox.y1;
   if (b.x1 === b.x0) return (b.y0 + b.y1) / 2;
   return b.y0 + ((x - b.x0) * (b.y1 - b.y0)) / (b.x1 - b.x0);
 };
@@ -83,10 +84,11 @@ export async function readLine(canvas) {
   if (!text) return null;
   if (!line) return { text };
   const { bbox } = line;
+  const left = words.length ? words[0].bbox.x0 : bbox.x0;
   return {
     text,
-    baseline: baselineAt(line, (bbox.x0 + bbox.x1) / 2),
-    left: words.length ? words[0].bbox.x0 : bbox.x0,
+    baseline: baselineAt(line, left), // (where its words start)
+    left,
     right: words.length ? words[words.length - 1].bbox.x1 : bbox.x1,
     top: bbox.y0,
   };
@@ -106,7 +108,7 @@ export async function readBlock(canvas) {
     while (ws.length > 1 && speck(ws[ws.length - 1])) ws.pop();
     if (!ws.length || !ws.some(w => /[\p{L}\p{N}]/u.test(w.text) && w.sure >= 30)) continue;
     const b = line.baseline;
-    const slope = b && Number.isFinite(b.y0) && b.x1 !== b.x0 ? (b.y1 - b.y0) / (b.x1 - b.x0) : 0;
+    const slope = b && b.has_baseline !== false && Number.isFinite(b.y0) && b.x1 !== b.x0 ? (b.y1 - b.y0) / (b.x1 - b.x0) : 0;
     const x0 = ws[0].bbox.x0;
     const x1 = ws[ws.length - 1].bbox.x1;
     // Its baseline and height from its own words (as for a page's lines)
@@ -169,7 +171,7 @@ export async function readPage(canvas) {
     }
     // The line's slope (a scan is rarely straight)
     const b = line.baseline;
-    const slope = b && Number.isFinite(b.y0) && b.x1 !== b.x0 ? (b.y1 - b.y0) / (b.x1 - b.x0) : 0;
+    const slope = b && b.has_baseline !== false && Number.isFinite(b.y0) && b.x1 !== b.x0 ? (b.y1 - b.y0) / (b.x1 - b.x0) : 0;
     for (const piece of pieces) {
       // Is it text? A word is believable when Tesseract is fairly sure of it,
       // or when it's a long run of letters and numbers (a tracking number,
@@ -332,8 +334,7 @@ async function refine(canvas, l, usual) {
   if (!(cap > 0) || cap > l.cap * 1.05) return;
   const x0 = cx + found.left;
   const x1 = cx + found.right;
-  // Its baseline was read through the middle of the row: along the slope to its start
-  const base = cy + found.baseline - l.slope * ((found.right - found.left) / 2);
+  const base = cy + found.baseline; // (at its start)
   l.text = found.text;
   l.x0 = x0;
   l.x1 = x1;

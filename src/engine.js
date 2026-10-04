@@ -139,11 +139,14 @@ export function animateTo(el, name, target, { from, duration = MOTION_MS, onSett
   const prop = s.props[name];
   const drawn = prop ? valueOf(prop, now) : (from ?? target);
   if (prefersReducedMotion() || Math.abs(drawn - target) < tiny(name)) {
+    // Not moved: put straight at its target (and let go at rest) — even with
+    // nothing moving it before: with reduced motion an element starting out
+    // hidden (opacity 0, width 0: a bottom bar, "merged") was never shown
     if (prop) {
       prop.pieces = [];
       prop.target = target;
       prop.keep = keep;
-    } else if (keep) {
+    } else {
       s.props[name] = { target, keep, pieces: [] };
     }
     if (onSettle) s.settle.push(onSettle);

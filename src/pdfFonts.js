@@ -167,19 +167,31 @@ function readCmap(cmap) {
 
 // A cmap from [codePoint, glyph] pairs (format 4 for the basic plane, 12 for the rest)
 function buildCmap(pairs) {
-  const bmp = pairs.filter(([c]) => c < 0xffff);
-  const astral = pairs.filter(([c]) => c > 0xffff);
+  // Letters in a row whose glyphs are in a row too share one range (one per
+  // letter overflowed the table's 16-bit sizes for a big CJK font)
+  const ranges = [];
+  [...pairs].sort((p, q) => p[0] - q[0]).forEach(([c, g]) => {
+    const last = ranges[ranges.length - 1];
+    if (last && c === last.end + 1 && g - c === last.delta && (c > 0xffff) === (last.end > 0xffff)) last.end = c;
+    else if (!last || c !== last.end) ranges.push({ start: c, end: c, delta: g - c });
+  });
+  // Format 4 (the letters up to U+FFFE) while it fits; past that everything
+  // goes in format 12, and format 4 holds just its closing range
+  let bmp = ranges.filter(r => r.end < 0xffff);
+  const fits = 16 + (bmp.length + 1) * 8 <= 0xffff;
+  const wide = fits ? ranges.filter(r => r.start > 0xffff) : ranges.filter(r => r.end !== 0xffff);
+  if (!fits) bmp = [];
   const segCount = bmp.length + 1;
   const f4Len = 16 + segCount * 8;
-  const f12Len = astral.length ? 16 + astral.length * 12 : 0;
-  const subs = astral.length ? 2 : 1;
+  const f12Len = wide.length ? 16 + wide.length * 12 : 0;
+  const subs = wide.length ? 2 : 1;
   const head = 4 + subs * 8;
   const out = new Uint8Array(head + f4Len + f12Len);
   const dv = new DataView(out.buffer);
   dv.setUint16(2, subs);
   dv.setUint16(4, 3); dv.setUint16(6, 1); dv.setUint32(8, head);
-  if (astral.length) { dv.setUint16(12, 3); dv.setUint16(14, 10); dv.setUint32(16, head + f4Len); }
-  // format 4: one segment per letter, then the closing 0xFFFF
+  if (wide.length) { dv.setUint16(12, 3); dv.setUint16(14, 10); dv.setUint32(16, head + f4Len); }
+  // format 4: one segment per range, then the closing 0xFFFF
   let o = head;
   const pow = 2 ** Math.floor(Math.log2(segCount));
   dv.setUint16(o, 4); dv.setUint16(o + 2, f4Len);
@@ -188,21 +200,21 @@ function buildCmap(pairs) {
   const ends = o + 14;
   const starts = ends + segCount * 2 + 2;
   const deltas = starts + segCount * 2;
-  const ranges = deltas + segCount * 2;
-  bmp.forEach(([c, g], i) => {
-    dv.setUint16(ends + i * 2, c);
-    dv.setUint16(starts + i * 2, c);
-    dv.setUint16(deltas + i * 2, (g - c) & 0xffff);
-    dv.setUint16(ranges + i * 2, 0);
+  const offsets = deltas + segCount * 2;
+  bmp.forEach((r, i) => {
+    dv.setUint16(ends + i * 2, r.end);
+    dv.setUint16(starts + i * 2, r.start);
+    dv.setUint16(deltas + i * 2, r.delta & 0xffff);
+    dv.setUint16(offsets + i * 2, 0);
   });
   const last = bmp.length;
   dv.setUint16(ends + last * 2, 0xffff); dv.setUint16(starts + last * 2, 0xffff);
-  dv.setUint16(deltas + last * 2, 1); dv.setUint16(ranges + last * 2, 0);
-  if (astral.length) {
+  dv.setUint16(deltas + last * 2, 1); dv.setUint16(offsets + last * 2, 0);
+  if (wide.length) {
     o = head + f4Len;
-    dv.setUint16(o, 12); dv.setUint32(o + 4, f12Len); dv.setUint32(o + 12, astral.length);
-    astral.forEach(([c, g], i) => {
-      dv.setUint32(o + 16 + i * 12, c); dv.setUint32(o + 20 + i * 12, c); dv.setUint32(o + 24 + i * 12, g);
+    dv.setUint16(o, 12); dv.setUint32(o + 4, f12Len); dv.setUint32(o + 12, wide.length);
+    wide.forEach((r, i) => {
+      dv.setUint32(o + 16 + i * 12, r.start); dv.setUint32(o + 20 + i * 12, r.end); dv.setUint32(o + 24 + i * 12, r.start + r.delta);
     });
   }
   return out;
