@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Download, FileUp, Redo2, Replace, Type, Undo2, ZoomIn, ZoomOut } from 'lucide-react';
 import { closePdf, loadPdfLib, loadPdfjs, openPdf, renderPage, isPasswordError } from '../pdf';
-import { readLine, readPage } from '../ocr';
+import { readBlock, readLine, readPage } from '../ocr';
 import { removeText } from '../pdfText';
 import { baseName, canvasToBlob, downloadBlob, isPdfFile, loadLibrary, useDoneFlags, usePastedFiles } from '../utils';
 import { MOTION_MS, motionEase, prefersReducedMotion } from '../motion';
@@ -672,7 +672,14 @@ export default function PdfEditor({ active }) {
       return { bg: [255, 255, 255], ink: [0, 0, 0] };
     }
   };
-  const startEdit = (item) => {
+  // Where a picture not read yet was tapped (how far down it, 0..1): the
+  // line there is the one changed once its lines are read
+  const tapAt = useRef(null);
+  const startEdit = (item, e) => {
+    if (item.picture && !item.read && e?.currentTarget) {
+      const r = e.currentTarget.getBoundingClientRect();
+      tapAt.current = { id: item.id, y: r.height ? Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)) : 0 };
+    }
     const edit = edits[item.id];
     const colors = colorsFor(item);
     cancelled.current = false;
@@ -751,38 +758,68 @@ export default function PdfEditor({ active }) {
   const readPictureNow = async (item, { quiet = false } = {}) => {
     const canvas = await pictureCanvas(item);
     if (!canvas) return;
-    let found = null;
+    // Its lines (a header's value can run onto a second line); one line
+    // read on its own if the block reads nothing
+    let lines = [];
     try {
-      found = await readLine(canvas);
+      lines = await readBlock(canvas);
+      if (!lines.length) {
+        const found = await readLine(canvas);
+        if (found?.text && Number.isFinite(found.baseline)) {
+          lines = [{ text: found.text, x0: found.left, x1: found.right, y0: found.baseline, y1: found.baseline, cap: found.baseline - found.top }];
+        }
+      }
     } catch (err) {
       if (!quiet) toast(err?.code === 'library' ? err.message : "couldn't read this picture — type the new words", { warn: true });
       return;
     }
-    if (!found?.text) return;
+    if (!lines.length) return;
     // Canvas pixels → the PDF's units
     const { x0, x1, y0, y1 } = item.picture;
     const { pad } = canvas;
     const toX = (px) => x0 + ((px - pad) / (canvas.width - 2 * pad)) * (x1 - x0);
     const toY = (py) => y1 - ((py - pad) / (canvas.height - 2 * pad)) * (y1 - y0);
-    let pdf = item.pdf;
-    if (Number.isFinite(found.baseline)) {
-      const baseY = toY(found.baseline);
-      const size = Math.max(2, (toY(found.top) - baseY) / 0.72); // tall letters stand ~0.72 of the size
-      pdf = { x: toX(found.left), y: baseY, size, width: toX(found.right) - toX(found.left), ascent: 0.9, descent: -0.22, angle: 0 };
-    }
-    // Its colours, read sharp (small letters blur on the page on screen)
-    const colors = colorsIn(canvas, pad, pad, canvas.width - 2 * pad, canvas.height - 2 * pad);
-    const read = { ...item, read: true, str: found.text, colors, pdf, box: { ...boxFor(pdf, item.view), sample: item.picture.rect } };
+    // Each line takes its own band of the picture (to the middle of the
+    // gap to the next), which is what's covered when it's changed
+    const bands = lines.map((l, i) => {
+      const top = i ? (lines[i - 1].y0 + (l.y0 - l.cap)) / 2 : pad;
+      const bottom = i < lines.length - 1 ? (l.y0 + (lines[i + 1].y0 - lines[i + 1].cap)) / 2 : canvas.height - pad;
+      return [Math.max(pad, top), Math.min(canvas.height - pad, bottom)];
+    });
+    const reads = lines.map((l, i) => {
+      const baseY = toY((l.y0 + l.y1) / 2);
+      const size = Math.max(2, (l.cap / (canvas.height - 2 * pad)) * (y1 - y0) / 0.72); // tall letters stand ~0.72 of the size
+      const pdf = { x: toX(l.x0), y: baseY, size, width: toX(l.x1) - toX(l.x0), ascent: 0.9, descent: -0.22, angle: 0 };
+      const [bt, bb] = bands[i];
+      const own = lines.length === 1 ? item.picture : { x0, x1, y0: toY(bb), y1: toY(bt) };
+      const picture = lines.length === 1 ? item.picture : { ...own, rect: rectFor(own, item.view) };
+      // Its colours, read sharp from its own band (small letters blur on the page on screen)
+      const colors = colorsIn(canvas, pad, Math.round(bt), canvas.width - 2 * pad, Math.max(1, Math.round(bb - bt)));
+      return {
+        ...item,
+        id: lines.length === 1 ? item.id : `${item.id}-${i}`,
+        read: true,
+        str: l.text,
+        colors,
+        picture,
+        pdf,
+        box: { ...boxFor(pdf, item.view), sample: picture.rect },
+      };
+    });
+    canvas.width = canvas.height = 0;
     setDoc(prev => (!prev || prev.id !== doc.id ? prev : {
       ...prev,
-      pages: prev.pages.map(p => (p.num !== item.page + 1 ? p : { ...p, items: p.items.map(q => (q.id === item.id ? read : q)) })),
+      pages: prev.pages.map(p => (p.num !== item.page + 1 ? p : { ...p, items: p.items.flatMap(q => (q.id === item.id ? reads : [q])) })),
     }));
-    // Still being changed: its words and colours
+    // Still being changed: the line that was tapped (the tap's height in
+    // the picture), its words and colours
     if (editingRef.current === item.id) {
-      setDraft(d => (d === '' ? found.text : d));
-      if (!editsRef.current[item.id]) setDraftColors(colors);
+      const at = tapAt.current?.id === item.id ? tapAt.current.y : 0;
+      const pick = reads.find(r => (y1 - r.picture.y1) / (y1 - y0) <= at && at <= (y1 - r.picture.y0) / (y1 - y0) + 1e-6) || reads[0];
+      if (pick.id !== item.id) setEditing(pick.id);
+      setDraft(d => (d === '' ? pick.str : d));
+      if (!editsRef.current[item.id]) setDraftColors(pick.colors);
     }
-    canvas.width = canvas.height = 0;
   };
 
   // The line being changed, saved; the box closes on blur (Enter, a tap
@@ -1333,7 +1370,7 @@ export default function PdfEditor({ active }) {
                         key={item.id}
                         className={`pdf-text-item ${edit ? 'edited' : ''} ${!gone && matches.has(item.id) ? 'match' : ''}`}
                         style={edit ? { ...pos, background: rgbCss(edit.bg), color: rgbCss(edit.ink) } : pos}
-                        onClick={() => startEdit(item)}
+                        onClick={(e) => startEdit(item, e)}
                         title={edit ? `was: ${item.str || 'a picture of text'}` : item.picture ? 'Change the words in this picture' : 'Change this text'}
                       >
                         {edit ? (

@@ -53,7 +53,10 @@ Words that are pictures (an email's From/Subject/Date/To header printed by
 Mail) are found as wide, short images with no text on them; tapping one reads
 it with Tesseract (`src/ocr.js`, files served from `/ocr/`, fetched only on
 first use, not precached) and the new words are drawn over a cover in the
-picture's background colour. The picture is redrawn from the PDF just for the
+picture's background colour. A picture is read as a block of lines
+(`readBlock`): one holding several (a From value that ran onto a second
+line) becomes one item per line, each covering its own band of the
+picture, and the line under the tap is the one that opens. The picture is redrawn from the PDF just for the
 read (letters ~100px tall, alone on a white margin) so tiny text reads too, and
 its colours are taken from that sharp copy, not the blurry page on screen.
 

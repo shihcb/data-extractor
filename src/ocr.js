@@ -83,6 +83,34 @@ export async function readLine(canvas) {
   };
 }
 
+// Reads a picture of a few lines of text (an email header's value that ran
+// onto a second line): each line, top to bottom, in the canvas's pixels —
+// { text, x0, x1, y0, y1 (its baseline at its ends), cap (how tall its
+// letters stand) } — or [] when nothing reads. Specks at a line's ends go.
+export async function readBlock(canvas) {
+  const data = await read(canvas, '6');
+  const out = [];
+  for (const line of linesOf(data)) {
+    const ws = wordsOf(line);
+    const speck = (w) => w.text.length <= 2 && (w.sure < 60 || !/[\p{L}\p{N}]/u.test(w.text));
+    while (ws.length > 1 && speck(ws[0])) ws.shift();
+    while (ws.length > 1 && speck(ws[ws.length - 1])) ws.pop();
+    if (!ws.length || !ws.some(w => /[\p{L}\p{N}]/u.test(w.text) && w.sure >= 30)) continue;
+    const b = line.baseline;
+    const slope = b && Number.isFinite(b.y0) && b.x1 !== b.x0 ? (b.y1 - b.y0) / (b.x1 - b.x0) : 0;
+    const x0 = ws[0].bbox.x0;
+    const x1 = ws[ws.length - 1].bbox.x1;
+    // Its baseline and height from its own words (as for a page's lines)
+    const at = (w, y) => y - slope * ((w.bbox.x0 + w.bbox.x1) / 2 - x0);
+    const bottoms = ws.map(w => at(w, w.bbox.y1)).sort((p, q) => p - q);
+    const tops = ws.map(w => at(w, w.bbox.y0)).sort((p, q) => p - q);
+    const base = bottoms[Math.floor((bottoms.length - 1) * 0.3)];
+    const top = tops[Math.ceil((tops.length - 1) / 2)];
+    out.push({ text: ws.map(w => w.text).join(' '), x0, x1, y0: base, y1: base + slope * (x1 - x0), cap: Math.max(2, base - top) });
+  }
+  return out.sort((p, q) => p.y0 - q.y0);
+}
+
 // A scan made plain black on white (inkWorker.js), in place; left as it
 // was if that can't be done
 async function plainInk(canvas) {
