@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Download, FilePlus, RotateCcw, RotateCw, X } from 'lucide-react';
 import { zipSync } from 'fflate';
-import { closePdf, loadPdfLib, openPdf, renderPage, isPasswordError } from '../pdf';
+import { closePdf, loadPdfLib, openPdf, renderPage, isPasswordError, refusedWords, whyRefused } from '../pdf';
 import { baseName, canvasToBlob, downloadBlob, isPdfFile, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
 import { MOTION_MS, fadeInOnLoad } from '../motion';
 import { useToast } from '../toastContext';
@@ -70,7 +70,7 @@ export default function PdfTools({ active }) {
         try {
           lib = await PDFDocument.load(bytes);
         } catch (err) {
-          throw new Error(/encrypt/i.test(err?.message || '') ? 'password' : 'broken');
+          throw new Error(await whyRefused(bytes, err));
         }
         view = await openPdf(bytes);
         srcId = nextSourceId++;
@@ -108,10 +108,7 @@ export default function PdfTools({ active }) {
           toast(err.message, { warn: true });
           break;
         }
-        const why = err?.message === 'password' || isPasswordError(err)
-          ? 'is password-protected'
-          : "isn't a PDF this can open";
-        toast(`${file.name} ${why}`, { warn: true });
+        toast(`${file.name} ${refusedWords(isPasswordError(err) ? 'password' : err?.message)}`, { warn: true });
       }
     }
     loadingCount.current -= 1;
@@ -189,20 +186,63 @@ export default function PdfTools({ active }) {
 
   // One PDF from these pages, in this order, with their rotations
   const buildPdf = async (list) => {
-    const { PDFDocument, degrees } = await loadPdfLib();
-    const out = await PDFDocument.create();
-    for (const p of list) {
-      const src = sources.current.get(p.srcId);
-      const [copy] = await out.copyPages(src.lib, [p.index]);
+    const { PDFDocument, PDFName, degrees } = await loadPdfLib();
+    const turned = (page, p) => {
       const turn = ((p.rotation % 360) + 360) % 360;
-      if (turn) copy.setRotation(degrees((copy.getRotation().angle + turn) % 360));
+      if (turn) page.setRotation(degrees((page.getRotation().angle + turn) % 360));
+    };
+    // Every page of one file, each once (turned, put in another order):
+    // that file itself, its pages rearranged, so its form fields, outline
+    // and details stay. (Not when pages were left out: the file would still
+    // hold what was on them — a deleted page's words, in the saved file.)
+    const ids = new Set(list.map(p => p.srcId));
+    const one = ids.size === 1 ? sources.current.get(list[0].srcId) : null;
+    if (one && new Set(list.map(p => p.index)).size === list.length && list.length === one.lib.getPageCount()) {
+      const doc = await PDFDocument.load(one.bytes);
+      const all = doc.getPages();
+      // What a page takes from the pages above it (its size, turn, fonts)
+      // made its own first: it may land under a different one
+      all.forEach((page) => {
+        const node = page.node;
+        node.set(PDFName.of('MediaBox'), node.MediaBox());
+        const crop = node.CropBox();
+        if (crop) node.set(PDFName.of('CropBox'), crop);
+        const res = node.Resources();
+        if (res) node.set(PDFName.of('Resources'), res);
+        page.setRotation(page.getRotation());
+      });
+      for (let i = all.length - 1; i >= 0; i--) doc.removePage(i);
+      for (const p of list) {
+        const page = all[p.index];
+        turned(page, p);
+        doc.addPage(page);
+      }
+      return new Blob([await doc.save()], { type: 'application/pdf' });
+    }
+    // From several: each file's pages copied in one go (what they share —
+    // fonts, pictures — copied once, not once a page), then put in order
+    const out = await PDFDocument.create();
+    const wanted = new Map();
+    list.forEach((p) => {
+      if (!wanted.has(p.srcId)) wanted.set(p.srcId, []);
+      wanted.get(p.srcId).push(p.index);
+    });
+    const copies = new Map();
+    for (const [id, indexes] of wanted) copies.set(id, await out.copyPages(sources.current.get(id).lib, indexes));
+    const used = new Map();
+    for (const p of list) {
+      const k = used.get(p.srcId) || 0;
+      used.set(p.srcId, k + 1);
+      const copy = copies.get(p.srcId)[k];
+      turned(copy, p);
       out.addPage(copy);
     }
     return new Blob([await out.save()], { type: 'application/pdf' });
   };
 
-  const outName = (suffix) => {
-    const ids = new Set(pages.map(p => p.srcId));
+  // Named after the file the pages came from (all of them from one), else "merged"
+  const outName = (list, suffix) => {
+    const ids = new Set(list.map(p => p.srcId));
     const single = ids.size === 1 ? sources.current.get([...ids][0]) : null;
     return single ? `${baseName(single.name)}${suffix}` : `merged${suffix}`;
   };
@@ -222,17 +262,18 @@ export default function PdfTools({ active }) {
   };
 
   const saveAll = (e) => run(e, 'save', async () => {
-    downloadBlob(await buildPdf(pages), outName('-edited.pdf'));
+    downloadBlob(await buildPdf(pages), outName(pages, '-edited.pdf'));
   });
 
   const saveSelected = (e) => run(e, 'extract', async () => {
-    downloadBlob(await buildPdf(pages.filter(p => selected.has(p.id))), outName('-selected.pdf'));
+    const chosen = pages.filter(p => selected.has(p.id));
+    downloadBlob(await buildPdf(chosen), outName(chosen, '-selected.pdf'));
   });
 
   const split = (e) => run(e, 'split', async () => {
     const files = {};
     const unique = uniqueNamer();
-    const stem = baseName(outName(''));
+    const stem = baseName(outName(pages, ''));
     for (let i = 0; i < pages.length; i++) {
       const blob = await buildPdf([pages[i]]);
       files[unique(`${stem}-page-${i + 1}.pdf`)] = new Uint8Array(await blob.arrayBuffer());
@@ -243,7 +284,7 @@ export default function PdfTools({ active }) {
   const toImages = (e) => run(e, 'images', async () => {
     const files = {};
     const unique = uniqueNamer();
-    const stem = baseName(outName(''));
+    const stem = baseName(outName(pages, ''));
     for (let i = 0; i < pages.length; i++) {
       const p = pages[i];
       const page = await sources.current.get(p.srcId).view.getPage(p.index + 1);

@@ -94,7 +94,7 @@ function serviceWorker() {
         type: 'asset',
         fileName: 'sw.js',
         source: template
-          .replace('__CACHE_NAME__', `toolbox-${version}`)
+          .replace('__CACHE_NAME__', `toolbox-${Date.now()}-${version}`)
           .replace('__PRECACHE__', JSON.stringify(precache, null, 2)),
       })
     },

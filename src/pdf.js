@@ -88,3 +88,21 @@ export function closePdf(doc) {
     // already closed
   }
 }
+
+// Why a PDF the editing library refused can't be used: one it can only
+// refuse for being encrypted may just be locked against changes (opens
+// without a password — bank statements often are), or need a password
+export async function whyRefused(bytes, err) {
+  if (!/encrypt/i.test(err?.message || '')) return 'broken';
+  try {
+    closePdf(await openPdf(bytes));
+    return 'locked';
+  } catch (e) {
+    return isPasswordError(e) ? 'password' : 'broken';
+  }
+}
+
+// What a toast says about a file that couldn't be opened
+export const refusedWords = (why) => (why === 'locked'
+  ? "is locked against changes, so it can't be changed here"
+  : why === 'password' ? 'is password-protected' : "isn't a PDF this can open");

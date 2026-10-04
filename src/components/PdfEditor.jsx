@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Download, FileUp, Redo2, Undo2, ZoomIn, ZoomOut } from 'lucide-react';
-import { closePdf, loadPdfLib, loadPdfjs, openPdf, renderPage, isPasswordError } from '../pdf';
+import { closePdf, loadPdfLib, loadPdfjs, openPdf, renderPage, isPasswordError, refusedWords, whyRefused } from '../pdf';
 import { readBlock, readLine, readPage } from '../ocr';
 import { removeText } from '../pdfText';
 import { baseName, canvasToBlob, downloadBlob, isPdfFile, loadLibrary, useDoneFlags, usePastedFiles } from '../utils';
@@ -593,7 +593,7 @@ export default function PdfEditor({ active }) {
       try {
         await PDFDocument.load(bytes);
       } catch (err) {
-        throw new Error(/encrypt/i.test(err?.message || '') ? 'password' : 'broken');
+        throw new Error(await whyRefused(bytes, err));
       }
       // Keeping each font's file and letters, to write new words in it
       view = await openPdf(bytes, undefined, { fontExtraProperties: true });
@@ -681,8 +681,7 @@ export default function PdfEditor({ active }) {
         toast(err.message, { warn: true });
         return;
       }
-      const why = err?.message === 'password' || isPasswordError(err) ? 'is password-protected' : "isn't a PDF this can open";
-      toast(`${file.name} ${why}`, { warn: true });
+      toast(`${file.name} ${refusedWords(isPasswordError(err) ? 'password' : err?.message)}`, { warn: true });
     } finally {
       closePdf(view);
     }
@@ -975,7 +974,7 @@ export default function PdfEditor({ active }) {
         if (!originals.has(key)) {
           let font = null;
           try {
-            fontkit = fontkit || (await loadLibrary(() => import('@pdf-lib/fontkit'))).default;
+            fontkit = fontkit || (await loadLibrary(() => import('@pdf-lib/fontkit'), { reload: false })).default;
             pdf.registerFontkit(fontkit);
             font = await pdf.embedFont(doc.fonts[key].unicode.data, { subset: false });
           } catch {

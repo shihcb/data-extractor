@@ -94,14 +94,18 @@ export async function encodeImage(img, { format, resize, quality }) {
   };
 }
 
-// One PDF with a page per image (each page the image's size at 96 dpi).
+// One PDF with a page per image: each page the image's size at 96 dpi, but
+// no bigger than A4's long side (a phone photo made a poster-sized page,
+// 42 inches across); every pixel is kept either way.
+const A4_LONG = 842;
 export async function jpegsToPdf(pages) {
   const { PDFDocument } = await loadPdfLib();
   const doc = await PDFDocument.create();
   for (const { blob, width, height } of pages) {
     const image = await doc.embedJpg(new Uint8Array(await blob.arrayBuffer()));
-    const w = width * 0.75;
-    const h = height * 0.75;
+    const scale = Math.min(0.75, A4_LONG / Math.max(width, height));
+    const w = width * scale;
+    const h = height * scale;
     const page = doc.addPage([w, h]);
     page.drawImage(image, { x: 0, y: 0, width: w, height: h });
   }

@@ -81,13 +81,18 @@ export const isImageFile = (f) => !!f && f.type.startsWith('image/');
 
 // Unique names inside a zip ("page.png", "page (2).png", …)
 export function uniqueNamer() {
-  const used = new Map();
+  // Every name given out so far: "x (2).png" made for a second "x.png" is
+  // taken, so a real "x (2).png" after it becomes "x (3).png" (it used to
+  // get the same name, and one file overwrote the other in the zip)
+  const given = new Set();
   return (name) => {
-    const n = used.get(name) || 0;
-    used.set(name, n + 1);
-    if (!n) return name;
+    let candidate = name;
     const dot = name.lastIndexOf('.');
-    return dot > 0 ? `${name.slice(0, dot)} (${n + 1})${name.slice(dot)}` : `${name} (${n + 1})`;
+    for (let n = 2; given.has(candidate.toLowerCase()); n++) {
+      candidate = dot > 0 ? `${name.slice(0, dot)} (${n})${name.slice(dot)}` : `${name} (${n})`;
+    }
+    given.add(candidate.toLowerCase());
+    return candidate;
   };
 }
 
@@ -140,11 +145,36 @@ export function reloadForUpdate() {
   return true;
 }
 
-// Loads a library on first use; if its file is missing because the app was
-// updated, the page reloads (and this never settles) instead of failing
-export function loadLibrary(load) {
-  return load().catch((err) => {
-    if (reloadForUpdate()) return new Promise(() => {});
+// Is the file a failed import asked for really gone (the app was updated
+// and renamed it), not just out of reach (offline, a dropped connection)?
+// (Safari's error doesn't say which file: then, is the app's start page now
+// loading a different main script than this page did?)
+async function fileIsGone(err) {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
+  try {
+    const url = String(err?.message || '').match(/https?:\/\/\S+?\.m?js/)?.[0];
+    if (url) {
+      const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+      return res.status === 404 || (res.ok && (res.headers.get('content-type') || '').includes('text/html'));
+    }
+    const mine = document.querySelector('script[type="module"][src]')?.getAttribute('src');
+    if (!mine) return false;
+    const page = await fetch(import.meta.env?.BASE_URL || '/', { cache: 'no-store' });
+    if (!page.ok) return false;
+    return !(await page.text()).includes(mine);
+  } catch {
+    return false; // can't reach it: a connection problem, not an update
+  }
+}
+
+// Loads a library on first use. If its file is gone because the app was
+// updated, the page reloads (and this never settles) — unless `reload` is
+// false (while saving: a reload would throw away the work being saved).
+// Anything else (offline, a flaky connection) fails with a message, and
+// the page stays as it is.
+export function loadLibrary(load, { reload = true } = {}) {
+  return load().catch(async (err) => {
+    if (reload && (await fileIsGone(err)) && reloadForUpdate()) return new Promise(() => {});
     const e = new Error("couldn't load this tool — check your connection");
     e.code = 'library';
     e.cause = err;
