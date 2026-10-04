@@ -15,7 +15,7 @@
   --bg-inset: #f4f4f5;
   --text-main: #09090b;
   --text-muted: #71717a;
-  --text-faint: #94a3b8;
+  --text-faint: #64748b;
   --border-subtle: #e6e5e0;
   --border-focus: #cbd5e1;
   --input-border: rgba(9, 9, 11, 0.12);
@@ -85,7 +85,20 @@
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
-  outline: none !important;
+  outline: none;
+}
+
+/* Keyboard focus shows (a pointer click lets go of focus, so only keys
+   bring it up); text fields show theirs with their own border */
+:focus-visible {
+  outline: 2px solid var(--text-main);
+  outline-offset: 2px;
+}
+input:focus-visible,
+textarea:focus-visible,
+[tabindex="-1"]:focus-visible,
+[contenteditable="true"]:focus-visible {
+  outline: none;
 }
 
 /* Typing, pasting and copying need the normal long-press menu and selection */
@@ -775,6 +788,19 @@ kbd {
   right: 18px;
   bottom: calc(18px + env(safe-area-inset-bottom));
   z-index: 50;
+  transition: background-color var(--motion-duration) var(--motion-easing),
+              color var(--motion-duration) var(--motion-easing),
+              border-color var(--motion-duration) var(--motion-easing),
+              box-shadow var(--motion-duration) var(--motion-easing),
+              opacity var(--motion-duration) var(--motion-easing),
+              bottom var(--motion-duration) var(--motion-easing);
+}
+
+/* A narrow window: above the bottom bar while one shows (beside it, they met) */
+@media (max-width: 640px) {
+  body.has-bar .btn.shortcuts-btn {
+    bottom: calc(18px + 52px + env(safe-area-inset-bottom));
+  }
 }
 
 /* Shortcuts need a keyboard: no button on touch screens */
@@ -952,7 +978,7 @@ body.has-bar .feature-toast {
 }
 
 .bulk-btn:disabled {
-  opacity: 0.4;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
@@ -979,6 +1005,19 @@ body.has-bar .feature-toast {
 
   .bulk-btn.bulk-icon {
     padding: 0 7px;
+  }
+}
+
+/* The narrowest phones: the count drops its word, so "clear" stays on screen */
+@media (max-width: 380px) {
+  .bulk-btn,
+  .bulk-count {
+    padding: 0 6px;
+    font-size: 0.72rem;
+  }
+
+  .bulk-count-word {
+    display: none;
   }
 }
 
@@ -1099,7 +1138,17 @@ body.has-bar .feature-toast {
 
 /* An image card's name: on the left like a page's number, cut short */
 .page-label > .page-name {
+  flex: 1 1 auto;
+  min-width: 3.5em;
   font-weight: 600;
+}
+
+/* (its size gives way first: kept whole, it left the name "pic…") */
+.page-label > .page-name + span {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .page-src {

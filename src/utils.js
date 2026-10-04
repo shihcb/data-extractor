@@ -65,6 +65,14 @@ export const canvasToBlob = (canvas, mime, quality) =>
     canvas.toBlob(blob => (blob ? resolve(blob) : reject(new Error('could not encode image'))), mime, quality);
   });
 
+// A file name short enough for a toast, cut in the middle so its ending
+// (and the reason after it) still shows
+export function shortName(name, max = 28) {
+  if (!name || name.length <= max) return name;
+  const tail = Math.ceil((max - 1) * 0.4);
+  return `${name.slice(0, max - 1 - tail)}…${name.slice(-tail)}`;
+}
+
 export function formatBytes(n) {
   if (!Number.isFinite(n)) return '';
   if (n < 1024) return `${n} B`;

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Download, FilePlus, RotateCcw, RotateCw, X } from 'lucide-react';
 import { zipSync } from 'fflate';
 import { closePdf, loadPdfLib, openPdf, renderPage, isPasswordError, refusedWords, whyRefused } from '../pdf';
-import { baseName, canvasToBlob, downloadBlob, isPdfFile, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
+import { baseName, canvasToBlob, downloadBlob, isPdfFile, shortName, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
 import { MOTION_MS, fadeInOnLoad } from '../motion';
 import { useToast } from '../toastContext';
 import MotionList from './MotionList';
@@ -108,7 +108,7 @@ export default function PdfTools({ active }) {
           toast(err.message, { warn: true });
           break;
         }
-        toast(`${file.name} ${refusedWords(isPasswordError(err) ? 'password' : err?.message)}`, { warn: true });
+        toast(`${shortName(file.name)} ${refusedWords(isPasswordError(err) ? 'password' : err?.message)}`, { warn: true });
       }
     }
     loadingCount.current -= 1;

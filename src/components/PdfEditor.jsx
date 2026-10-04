@@ -3,7 +3,7 @@ import { Download, FileUp, Redo2, Undo2, ZoomIn, ZoomOut } from 'lucide-react';
 import { closePdf, loadPdfLib, loadPdfjs, openPdf, renderPage, isPasswordError, refusedWords, whyRefused } from '../pdf';
 import { agreedReading, readBlock, readLine, readPage, rereadLine } from '../ocr';
 import { removeText } from '../pdfText';
-import { baseName, canvasToBlob, downloadBlob, isPdfFile, loadLibrary, useDoneFlags, usePastedFiles } from '../utils';
+import { baseName, canvasToBlob, downloadBlob, isPdfFile, loadLibrary, shortName, useDoneFlags, usePastedFiles } from '../utils';
 import { MOTION, MOTION_MS, canAnimate, motionEase, prefersReducedMotion } from '../motion';
 import { useToast } from '../toastContext';
 import { cssFont, cssWidthEm, fontInfoOf, originalCanWrite, squeezeFor, standardFontKey, unicodeFontOf } from '../pdfFonts';
@@ -790,7 +790,7 @@ export default function PdfEditor({ active }) {
         toast(err.message, { warn: true });
         return;
       }
-      toast(`${file.name} ${refusedWords(isPasswordError(err) ? 'password' : err?.message)}`, { warn: true });
+      toast(`${shortName(file.name)} ${refusedWords(isPasswordError(err) ? 'password' : err?.message)}`, { warn: true });
     } finally {
       closePdf(view);
     }

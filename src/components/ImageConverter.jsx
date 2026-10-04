@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Copy, Download, ImageUp, X } from 'lucide-react';
 import { zipSync } from 'fflate';
 import { IMAGE_FORMATS, encodeImage, estimateImage, jpegsToPdf, loadImage, makeThumb, targetSize } from '../imageConvert';
-import { baseName, copyImageBlob, downloadBlob, isImageFile, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
+import { baseName, copyImageBlob, downloadBlob, isImageFile, shortName, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
 import { MOTION_MS, fadeInOnLoad } from '../motion';
 import { useToast } from '../toastContext';
 import TabSwitcher from './TabSwitcher';
@@ -85,7 +85,7 @@ export default function ImageConverter({ active }) {
         return { id: nextId++, file, url, thumb, img, w: img.naturalWidth, h: img.naturalHeight };
       } catch {
         URL.revokeObjectURL(url);
-        toast(`couldn't open ${file.name || 'that image'}`, { warn: true });
+        toast(`couldn't open ${shortName(file.name) || 'that image'}`, { warn: true });
         return null;
       }
     }));
@@ -287,7 +287,7 @@ export default function ImageConverter({ active }) {
                   </button>
                   <div className="page-label">
                     <span className="page-src page-name">{name}</span>
-                    <span>{item.w} × {item.h}</span>
+                    <span>{item.w}×{item.h}</span>
                   </div>
                   <div className="page-buttons">
                     <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); move(item.id, -1); }} disabled={n <= 0} title="Move earlier" aria-label="Move earlier"><ChevronLeft size={12} /></button>

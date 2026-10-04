@@ -12,7 +12,7 @@ export default function BulkBar({ active, total, selected, disabled, onSelectAll
   const all = total > 0 && selected === total;
   return (
     <ActionBar active={active} open={total > 0} onClose={onClear} closeDisabled={disabled} closeLabel="clear" label="Selection">
-      <span className="bulk-count"><Count value={selected} />{'\u00a0selected'}</span>
+      <span className="bulk-count"><Count value={selected} /><span className="bulk-count-word">{'\u00a0selected'}</span></span>
       <button className="bulk-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); onSelectAll(!all); }} disabled={disabled}>
         {/* "select" stays; only "all" ↔ "none" swaps (the word swap, as "%" ↔
             "px wide"); the button's gap is the space between them */}

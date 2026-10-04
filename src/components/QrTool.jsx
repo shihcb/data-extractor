@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera, Copy, Download, ExternalLink, ImageUp } from 'lucide-react';
 import QRCode from 'qrcode';
 import jsQR from 'jsqr';
-import { copyImageBlob, copyText, downloadBlob, isImageFile, useDoneFlags, usePastedFiles } from '../utils';
+import { copyImageBlob, copyText, downloadBlob, isImageFile, shortName, useDoneFlags, usePastedFiles } from '../utils';
 import { loadImage } from '../imageConvert';
 import { MOTION_MS, flashOutline } from '../motion';
 import { useToast } from '../toastContext';
@@ -186,7 +186,7 @@ function ScanQr({ active }) {
       const img = await loadImage(url);
       show(decodeFrom(img, img.naturalWidth, img.naturalHeight));
     } catch {
-      toast(`couldn't open ${file.name || 'that image'}`, { warn: true });
+      toast(`couldn't open ${shortName(file.name) || 'that image'}`, { warn: true });
     } finally {
       URL.revokeObjectURL(url);
     }

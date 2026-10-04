@@ -95,7 +95,17 @@ Editing in the PDF editor:
   Each becomes a line to change, turned with the scan's tilt, in Courier
   when its letters all take the same room. The ink colour everywhere is a
   solid stroke's (75% of the way to the darkest inked pixel), not the
-  darkest speck.
+  darkest speck. Lines Tesseract wasn't sure of (mean confidence < 90) are
+  then read twice more as close-ups (the page as drawn, and black on white)
+  and the reading most of the three agree on is kept (`rereadLine`,
+  `agreedReading`), updating the line in place unless it's being changed.
+  A read line lying on the page's own text (a searchable scan) isn't added.
+- Searchable scans' invisible words (`3 Tr`) are cut on save but the line
+  keeps its patch: the picture's words are still there.
+- Letter-spaced words that pdf.js reads as "T r a c k e d" are joined; a
+  space placed on its own carries the line on (wide word spacing).
+- Right-to-left lines (Hebrew) are written in drawn order (`visualOrder`),
+  keeping their right end; Arabic needs shaping and isn't handled.
 
 Every stats line in the app is label first ("characters 3 · words 1", "added 2 ·
 removed 1") so only the numbers change, counting.
@@ -126,6 +136,11 @@ Rules that keep it smooth (each was a real bug):
   e.currentTarget.blur()`): blurring on a keyboard press threw keyboard
   users back to the top. Never in a key handler (Enter in the PDF editor's
   text box blurs to save, unconditionally).
+- A motion's target that can change while it runs is followed (a tab
+  push's height, a word slide's width, via a ResizeObserver while moving);
+  a ghost fades out from the opacity it's drawn at, never from 1.
+- Keyboard focus always shows (`:focus-visible`, 2px outline); text fields
+  show theirs with their border.
 - The PDF editor's zoom keeps the point under the fingers on the same spot
   of the same page (the space between pages doesn't scale); only pages near
   the view are redrawn sharper; a new PDF opens at the top, at 100%.
