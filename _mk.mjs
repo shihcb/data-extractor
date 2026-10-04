@@ -1,0 +1,16 @@
+import * as lib from 'pdf-lib';
+import fontkit from '@pdf-lib/fontkit';
+import fs from 'fs';
+const S = process.argv[2];
+const doc = await lib.PDFDocument.create();
+doc.registerFontkit(fontkit);
+const helv = await doc.embedFont(lib.StandardFonts.Helvetica);
+const dj = await doc.embedFont(fs.readFileSync('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'), { subset: true });
+const p = doc.addPage([400, 300]);
+p.drawText('Standard font line one', { x: 30, y: 250, size: 14, font: helv });
+p.drawText('Standard font line two', { x: 30, y: 230, size: 14, font: helv });
+p.drawText('Embedded font line one', { x: 30, y: 190, size: 14, font: dj });
+p.drawText('Embedded font line two', { x: 30, y: 170, size: 14, font: dj });
+p.drawText('Turned text here', { x: 200, y: 60, size: 14, font: dj, rotate: lib.degrees(30) });
+p.drawText('Turned text two', { x: 220, y: 40, size: 14, font: dj, rotate: lib.degrees(30) });
+fs.writeFileSync(S + '/gen.pdf', await doc.save());

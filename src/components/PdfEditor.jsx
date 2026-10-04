@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Download, FileUp, Redo2, Undo2, ZoomIn, ZoomOut } from 'lucide-react';
+import { Download, FileUp, Redo2, Replace, Type, Undo2, ZoomIn, ZoomOut } from 'lucide-react';
 import { closePdf, loadPdfLib, loadPdfjs, openPdf, renderPage, isPasswordError } from '../pdf';
 import { readLine } from '../ocr';
+import { removeText } from '../pdfText';
 import { baseName, canvasToBlob, downloadBlob, isPdfFile, loadLibrary, useDoneFlags, usePastedFiles } from '../utils';
 import { MOTION_MS, motionEase, prefersReducedMotion } from '../motion';
 import { useToast } from '../toastContext';
 import { cssFont, cssWidthEm, fontInfoOf, originalCanWrite, squeezeFor, standardFontKey, unicodeFontOf } from '../pdfFonts';
+import Collapse from './Collapse';
 import Count from './Count';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
@@ -119,30 +121,52 @@ function encodable(font, text) {
 // where it is in the PDF (for writing) and where it's drawn (for showing,
 // in % of the drawn page, with its angle on screen). Only text written top
 // to bottom is left out: the standard fonts can't write it.
-function itemsOf(page, content, viewport, n, fonts) {
-  const items = [];
+// The pieces pdf.js reads come as the PDF wrote them: often a line in bits
+// (each word placed on its own, a ligature on its own, "justi" "fi" "ed").
+// Pieces in the same font and size, on the same baseline, one right after
+// the other, become one line to change — a space put back where there's a
+// gap a space wide.
+function linesOf(content) {
+  const lines = [];
   content.items.forEach((item, i) => {
     if (!item.str || !item.str.trim() || item.dir === 'ttb') return;
     const [a, b, c, d, e, f] = item.transform;
     // Mirrored text can't be retyped in place
     if (a * d - b * c <= 0) return;
-    const style = content.styles[item.fontName] || {};
     const size = Math.hypot(c, d); // the font's height
     if (!(size > 0)) return;
     const angle = Math.atan2(b, a); // its baseline's direction, in the PDF
+    const width = item.width || size * item.str.length * 0.5;
+    const last = lines[lines.length - 1];
+    if (last && last.fontName === item.fontName && Math.abs(last.size - size) < size * 0.02 && Math.abs(last.angle - angle) < 0.01) {
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      const dx = e - last.e;
+      const dy = f - last.f;
+      const along = dx * cos + dy * sin;
+      const up = -dx * sin + dy * cos;
+      const gap = along - last.width;
+      if (Math.abs(up) < size * 0.1 && gap > -size * 0.25 && gap < size * 0.6) {
+        const spaced = /\s$/.test(last.str) || /^\s/.test(item.str);
+        last.str += (gap > size * 0.15 && !spaced ? ' ' : '') + item.str;
+        last.width = Math.max(last.width, along + width);
+        return;
+      }
+    }
+    lines.push({ i, str: item.str, e, f, size, angle, width, fontName: item.fontName });
+  });
+  return lines;
+}
+
+function itemsOf(page, content, viewport, n, fonts) {
+  const items = [];
+  linesOf(content).forEach((item) => {
+    const { i, e, f, size, angle } = item;
+    const style = content.styles[item.fontName] || {};
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
     const ascent = style.ascent || 0.8;
     const descent = style.descent || -0.2;
-    const width = item.width || size * item.str.length * 0.5;
-    // Its box's corners in the PDF: along the baseline, and up from it
-    const at = (along, up) => viewport.convertToViewportPoint(e + along * cos - up * sin, f + along * sin + up * cos);
-    const tl = at(0, ascent * size);
-    const tr = at(width, ascent * size);
-    const bl = at(0, descent * size);
-    const br = at(width, descent * size);
-    const xs = [tl[0], tr[0], bl[0], br[0]];
-    const ys = [tl[1], tr[1], bl[1], br[1]];
     // The font as pdf.js read it (once per font): its own file and letters
     if (!(item.fontName in fonts)) {
       let font = null;
@@ -154,6 +178,18 @@ function itemsOf(page, content, viewport, n, fonts) {
       fonts[item.fontName] = fontInfoOf(font, style.fontFamily);
     }
     const info = fonts[item.fontName];
+    // A space at the end isn't a word to change (nor room it takes)
+    const trailing = item.str.length - item.str.replace(/\s+$/, '').length;
+    item.str = item.str.slice(0, item.str.length - trailing);
+    const width = Math.max(size * 0.1, item.width - trailing * (info?.spaceWidth || 0.278) * size);
+    // Its box's corners in the PDF: along the baseline, and up from it
+    const at = (along, up) => viewport.convertToViewportPoint(e + along * cos - up * sin, f + along * sin + up * cos);
+    const tl = at(0, ascent * size);
+    const tr = at(width, ascent * size);
+    const bl = at(0, descent * size);
+    const br = at(width, descent * size);
+    const xs = [tl[0], tr[0], bl[0], br[0]];
+    const ys = [tl[1], tr[1], bl[1], br[1]];
     items.push({
       id: `${n}-${i}`,
       page: n - 1,
@@ -236,7 +272,7 @@ function boxFor(pdf, view) {
     top: (tl[1] / view.height) * 100,
     width: (Math.hypot(tr[0] - tl[0], tr[1] - tl[1]) / view.width) * 100,
     height: (Math.hypot(bl[0] - tl[0], bl[1] - tl[1]) / view.height) * 100,
-    turn: 0,
+    turn: (Math.atan2(tr[1] - tl[1], tr[0] - tl[0]) * 180) / Math.PI,
     fontSize: ((size * scale) / view.width) * 100,
   };
 }
@@ -280,6 +316,8 @@ function pictureItems(pictures, texts, view, n) {
   });
   return items;
 }
+
+let nextAdded = 1;
 
 export default function PdfEditor({ active }) {
   const [doc, setDoc] = useState(null); // { id, name, bytes, pages: [{ key, num, url, items, width, height }] }
@@ -494,15 +532,16 @@ export default function PdfEditor({ active }) {
         const content = await page.getTextContent();
         const items = itemsOf(page, content, viewport, n, fonts);
         // Lines of text drawn as pictures (an email's header, say)
+        // How the PDF's units land on the drawn page (for pictures, new text)
+        const pageView = { transform: viewport.transform, width: viewport.width, height: viewport.height };
         try {
           const { OPS } = await loadPdfjs();
-          const view = { transform: viewport.transform, width: viewport.width, height: viewport.height };
-          items.push(...pictureItems(await picturesOf(page, OPS), items, view, n));
+          items.push(...pictureItems(await picturesOf(page, OPS), items, pageView, n));
         } catch {
           // No pictures read: just the text
         }
         page.cleanup();
-        pages.push({ num: n, url, px, items, width: viewport.width, height: viewport.height });
+        pages.push({ num: n, url, px, items, view: pageView, width: viewport.width, height: viewport.height });
       }
       // A new document's pages pop in as the old one's pop out
       const id = nextDocId++;
@@ -609,16 +648,19 @@ export default function PdfEditor({ active }) {
   useEffect(() => () => release(docRef.current), []);
 
   const cancelled = useRef(false);
+  // A line's colours: as changed, as read sharp (a picture), or from the page
+  const colorsFor = (item) => {
+    const known = edits[item.id] || item.colors;
+    if (known) return known;
+    try {
+      return sampleColors(imgRefs.current[`${doc.id}-${item.page + 1}`], item.box.sample || item.box);
+    } catch {
+      return { bg: [255, 255, 255], ink: [0, 0, 0] };
+    }
+  };
   const startEdit = (item) => {
     const edit = edits[item.id];
-    let colors = edit;
-    if (!colors) {
-      try {
-        colors = sampleColors(imgRefs.current[`${doc.id}-${item.page + 1}`], item.box.sample || item.box);
-      } catch {
-        colors = { bg: [255, 255, 255], ink: [0, 0, 0] };
-      }
-    }
+    const colors = colorsFor(item);
     cancelled.current = false;
     setDraftColors({ bg: colors.bg, ink: colors.ink });
     setDraft(edit?.text ?? item.str);
@@ -684,14 +726,22 @@ export default function PdfEditor({ active }) {
     return canvas;
   };
 
-  const readPicture = async (item) => {
+  const reading = useRef(new Map()); // picture id -> its read, under way
+  const readPicture = (item, opts) => {
+    if (!reading.current.has(item.id)) {
+      const run = readPictureNow(item, opts).finally(() => reading.current.delete(item.id));
+      reading.current.set(item.id, run);
+    }
+    return reading.current.get(item.id);
+  };
+  const readPictureNow = async (item, { quiet = false } = {}) => {
     const canvas = await pictureCanvas(item);
     if (!canvas) return;
     let found = null;
     try {
       found = await readLine(canvas);
     } catch (err) {
-      toast(err?.code === 'library' ? err.message : "couldn't read this picture — type the new words", { warn: true });
+      if (!quiet) toast(err?.code === 'library' ? err.message : "couldn't read this picture — type the new words", { warn: true });
       return;
     }
     if (!found?.text) return;
@@ -706,30 +756,39 @@ export default function PdfEditor({ active }) {
       const size = Math.max(2, (toY(found.top) - baseY) / 0.72); // tall letters stand ~0.72 of the size
       pdf = { x: toX(found.left), y: baseY, size, width: toX(found.right) - toX(found.left), ascent: 0.9, descent: -0.22, angle: 0 };
     }
-    const read = { ...item, read: true, str: found.text, pdf, box: { ...boxFor(pdf, item.view), sample: item.picture.rect } };
+    // Its colours, read sharp (small letters blur on the page on screen)
+    const colors = colorsIn(canvas, pad, pad, canvas.width - 2 * pad, canvas.height - 2 * pad);
+    const read = { ...item, read: true, str: found.text, colors, pdf, box: { ...boxFor(pdf, item.view), sample: item.picture.rect } };
     setDoc(prev => (!prev || prev.id !== doc.id ? prev : {
       ...prev,
       pages: prev.pages.map(p => (p.num !== item.page + 1 ? p : { ...p, items: p.items.map(q => (q.id === item.id ? read : q)) })),
     }));
-    // Still being changed: its words, and its colours read sharp (small
-    // letters blur on the page on screen)
+    // Still being changed: its words and colours
     if (editingRef.current === item.id) {
       setDraft(d => (d === '' ? found.text : d));
-      if (!edits[item.id]) {
-        const { pad } = canvas;
-        setDraftColors(colorsIn(canvas, pad, pad, canvas.width - 2 * pad, canvas.height - 2 * pad));
-      }
+      if (!editsRef.current[item.id]) setDraftColors(colors);
     }
     canvas.width = canvas.height = 0;
   };
 
+  // The line being changed, saved; the box closes on blur (Enter, a tap
+  // elsewhere), or moves on to the next line (Tab)
   const commit = (item) => {
     if (cancelled.current) { // Escape: the blur that follows doesn't save
       cancelled.current = false;
       return;
     }
+    // Tab: already saved, and moved on to another line
+    if (editingRef.current !== item.id) return;
     setEditing(null);
+    finish(item);
+  };
+  const finish = (item) => {
     const text = draft;
+    if (item.added && !text.trim() && !edits[item.id]) {
+      dropAdded(item);
+      return;
+    }
     const colors = draftColors;
     const next = { ...edits };
     if (text === item.str) delete next[item.id];
@@ -772,6 +831,19 @@ export default function PdfEditor({ active }) {
       const color = (c) => rgb(c[0] / 255, c[1] / 255, c[2] / 255);
       let lost = false;
       const all = doc.pages.flatMap(p => p.items);
+      // The old words themselves come out of the page first (so copy, search
+      // and what's drawn behind them are right); a line that can't come out
+      // whole gets a patch over it instead
+      const gone = new Set();
+      doc.pages.forEach((p) => {
+        const boxes = p.items.filter(item => edits[item.id] && !item.picture && !item.added).map(item => ({ id: item.id, ...item.pdf }));
+        if (!boxes.length) return;
+        try {
+          removeText(lib, pdf.getPage(p.num - 1), boxes).forEach(id => gone.add(id));
+        } catch {
+          // Left in: patched over
+        }
+      });
       for (const item of all) {
         const edit = edits[item.id];
         if (!edit) continue;
@@ -829,7 +901,7 @@ export default function PdfEditor({ active }) {
             color: color(edit.bg),
             borderWidth: 0,
           });
-        } else {
+        } else if (!gone.has(item.id) && !item.added) {
         // The patch's corner: back along the baseline and down from it, turned with the text
         const along = -pad;
         const up = descent * size - pad;
@@ -907,9 +979,146 @@ export default function PdfEditor({ active }) {
     return () => document.fonts?.removeEventListener?.('loadingdone', again);
   }, [alignRuns]);
 
+  // ── New text ──
+  // Double-click an empty spot on a page (or tap one with "add text" on):
+  // a new line starts there, in the size and font of the nearest text,
+  // upright on screen. Left empty, it goes again.
+  const [adding, setAdding] = useState(false);
+  const addAt = (page, e) => {
+    const view = page.view;
+    if (!view || !doc) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const fx = ((e.clientX - r.left) / r.width) * view.width;
+    const fy = ((e.clientY - r.top) / r.height) * view.height;
+    const [a, b, c, d, e0, f0] = view.transform;
+    const det = a * d - b * c;
+    if (!det) return;
+    const x = (d * (fx - e0) - c * (fy - f0)) / det;
+    const y = (-b * (fx - e0) + a * (fy - f0)) / det;
+    // Upright on screen: the page's own turn, undone
+    const angle = Math.atan2(-b / det, d / det);
+    const near = page.items
+      .filter(item => !item.picture && !item.added)
+      .map((item) => {
+        // How far from the nearest point of its line (not just its start)
+        const { x: lx, y: ly, width, angle: la = 0, size: ls } = item.pdf;
+        const cos = Math.cos(la);
+        const sin = Math.sin(la);
+        const along = Math.max(0, Math.min(width, (x - lx) * cos + (y - ly) * sin));
+        const up = (y - ly) * cos - (x - lx) * sin - ls * 0.35; // from the middle of its letters
+        return { item, far: Math.hypot((x - lx) * cos + (y - ly) * sin - along, up) };
+      })
+      .sort((p, q) => p.far - q.far)[0]?.item;
+    const size = near?.pdf.size ?? 12;
+    // The tap marks the middle of the letters: the baseline a little below it
+    const down = size * 0.35;
+    const pdf = {
+      x: x + down * Math.sin(angle),
+      y: y - down * Math.cos(angle),
+      size,
+      width: 0,
+      ascent: near?.pdf.ascent ?? 0.8,
+      descent: near?.pdf.descent ?? -0.2,
+      angle,
+    };
+    const item = {
+      id: `${page.num}-new${nextAdded++}`,
+      page: page.num - 1,
+      str: '',
+      added: true,
+      view,
+      pdf,
+      box: boxFor(pdf, view),
+      fontKey: near?.fontKey ?? null,
+      font: near?.font ?? { base: 'Helvetica', bold: false, italic: false },
+    };
+    item.colors = { bg: colorsFor(item).bg, ink: near ? colorsFor(near).ink : [0, 0, 0] };
+    setDoc(prev => (!prev || prev.id !== doc.id ? prev : {
+      ...prev,
+      pages: prev.pages.map(p => (p.num !== page.num ? p : { ...p, items: [...p.items, item] })),
+    }));
+    setAdding(false);
+    startEdit(item);
+  };
+  // A new line left empty: gone again
+  const dropAdded = (item) => {
+    setDoc(prev => (!prev ? prev : {
+      ...prev,
+      pages: prev.pages.map(p => (p.num !== item.page + 1 ? p : { ...p, items: p.items.filter(q => q.id !== item.id) })),
+    }));
+  };
+
+  // ── Find and replace ──
+  // Every line holding the words (any case), as it reads now; replace all
+  // is one change to undo. Open, it reads the pictures of text too, one by
+  // one, so an email's header can be found.
+  const [findOpen, setFindOpen] = useState(false);
+  const [findText, setFindText] = useState('');
+  const [replaceText, setReplaceText] = useState('');
+  const textOf = (item) => edits[item.id]?.text ?? item.str;
+  const findKey = findOpen && doc ? findText.toLowerCase() : '';
+  const matches = new Set();
+  if (findKey.trim()) {
+    doc.pages.forEach(p => p.items.forEach((item) => {
+      if (textOf(item).toLowerCase().includes(findKey)) matches.add(item.id);
+    }));
+  }
+  const replaceAll = () => {
+    if (!matches.size) return;
+    const re = new RegExp(findText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    const next = { ...edits };
+    doc.pages.forEach(p => p.items.forEach((item) => {
+      if (!matches.has(item.id)) return;
+      const text = textOf(item).replace(re, () => replaceText);
+      const colors = colorsFor(item);
+      if (text === item.str) delete next[item.id];
+      else next[item.id] = { text, bg: colors.bg, ink: colors.ink };
+    }));
+    changeEdits(next);
+  };
+  const pictureIds = doc ? doc.pages.flatMap(p => p.items.filter(item => item.picture && !item.read).map(item => item.id)).join(',') : '';
+  useEffect(() => {
+    if (!findOpen || !pictureIds) return undefined;
+    let stop = false;
+    (async () => {
+      for (const id of pictureIds.split(',')) {
+        if (stop) return;
+        const item = docRef.current?.pages.flatMap(p => p.items).find(q => q.id === id);
+        if (item && !item.read) await readPicture(item, { quiet: true }).catch(() => {});
+      }
+    })();
+    return () => { stop = true; };
+    // Each picture once: read ones drop out of the list
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [findOpen, pictureIds]);
+
+  // Ctrl + Z / Ctrl + Shift + Z (or Y) undo and redo, Ctrl + F finds; not
+  // while typing (the text box has its own undo)
+  const keys = useRef({});
+  keys.current = { undo, redo, open: () => setFindOpen(true), has: !!doc };
+  useEffect(() => {
+    if (!active) return undefined;
+    const onKey = (e) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || !keys.current.has) return;
+      const t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      const k = e.key.toLowerCase();
+      if (k === 'z' && !e.shiftKey) keys.current.undo();
+      else if ((k === 'z' && e.shiftKey) || k === 'y') keys.current.redo();
+      else if (k === 'f') {
+        keys.current.open();
+        requestAnimationFrame(() => findRef.current?.focus());
+      } else return;
+      e.preventDefault();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [active]);
+  const findRef = useRef(null);
+
   editsRef.current = edits;
   const editCount = Object.keys(edits).length;
-  const textCount = doc ? doc.pages.reduce((n, p) => n + p.items.length, 0) : 0;
+  const textCount = doc ? doc.pages.reduce((n, p) => n + p.items.filter(item => !item.added || edits[item.id]).length, 0) : 0;
   const close = () => {
     leavingDoc.current = doc ? { fonts: doc.fonts, edits } : null;
     dropView();
@@ -927,7 +1136,7 @@ export default function PdfEditor({ active }) {
           page stays still); the pages pop in and out like PDF tools' cards */}
       <div
         ref={dropBox}
-        className={`tool-box pdf-drop editor-drop ${doc ? 'has-pages' : ''} ${dragging ? 'dragging' : ''}`}
+        className={`tool-box pdf-drop editor-drop ${doc ? 'has-pages' : ''} ${dragging ? 'dragging' : ''} ${adding && doc ? 'adding' : ''}`}
         // Empty: anywhere opens the picker; with a PDF, only the space around it
         onClick={(e) => { if (!doc || e.target === e.currentTarget || e.target === scrollRef.current || e.target.classList.contains('pdf-drop-inner')) inputRef.current?.click(); }}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -959,12 +1168,18 @@ export default function PdfEditor({ active }) {
                   className="pdf-page-img"
                   draggable={false}
                 />
-                <div className="pdf-text-layer">
+                <div
+                  className="pdf-text-layer"
+                  onClick={(e) => { if (adding && !leaving && e.target === e.currentTarget) addAt(p, e); }}
+                  onDoubleClick={(e) => { if (!leaving && e.target === e.currentTarget) addAt(p, e); }}
+                >
                   {p.items.map(item => {
                     // (a page on its way out shows its own document's changes)
                     const gone = leaving ? leavingDoc.current : null;
                     const edit = (gone ? gone.edits : edits)[item.id];
                     const typing = !gone && editing === item.id && draftColors;
+                    // A new line with nothing in it (undone): not shown
+                    if (item.added && !edit && !typing) return null;
                     const look = lookOf(item, typing ? draft : (edit ? edit.text : item.str), !!typing, gone ? gone.fonts : doc?.fonts);
                     // The box runs from the PDF font's ascent to its descent; the
                     // text sits with its baseline on the PDF's (ascent below the
@@ -1009,13 +1224,22 @@ export default function PdfEditor({ active }) {
                         <input
                           key={item.id}
                           className="pdf-text-input"
-                          style={{ ...pos, background: rgbCss(colors.bg), color: rgbCss(colors.ink), width: `${Math.max(draft.length, 1) * 0.62}em` }}
+                          style={{ ...pos, background: rgbCss(colors.bg), color: rgbCss(colors.ink), width: `${cssWidthEm(look.css, draft, { cache: false }) + 0.3}em` }}
                           value={draft}
                           autoFocus
                           onChange={(e) => setDraft(e.target.value)}
                           onBlur={() => commit(item)}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') e.currentTarget.blur();
+                            if (e.key === 'Tab') {
+                              // On to the next line (Shift: the one before), saving this one
+                              e.preventDefault();
+                              const all = doc.pages.flatMap(pg => pg.items);
+                              const next = all[all.findIndex(q => q.id === item.id) + (e.shiftKey ? -1 : 1)];
+                              finish(item);
+                              if (next) startEdit(next);
+                              else setEditing(null);
+                            }
                             if (e.key === 'Escape') {
                               cancelled.current = true;
                               setEditing(null);
@@ -1029,7 +1253,7 @@ export default function PdfEditor({ active }) {
                     return [cover, (
                       <button
                         key={item.id}
-                        className={`pdf-text-item ${edit ? 'edited' : ''}`}
+                        className={`pdf-text-item ${edit ? 'edited' : ''} ${!gone && matches.has(item.id) ? 'match' : ''}`}
                         style={edit ? { ...pos, background: rgbCss(edit.bg), color: rgbCss(edit.ink) } : pos}
                         onClick={() => startEdit(item)}
                         title={edit ? `was: ${item.str || 'a picture of text'}` : item.picture ? 'Change the words in this picture' : 'Change this text'}
@@ -1071,6 +1295,41 @@ export default function PdfEditor({ active }) {
         pages <Count value={doc ? doc.pages.length : 0} /> · texts <Count value={textCount} /> · changes <Count value={editCount} />
       </div>
 
+      {/* Find and replace: opens like the image options (the panel open) */}
+      <Collapse open={!!doc && findOpen} className="options-collapse">
+        <div className="options-panel">
+          <FlipRow className="field-grid">
+            <label className="field">
+              find
+              <input
+                ref={findRef}
+                className="text-input find-input"
+                value={findText}
+                onChange={(e) => setFindText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Escape') setFindOpen(false); }}
+                spellCheck={false}
+                aria-label="Find"
+              />
+            </label>
+            <label className="field">
+              with
+              <input
+                className="text-input find-input"
+                value={replaceText}
+                onChange={(e) => setReplaceText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') replaceAll(); if (e.key === 'Escape') setFindOpen(false); }}
+                spellCheck={false}
+                aria-label="Replace with"
+              />
+            </label>
+            <span className="field">matches <Count value={matches.size} /></span>
+            <button className="btn" onClick={(e) => { e.currentTarget.blur(); replaceAll(); }} disabled={!matches.size}>
+              replace all
+            </button>
+          </FlipRow>
+        </div>
+      </Collapse>
+
       <FlipRow>
         <button className="btn btn-icon" onClick={(e) => { e.currentTarget.blur(); inputRef.current?.click(); }} title="Open a PDF" aria-label="Open a PDF">
           <FileUp size={14} />
@@ -1084,6 +1343,31 @@ export default function PdfEditor({ active }) {
         </button>
         <button className="btn btn-icon" onClick={(e) => { e.currentTarget.blur(); redo(); }} disabled={!doc || !history.future.length} title="Redo" aria-label="Redo">
           <Redo2 size={14} />
+        </button>
+        <button
+          className={`btn btn-icon ${adding && doc ? 'btn-on' : ''}`}
+          onClick={(e) => { e.currentTarget.blur(); setAdding(a => !a); }}
+          disabled={!doc}
+          title="Add text: tap a spot on a page (or double-click one)"
+          aria-label="Add text"
+          aria-pressed={adding && !!doc}
+        >
+          <Type size={14} />
+        </button>
+        <button
+          className={`btn btn-icon ${findOpen && doc ? 'btn-on' : ''}`}
+          onClick={(e) => {
+            e.currentTarget.blur();
+            const open = !findOpen;
+            setFindOpen(open);
+            if (open) requestAnimationFrame(() => findRef.current?.focus({ preventScroll: true }));
+          }}
+          disabled={!doc}
+          title="Find and replace (Ctrl + F)"
+          aria-label="Find and replace"
+          aria-pressed={findOpen && !!doc}
+        >
+          <Replace size={14} />
         </button>
         <button className="btn" onClick={(e) => { e.currentTarget.blur(); close(); }} disabled={!doc}>
           close

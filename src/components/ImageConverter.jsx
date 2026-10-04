@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Copy, Download, ImageUp, X } from 'lucide-re
 import { zipSync } from 'fflate';
 import { IMAGE_FORMATS, encodeImage, estimateImage, jpegsToPdf, loadImage, makeThumb, targetSize } from '../imageConvert';
 import { baseName, copyImageBlob, downloadBlob, isImageFile, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
-import { MOTION_MS } from '../motion';
+import { MOTION_MS, fadeInOnLoad } from '../motion';
 import { useToast } from '../toastContext';
 import TabSwitcher from './TabSwitcher';
 import MotionList from './MotionList';
@@ -283,7 +283,7 @@ export default function ImageConverter({ active }) {
                     aria-pressed={isSel}
                     title={isSel ? 'Unselect image' : 'Select image'}
                   >
-                    <img src={item.thumb} alt={name} decoding="async" draggable={false} />
+                    <img src={item.thumb} alt={name} decoding="async" draggable={false} onLoad={fadeInOnLoad} />
                   </button>
                   <div className="page-label">
                     <span className="page-src page-name">{name}</span>

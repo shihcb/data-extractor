@@ -57,6 +57,23 @@ picture's background colour. The picture is redrawn from the PDF just for the
 read (letters ~100px tall, alone on a white margin) so tiny text reads too, and
 its colours are taken from that sharp copy, not the blurry page on screen.
 
+Editing in the PDF editor:
+- pdf.js's pieces of a line (each word placed alone, a ligature alone) in the
+  same font, size and baseline, less than 0.6em apart, are one line to change
+  (`linesOf`).
+- Saving takes the old words out of the page itself (`src/pdfText.js`: the
+  page's text commands followed with their fonts' widths; each run wholly on
+  a changed line swapped for a blank move of the same length), so copy and
+  search find only the new words and what's drawn behind stays. A line that
+  can't come out whole (standard fonts with no widths in the file, text in a
+  form, a run reaching past the line) gets the old patch instead.
+- Tab / Shift + Tab move to the next / previous line, saving; Ctrl + Z /
+  Ctrl + Shift + Z undo / redo; Ctrl + F (or the button) opens find and
+  replace (the panel open; matches tinted on the pages; replace all is one
+  undo; open, it reads the pictures of text too).
+- Double-click an empty spot (or tap one with "add text" on) to add a line,
+  in the size and font of the nearest line; left empty, it goes again.
+
 Every stats line in the app is label first ("characters 3 · words 1", "added 2 ·
 removed 1") so only the numbers change, counting.
 

@@ -247,6 +247,22 @@ export default function App() {
             <span>close a pop-up</span>
             <kbd>Esc</kbd>
           </li>
+          <li>
+            <span>pdf editor: next text</span>
+            <kbd>Tab</kbd>
+          </li>
+          <li>
+            <span>pdf editor: undo</span>
+            <kbd>Ctrl + Z</kbd>
+          </li>
+          <li>
+            <span>pdf editor: redo</span>
+            <kbd>Ctrl + Shift + Z</kbd>
+          </li>
+          <li>
+            <span>pdf editor: find and replace</span>
+            <kbd>Ctrl + F</kbd>
+          </li>
         </ul>
       </Modal>
     </ToastProvider>

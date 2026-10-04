@@ -498,6 +498,15 @@ button:disabled {
   box-shadow: none;
 }
 
+/* A button that's switched on (the find and replace panel open) */
+.btn.btn-on {
+  border-color: var(--text-main);
+}
+
+.find-input {
+  width: 150px;
+}
+
 .btn-icon {
   padding: 8px 14px;
 }
@@ -1000,6 +1009,11 @@ kbd {
   overflow: hidden;
 }
 
+/* Shown once loaded, fading in (PdfTools' fadeInOnce) */
+.page-thumb img:not(.shown) {
+  opacity: 0;
+}
+
 .page-thumb img {
   width: 100%;
   height: 100%;
@@ -1166,6 +1180,11 @@ kbd {
   inset: 0;
 }
 
+/* "add text" on: a tap on a page starts a new line there */
+.editor-drop.adding .pdf-text-layer {
+  cursor: crosshair;
+}
+
 .pdf-text-item,
 .pdf-text-input {
   position: absolute;
@@ -1211,7 +1230,15 @@ kbd {
   outline-offset: 0;
   cursor: text;
   transition: outline-color var(--motion-duration) var(--motion-easing),
-              background-color var(--motion-duration) var(--motion-easing);
+              background-color var(--motion-duration) var(--motion-easing),
+              box-shadow var(--motion-duration) var(--motion-easing);
+}
+
+/* Found by find and replace: tinted (a shadow, so it shows over a changed
+   line's own background too) */
+.pdf-text-item.match {
+  outline: 1px solid rgba(234, 179, 8, 0.9);
+  box-shadow: inset 0 0 0 100vmax rgba(250, 204, 21, 0.28);
 }
 
 @media (hover: hover) and (pointer: fine) {

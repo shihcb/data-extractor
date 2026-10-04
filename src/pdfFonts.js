@@ -85,14 +85,16 @@ export const squeezeFor = (originalWidth, standInWidth) =>
 // The same, measured on screen for a CSS font (in ems), for the preview
 const measureCanvas = typeof document !== 'undefined' ? document.createElement('canvas') : null;
 const measured = new Map();
-export function cssWidthEm(css, text) {
+// `cache: false` for text being typed (a new key each letter, and the PDF's
+// own font may still be loading)
+export function cssWidthEm(css, text, { cache = true } = {}) {
   const key = `${css.fontFamily}|${css.fontWeight}|${css.fontStyle}|${text}`;
-  if (measured.has(key)) return measured.get(key);
+  if (cache && measured.has(key)) return measured.get(key);
   const ctx = measureCanvas?.getContext('2d');
   if (!ctx) return 0;
   ctx.font = `${css.fontStyle} ${css.fontWeight} 100px ${css.fontFamily}`;
   const w = ctx.measureText(text).width / 100;
-  measured.set(key, w);
+  if (cache) measured.set(key, w);
   return w;
 }
 

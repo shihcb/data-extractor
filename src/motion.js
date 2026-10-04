@@ -45,6 +45,18 @@ export function fadeIn(el, delay = 0) {
   return el.animate([{ opacity: 0 }, { opacity: 1 }], { ...MOTION, delay, fill: 'backwards' });
 }
 
+// A card's picture (PDF tools, the image converter) fades in once, when it
+// has loaded: from script, not a CSS animation (those start over whenever
+// the card is moved in the page, so the pictures flickered on a reorder),
+// and hidden until then (.page-thumb img:not(.shown)) — drawn at full
+// strength for a frame before its load event, it flashed in ahead of the fade.
+export function fadeInOnLoad(e) {
+  const img = e.currentTarget;
+  if (img.classList.contains('shown')) return;
+  img.classList.add('shown');
+  fadeIn(img);
+}
+
 // A box that just got new content gets a brief outline: 0.45s in, 0.45s out
 // (the source repo's card-flash).
 export function flashOutline(el) {

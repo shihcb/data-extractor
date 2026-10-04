@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Download, FilePlus, RotateCcw, RotateCw, X }
 import { zipSync } from 'fflate';
 import { closePdf, loadPdfLib, openPdf, renderPage, isPasswordError } from '../pdf';
 import { baseName, canvasToBlob, downloadBlob, isPdfFile, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
-import { MOTION_MS, fadeIn } from '../motion';
+import { MOTION_MS, fadeInOnLoad } from '../motion';
 import { useToast } from '../toastContext';
 import MotionList from './MotionList';
 import Count from './Count';
@@ -13,16 +13,6 @@ import SlideText from './SlideText';
 import BulkBar from './BulkBar';
 
 const THUMB_CSS_WIDTH = 160;
-
-// A page's picture fades in once, when it's first drawn. Not a CSS
-// animation: those start over whenever the card is moved in the page (a
-// reorder, a rotate, a delete next to it), so the pictures flickered.
-const fadeInOnce = (e) => {
-  const img = e.currentTarget;
-  if (img._shown) return;
-  img._shown = true;
-  fadeIn(img);
-};
 const IMAGE_SCALE = 2; // pages to images: 144 dpi
 
 let nextPageId = 1;
@@ -307,7 +297,7 @@ export default function PdfTools({ active }) {
                   aria-pressed={isSel}
                   title={isSel ? 'Unselect page' : 'Select page'}
                 >
-                  {p.thumb && <img src={p.thumb} alt={`Page ${label.num}`} style={{ transform: `rotate(${p.rotation}deg)` }} draggable={false} onLoad={fadeInOnce} />}
+                  {p.thumb && <img src={p.thumb} alt={`Page ${label.num}`} style={{ transform: `rotate(${p.rotation}deg)` }} draggable={false} onLoad={fadeInOnLoad} />}
                 </button>
                 <div className="page-label">
                   <span>{label.num}</span>
