@@ -313,12 +313,6 @@ function ScanQr({ active }) {
           )}
         </AutoHeight>
       </Collapse>
-      <ActionBar
-        active={active}
-        open={!!result || camera}
-        onClose={() => { stopCamera(); setResult(null); }}
-        label="Scan"
-      />
     </div>
   );
 }
