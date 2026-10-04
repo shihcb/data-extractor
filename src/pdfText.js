@@ -218,7 +218,7 @@ export function removeText(lib, page, boxes) {
   });
 
   let ctm = [1, 0, 0, 1, 0, 0];
-  let ts = { Tc: 0, Tw: 0, Th: 1, TL: 0, font: null, size: 0, rise: 0 };
+  let ts = { Tc: 0, Tw: 0, Th: 1, TL: 0, font: null, size: 0, rise: 0, Tr: 0 };
   // After a run whose width couldn't be known, where the next one starts
   // isn't known either (until the position is set again): nothing's cut then
   let lost = false;
@@ -288,6 +288,10 @@ export function removeText(lib, page, boxes) {
       return;
     }
     const f = both[0];
+    // Invisible words (a searchable scan's, laid over the page's picture):
+    // cut so search finds only the new ones, but the picture's words still
+    // show, so the line keeps its patch
+    if (ts.Tr === 3 || ts.Tr === 7) f.kept = true;
     const a = f.local(from)[0];
     const z = f.local(to)[0];
     f.covered.push([Math.min(a, z), Math.max(a, z)]);
@@ -312,6 +316,7 @@ export function removeText(lib, page, boxes) {
       case 'TD': ts.TL = -(a[1] || 0); nextLine(a[0] || 0, a[1] || 0); break;
       case 'Tm': if (a.length === 6) { tlm = a.slice(); tm = tlm; lost = false; } break;
       case 'Ts': ts.rise = a[0] || 0; break;
+      case 'Tr': ts.Tr = a[0] || 0; break;
       case 'T*': nextLine(0, -ts.TL); break;
       case 'Tj': show(o, [a[0]], ''); break;
       case 'TJ': show(o, Array.isArray(a[0]) ? a[0] : [], ''); break;

@@ -1530,6 +1530,9 @@ a.btn {
   white-space: nowrap;
   vertical-align: top;
 }
+.slide-text-inner {
+  display: inline-block;
+}
 
 /* Labels and fields stay on one line while their width eases */
 .field,

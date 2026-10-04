@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Download, FileUp, Redo2, Undo2, ZoomIn, ZoomOut } from 'lucide-react';
 import { closePdf, loadPdfLib, loadPdfjs, openPdf, renderPage, isPasswordError, refusedWords, whyRefused } from '../pdf';
-import { readBlock, readLine, readPage } from '../ocr';
+import { agreedReading, readBlock, readLine, readPage, rereadLine } from '../ocr';
 import { removeText } from '../pdfText';
 import { baseName, canvasToBlob, downloadBlob, isPdfFile, loadLibrary, useDoneFlags, usePastedFiles } from '../utils';
 import { MOTION, MOTION_MS, canAnimate, motionEase, prefersReducedMotion } from '../motion';
@@ -135,10 +135,69 @@ function encodable(font, text) {
 // Pieces in the same font and size, on the same baseline, one right after
 // the other, become one line to change — a space put back where there's a
 // gap a space wide.
+// Letter-spaced words come from pdf.js with a space between every letter
+// ("T r a c k e d"): put back together, so they read and match as words
+const unspaced = (str) => (/^(?:\S ){2,}\S$/.test(str) && str.length <= 31 ? str.replace(/ /g, '') : str);
+// (and letters a font couldn't name come as \0s)
+const printable = (str) => [...str].filter((ch) => { const c = ch.charCodeAt(0); return c > 31 && c !== 127; }).join('');
+
+// Right-to-left words (Hebrew, Arabic) are typed in reading order but
+// written to the page left to right as they're drawn: the right-to-left runs
+// turned round (numbers and Latin words inside them kept as they read), the
+// way a browser lays a line out. Whether the line reads right to left goes
+// by its first letter that has a direction.
+const RTL = /[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufeff]/;
+const LTR = /[A-Za-z0-9\u00c0-\u024f\u0370-\u03ff\u0400-\u04ff]/;
+function visualOrder(text) {
+  if (!RTL.test(text)) return { text, rtl: false };
+  const chars = [...text];
+  const first = chars.find(ch => RTL.test(ch) || LTR.test(ch));
+  const rtl = !!first && RTL.test(first);
+  // The runs of the other direction (with the spaces between their words)
+  const other = rtl ? LTR : RTL;
+  const flip = (list) => {
+    const out = [];
+    for (let k = 0; k < list.length;) {
+      if (!other.test(list[k])) { out.push(list[k]); k++; continue; }
+      let end = k;
+      for (let j = k; j < list.length; j++) {
+        if (other.test(list[j])) end = j;
+        else if (!/[\s.,:\-/]/.test(list[j])) break;
+      }
+      out.push(...list.slice(k, end + 1).reverse());
+      k = end + 1;
+    }
+    return out;
+  };
+  // Right to left: the whole line turned round, its left-to-right runs put
+  // back; left to right: just its right-to-left runs turned round
+  return { text: (rtl ? flip(chars.reverse()) : flip(chars)).join(''), rtl };
+}
+
 function linesOf(content) {
   const lines = [];
-  content.items.forEach((item, i) => {
-    if (!item.str || !item.str.trim() || item.dir === 'ttb') return;
+  content.items.forEach((item0, i) => {
+    if (!item0.str || item0.dir === 'ttb') return;
+    const item = { ...item0, str: unspaced(printable(item0.str)) };
+    // A space placed on its own (wide word spacing) carries the line on
+    // over it, so the next word joins the line instead of starting another
+    if (!item.str.trim()) {
+      const last = lines[lines.length - 1];
+      const [, , c, d, e, f] = item.transform;
+      const size = Math.hypot(c, d);
+      if (!last || Math.abs(last.size - size) > size * 0.02) return;
+      const cos = Math.cos(last.angle);
+      const sin = Math.sin(last.angle);
+      const along = (e - last.e) * cos + (f - last.f) * sin;
+      const up = -(e - last.e) * sin + (f - last.f) * cos;
+      const gap = along - (last.reach ?? last.width);
+      if (Math.abs(up) < size * 0.1 && gap > -size * 0.25 && gap < size * 0.6) {
+        if (!/\s$/.test(last.str)) last.str += ' ';
+        // (how far the line reaches with it: its width only grows once a word follows)
+        last.reach = Math.max(last.reach ?? last.width, along + (item.width || 0));
+      }
+      return;
+    }
     const [a, b, c, d, e, f] = item.transform;
     // Mirrored text can't be retyped in place
     if (a * d - b * c <= 0) return;
@@ -154,8 +213,9 @@ function linesOf(content) {
       const dy = f - last.f;
       const along = dx * cos + dy * sin;
       const up = -dx * sin + dy * cos;
-      const gap = along - last.width;
+      const gap = along - (last.reach ?? last.width);
       if (Math.abs(up) < size * 0.1 && gap > -size * 0.25 && gap < size * 0.6) {
+        delete last.reach;
         const spaced = /\s$/.test(last.str) || /^\s/.test(item.str);
         last.str += (gap > size * 0.15 && !spaced ? ' ' : '') + item.str;
         last.width = Math.max(last.width, along + width);
@@ -164,6 +224,7 @@ function linesOf(content) {
     }
     lines.push({ i, str: item.str, e, f, size, angle, width, fontName: item.fontName });
   });
+  lines.forEach((l) => { l.str = l.str.trimEnd(); });
   return lines;
 }
 
@@ -1110,6 +1171,8 @@ export default function PdfEditor({ active }) {
         let runs = []; // [{ text, along }] to write, and how wide it all is
         let newWidth = 0;
         let font;
+        // (in the order it's drawn: right-to-left words were saved backwards)
+        const { text: drawnText, rtl } = visualOrder(edit.text);
         let squeeze = 1;
         if (original) {
           // Word by word, in the font's own codes; the spaces are the PDF's own width
@@ -1122,14 +1185,14 @@ export default function PdfEditor({ active }) {
             newWidth += original.widthOfTextAtSize(word, size);
             word = '';
           };
-          for (const ch of edit.text) {
+          for (const ch of drawnText) {
             if (ch === ' ' || ch === '\u00a0') { flush(); newWidth += space; } else word += ch;
           }
           flush();
         } else {
           // Else the closest standard font, squeezed to the original's room
           font = await getFont(standardFontKey(item.font));
-          const safe = encodable(font, edit.text);
+          const safe = encodable(font, drawnText);
           lost = lost || safe.lost;
           // (the old words measured in the stand-in too: any letter it can't
           // write, a minus sign say, threw and the whole save failed)
@@ -1139,6 +1202,9 @@ export default function PdfEditor({ active }) {
           newWidth = safe.text ? font.widthOfTextAtSize(safe.text, size) * squeeze : 0;
         }
 
+        // A right-to-left line keeps its right end where it was
+        const shift = rtl && !item.picture ? width - newWidth : 0;
+        if (shift) runs.forEach((r) => { r.along += shift; });
         const pad = size * PAD;
         if (item.picture) {
           // A picture of text: covered whole (and as far as the new words reach)
@@ -1162,7 +1228,7 @@ export default function PdfEditor({ active }) {
           });
         } else if (!gone.has(item.id) && !item.added) {
         // The patch's corner: back along the baseline and down from it, turned with the text
-        const along = -pad;
+        const along = Math.min(0, shift) - pad;
         const up = descent * size - pad;
         page.drawRectangle({
           x: x + along * cos - up * sin,
@@ -1265,7 +1331,9 @@ export default function PdfEditor({ active }) {
             canvas = drawn.canvas;
             page.cleanup();
             if (stop) return null;
-            return { lines: await readPage(canvas), viewport: drawn.viewport };
+            const { lines, raw, ink } = await readPage(canvas);
+            canvas = null; // (kept, as ink, for reading lines again)
+            return { lines, raw, ink, viewport: drawn.viewport };
           } finally {
             if (canvas) canvas.width = canvas.height = 0;
           }
@@ -1307,10 +1375,49 @@ export default function PdfEditor({ active }) {
             font: { base: l.mono ? 'Courier' : 'Helvetica', bold: false, italic: false },
           };
         });
+        // A line already there as the page's own text (a searchable scan's
+        // few invisible lines) isn't added again on top of it
+        const own = p.items.filter(it => !it.picture && !it.scan && !it.added && it.pdf);
+        const onOwn = (it) => {
+          const { x, y, size, width, angle } = it.pdf;
+          const mx = x + Math.cos(angle) * width / 2 - Math.sin(angle) * size * 0.3;
+          const my = y + Math.sin(angle) * width / 2 + Math.cos(angle) * size * 0.3;
+          return own.some(({ pdf: o }) => {
+            const dx = mx - o.x;
+            const dy = my - o.y;
+            const along = dx * Math.cos(o.angle || 0) + dy * Math.sin(o.angle || 0);
+            const up = -dx * Math.sin(o.angle || 0) + dy * Math.cos(o.angle || 0);
+            return along >= 0 && along <= o.width && up >= -o.size * 0.3 && up <= o.size;
+          });
+        };
+        const fresh = items.filter(it => !onOwn(it));
         setDoc(prev => (!prev || prev.id !== doc.id ? prev : {
           ...prev,
-          pages: prev.pages.map(q => (q.num !== p.num ? q : { ...q, scan: false, items: [...q.items, ...items] })),
+          pages: prev.pages.map(q => (q.num !== p.num ? q : { ...q, scan: false, items: [...q.items, ...fresh] })),
         }));
+        // Then each line it wasn't sure of, read twice more on its own (a
+        // close-up of the page as it was, and of it made black on white):
+        // the reading most of the three agree on is kept, the line's words
+        // updating in place (unless it's being changed right now)
+        const { raw, ink } = got;
+        try {
+          for (let k = 0; k < lines.length; k++) {
+            if (stop || viewRef.current !== open) break;
+            if ((lines[k].sure ?? 0) >= 90 || !fresh.includes(items[k])) continue;
+            const fromRaw = await rereadLine(raw, lines[k]).catch(() => null);
+            const fromInk = await rereadLine(ink, lines[k]).catch(() => null);
+            const agreed = agreedReading([{ text: lines[k].text, sure: lines[k].sure }, fromRaw, fromInk]);
+            if (stop || viewRef.current !== open || !agreed || agreed.text === lines[k].text) continue;
+            const id = items[k].id;
+            setDoc(prev => (!prev || prev.id !== doc.id ? prev : {
+              ...prev,
+              pages: prev.pages.map(q => (q.num !== p.num ? q : { ...q, items: q.items.map(it => (it.id === id && editingRef.current !== id ? { ...it, str: agreed.text } : it)) })),
+            }));
+          }
+        } finally {
+          raw.width = raw.height = 0;
+          ink.width = ink.height = 0;
+        }
       }
       // Nothing came of it (and nothing else on the pages to change): said once
       if (!stop && viewRef.current === open && !found && !doc.pages.some(p => p.items.length)) {

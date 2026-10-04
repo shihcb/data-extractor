@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { canAnimate } from '../motion';
-import { animateTo, drawnValue } from '../engine';
+import { animateTo, drawnValue, stop } from '../engine';
 
 // The bar every tab keeps its "what's open" actions in: the instagram
 // repo's bulk bar (outlined count, plain buttons, delete in red), floating
@@ -42,10 +42,17 @@ export default function ActionBar({ active, open: wanted, children, closeLabel =
       animateTo(el, 'ty', 14, {
         from: drawnValue(el, 'ty', 0),
         keep: true,
-        onSettle: () => { if (!was.current) el.style.visibility = 'hidden'; },
+        // Hidden first, then its motion styles dropped (kept, a closed bar
+        // held its own GPU layer for good)
+        onSettle: () => { if (!was.current) { el.style.visibility = 'hidden'; stop(el); } },
       });
     }
   }, [open]);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    return () => stop(el);
+  }, []);
 
   // While a bar shows, toasts sit above it (body.has-bar)
   useEffect(() => {

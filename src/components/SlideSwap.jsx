@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useRef } from 'react';
 import { MOTION, canAnimate, fadeIn } from '../motion';
-import { animateTo } from '../engine';
+import { animateTo, drawnValue } from '../engine';
 
 // The word swap (the word slide's swap form): one word changing to another
 // inside a line ("%" ↔ "px wide"). Both share one spot — the old word fades
@@ -25,18 +25,23 @@ export default function SlideSwap({ text, className = '' }) {
     const oldWidth = p.width ?? width;
     prev.current = { text, width };
     if (!canAnimate(wrap)) return;
-    // The space eases between the two words' widths
-    animateTo(wrap, 'width', width, { from: oldWidth });
+    // How strong the old word is drawn now (it may still be fading in)
+    const shown = +getComputedStyle(word).opacity;
+    // The space eases between the two words' widths (from where it's drawn,
+    // if it's still easing from the last swap)
+    animateTo(wrap, 'width', width, { from: drawnValue(wrap, 'width', oldWidth) });
+    fadeIn(word);
     // The old word fades out where it was, over the new one fading in
+    // (from how strong it was: changed back mid-fade, it flashed to full)
+    if (!(shown > 0.05)) return;
     const ghost = document.createElement('span');
     ghost.className = 'slide-swap-ghost';
     ghost.textContent = oldText;
     ghost.setAttribute('aria-hidden', 'true');
     wrap.appendChild(ghost);
     const drop = () => ghost.remove();
-    ghost.animate([{ opacity: 1 }, { opacity: 0 }], { ...MOTION, fill: 'forwards' }).finished.then(drop, drop);
+    ghost.animate([{ opacity: shown }, { opacity: 0 }], { ...MOTION, fill: 'forwards' }).finished.then(drop, drop);
     setTimeout(drop, 800);
-    fadeIn(word);
   }, [text]);
 
   // Its word's width, kept current: measured only on a change of word, it

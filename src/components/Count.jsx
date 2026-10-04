@@ -20,7 +20,8 @@ export default function Count({ value, format = (n) => n.toLocaleString() }) {
   useEffect(() => {
     cancelAnimationFrame(raf.current);
     const from = shownRef.current;
-    if (from === value || prefersReducedMotion()) {
+    // (a NaN shown once stuck: every count after it was NaN too)
+    if (from === value || !Number.isFinite(from) || !Number.isFinite(value) || prefersReducedMotion()) {
       shownRef.current = value;
       setShown(value);
       return undefined;
@@ -43,7 +44,8 @@ export default function Count({ value, format = (n) => n.toLocaleString() }) {
     const t0 = performance.now();
     const step = (now) => {
       const t = Math.min(1, (now - t0) / MOTION_MS);
-      const n = Math.round(from + (value - from) * motionEase(t));
+      // Ends on the value itself, not its rounding
+      const n = t >= 1 ? value : Math.round(from + (value - from) * motionEase(t));
       shownRef.current = n;
       setShown(n);
       if (t < 1) raf.current = requestAnimationFrame(step);

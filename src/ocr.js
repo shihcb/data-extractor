@@ -87,6 +87,7 @@ export async function readLine(canvas) {
   const left = words.length ? words[0].bbox.x0 : bbox.x0;
   return {
     text,
+    sure: words.length ? words.reduce((t, w) => t + w.sure, 0) / words.length : 0, // how sure Tesseract is (0–100)
     baseline: baselineAt(line, left), // (where its words start)
     left,
     right: words.length ? words[words.length - 1].bbox.x1 : bbox.x1,
@@ -157,6 +158,11 @@ async function plainInk(canvas) {
 // the baseline), mono (the letters all take the same room: a typewriter or
 // receipt printer) }.
 export async function readPage(canvas) {
+  // The page as it was, kept for reading single lines again (see rereadLine)
+  const raw = document.createElement('canvas');
+  raw.width = canvas.width;
+  raw.height = canvas.height;
+  raw.getContext('2d').drawImage(canvas, 0, 0);
   await plainInk(canvas);
   const data = await read(canvas, '3');
   // The print's usual height (from the words it's sure of)
@@ -220,6 +226,7 @@ export async function readPage(canvas) {
         y1: base + slope * (x1 - x0),
         cap: Math.max(2, base - top),
         mono: spread < 0.12,
+        sure: ws.reduce((t, w) => t + w.sure, 0) / ws.length,
         // Words far taller than the print: rows packed close together, run
         // into one by Tesseract (worked out again below)
         tall: Math.max(...ws.map(w => w.bbox.y1 - w.bbox.y0)) > usual * 1.5,
@@ -237,9 +244,8 @@ export async function readPage(canvas) {
     if (l.tall) await refine(canvas, l, usual);
     delete l.tall;
     delete l.span;
-    delete l.slope;
   }
-  return kept;
+  return { lines: kept, raw, ink: canvas };
 }
 
 // How alike two readings are (0..1): 1 less their edit distance, as a
@@ -350,4 +356,54 @@ async function refine(canvas, l, usual) {
   l.y0 = base;
   l.y1 = base + l.slope * (x1 - x0);
   l.cap = Math.max(2, cap);
+  if (Number.isFinite(found.sure)) l.sure = found.sure;
+}
+
+// One line of a page, read again on its own: cut from the page as it was
+// (not made black on white), its letters drawn about 48px tall, read as a
+// single line. A second look from another angle: for each line, the reading
+// Tesseract is surer of is the one kept. Returns { text, sure } or null.
+export async function rereadLine(raw, l) {
+  const cap = Math.max(4, l.cap);
+  const k = Math.max(1, Math.min(4, 48 / cap));
+  const top = Math.min(l.y0, l.y1) - cap * 1.6;
+  const bottom = Math.max(l.y0, l.y1) + cap * 0.7;
+  const x0 = Math.max(0, l.x0 - cap * 0.6);
+  const x1 = Math.min(raw.width, l.x1 + cap * 0.6);
+  const y0 = Math.max(0, top);
+  const y1 = Math.min(raw.height, bottom);
+  if (x1 - x0 < 4 || y1 - y0 < 4) return null;
+  const pad = Math.round(cap * k * 0.5);
+  const crop = document.createElement('canvas');
+  crop.width = Math.round((x1 - x0) * k) + 2 * pad;
+  crop.height = Math.round((y1 - y0) * k) + 2 * pad;
+  const ctx = crop.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, crop.width, crop.height);
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(raw, x0, y0, x1 - x0, y1 - y0, pad, pad, crop.width - 2 * pad, crop.height - 2 * pad);
+  try {
+    const found = await readLine(crop);
+    return found?.text ? { text: found.text, sure: found.sure ?? 0 } : null;
+  } finally {
+    crop.width = crop.height = 0;
+  }
+}
+
+// The reading most of a line's readings agree with (the one closest to all
+// the others, letter by letter): on faded print each reading gets different
+// letters wrong, and how sure Tesseract says it is didn't tell which was
+// right — what most readings share usually is. Readings of a different line
+// (a neighbour crept into the cut) don't count. Ties go to the surer one.
+export function agreedReading(readings) {
+  const all = readings.filter(r => r && r.text);
+  if (all.length < 3) return all.sort((p, q) => (q.sure ?? 0) - (p.sure ?? 0))[0] || null;
+  const same = all.filter(r => alike(r.text, all[0].text) >= 0.4);
+  if (same.length < 3) return all[0];
+  let best = null;
+  for (const r of same) {
+    const far = same.reduce((t, o) => (o === r ? t : t + (1 - alike(r.text, o.text))), 0);
+    if (!best || far < best.far - 1e-9 || (Math.abs(far - best.far) < 1e-9 && (r.sure ?? 0) > (best.r.sure ?? 0))) best = { r, far };
+  }
+  return best.r;
 }

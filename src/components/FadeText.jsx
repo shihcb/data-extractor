@@ -10,6 +10,10 @@ import { MOTION, canAnimate, fadeIn } from '../motion';
 // coming in where it was drawn).
 function captureGhost(el) {
   if (!el || !el.getClientRects().length || !el.textContent.trim() || !canAnimate(el)) return null;
+  // Fades out from how strong it's drawn now: changed again while still
+  // fading in, its copy jumped to full strength and flashed
+  const shown = +getComputedStyle(el).opacity;
+  if (!(shown > 0.05)) return null;
   const host = el.parentElement?.closest('.btn, .field-grid, .tool-meta, .tool-box, .tool') || document.body;
   const hr = host.getBoundingClientRect();
   const r = el.getBoundingClientRect();
@@ -37,7 +41,7 @@ function captureGhost(el) {
     ghost.style.left = `${h.left + dx - g.left}px`;
     ghost.style.top = `${h.top + dy - g.top}px`;
     const drop = () => ghost.remove();
-    ghost.animate([{ opacity: 1 }, { opacity: 0 }], { ...MOTION, fill: 'forwards' }).finished.then(drop, drop);
+    ghost.animate([{ opacity: shown }, { opacity: 0 }], { ...MOTION, fill: 'forwards' }).finished.then(drop, drop);
     setTimeout(drop, 800);
   };
 }

@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useRef } from 'react';
 import { MOTION_MS, MOTION_EASING, canAnimate } from '../motion';
-import { animateTo, naturalSize } from '../engine';
+import { animateTo, isMoving, naturalSize } from '../engine';
 
 // Ported from instagram-follower-checker's instructions steps: every pane
 // sits in the same spot (stacked) and stays mounted, so each tab keeps its
@@ -82,6 +82,19 @@ export default function TabPanes({ tabs, active, children }) {
   }, [active, tabs]);
 
   useLayoutEffect(() => () => clearTimeout(timer.current), []);
+
+  // The new pane changing size mid-push (the window resized or turned, its
+  // text rewrapping) is followed: the height measured at the tap went stale,
+  // and the area snapped to the real one when the push ended
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (typeof ResizeObserver !== 'function') return undefined;
+    const ro = new ResizeObserver(() => {
+      if (isMoving(container, 'height')) animateTo(container, 'height', naturalSize(container, 'height'));
+    });
+    Object.values(paneRefs.current).forEach(p => p && ro.observe(p));
+    return () => ro.disconnect();
+  }, []);
 
   return (
     <div ref={containerRef} className="tab-panes">

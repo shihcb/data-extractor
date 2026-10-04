@@ -32,7 +32,9 @@ export default function Collapse({ open, children, className = '', variant = 'fa
       // Opening or closing, it carries the boxes inside; idle, it's just a box
       animatesChanges: () => c.running(),
       update(to) {
-        c.last = to;
+        // Closing, it's heading for nothing: the glide to top read a stale
+        // open height as room still to come and waited, then rushed after it
+        c.last = s.open ? to : 0;
         if (s.open && c.running()) animateTo(box, 'height', to);
       },
     };
@@ -67,6 +69,7 @@ export default function Collapse({ open, children, className = '', variant = 'fa
         animateTo(content, 'scale', 1, { from: drawnValue(content, 'scale', fromNothing ? (pop ? 0.95 : 0.96) : 1) });
       }
     } else {
+      if (s.ctrl) s.ctrl.last = 0;
       if (variant === 'slide') {
         const h = content.offsetHeight;
         animateTo(content, 'ty', -h, { from: drawnValue(content, 'ty', 0) });
