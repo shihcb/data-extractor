@@ -4,7 +4,7 @@ import QRCode from 'qrcode';
 import jsQR from 'jsqr';
 import { copyImageBlob, copyText, downloadBlob, isImageFile, useDoneFlags, usePastedFiles } from '../utils';
 import { loadImage } from '../imageConvert';
-import { flashOutline } from '../motion';
+import { MOTION_MS, flashOutline } from '../motion';
 import { useToast } from '../toastContext';
 import TabSwitcher from './TabSwitcher';
 import TabPanes from './TabPanes';
@@ -220,6 +220,20 @@ function ScanQr({ active }) {
         return;
       }
       streamRef.current = stream;
+      // Shown only once the picture's size is known: shown first, the video
+      // took a placeholder size, then jumped to the camera's mid-pop, and the
+      // box eased to the wrong height, snapped and eased again. Its exact
+      // shape is set too, so nothing measures it again.
+      const video = videoRef.current;
+      video.srcObject = stream;
+      await new Promise((resolve) => {
+        if (video.videoWidth) { resolve(); return; }
+        video.addEventListener('loadedmetadata', resolve, { once: true });
+        setTimeout(resolve, 1500);
+      });
+      if (streamRef.current !== stream) return; // stopped meanwhile
+      if (video.videoWidth && video.videoHeight) video.style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
+      video.play().catch(() => {});
       setResult(null);
       setCamera(true);
     } catch {
@@ -233,12 +247,17 @@ function ScanQr({ active }) {
   useEffect(() => {
     if (!camera) return;
     const video = videoRef.current;
-    video.srcObject = streamRef.current;
-    video.play().catch(() => {});
+    if (video.srcObject !== streamRef.current) {
+      video.srcObject = streamRef.current;
+      video.play().catch(() => {});
+    }
     let stopped = false;
     const frame = document.createElement('canvas');
+    // Not while the camera's picture pops in and its box grows: each look
+    // is heavy work, and it made that motion stutter
+    const from = performance.now() + MOTION_MS + 50;
     const timer = setInterval(() => {
-      if (stopped || video.readyState < 2 || !video.videoWidth) return;
+      if (stopped || performance.now() < from || video.readyState < 2 || !video.videoWidth) return;
       const text = decodeFrom(video, video.videoWidth, video.videoHeight, { sizes: [640], invert: 'dontInvert', canvas: frame });
       if (text) {
         stopped = true;
