@@ -248,7 +248,7 @@ export default function PdfTools({ active }) {
   };
 
   const run = async (e, key, job) => {
-    e.currentTarget.blur();
+    if (e.detail) e.currentTarget.blur();
     if (busy) return;
     try {
       setBusy(key);
@@ -339,7 +339,7 @@ export default function PdfTools({ active }) {
               <div className={`page-card ${isSel ? 'selected' : ''}`}>
                 <button
                   className="page-thumb"
-                  onClick={(e) => { e.currentTarget.blur(); toggle(p.id); }}
+                  onClick={(e) => { if (e.detail) e.currentTarget.blur(); toggle(p.id); }}
                   aria-pressed={isSel}
                   title={isSel ? 'Unselect page' : 'Select page'}
                 >
@@ -351,11 +351,11 @@ export default function PdfTools({ active }) {
                   <FadeText k={label.name} className="page-src">{label.name || null}</FadeText>
                 </div>
                 <div className="page-buttons">
-                  <button className="btn btn-sm btn-icon" onClick={(e) => { e.currentTarget.blur(); rotate(p.id, -90); }} title="Rotate left" aria-label="Rotate left"><RotateCcw size={12} /></button>
-                  <button className="btn btn-sm btn-icon" onClick={(e) => { e.currentTarget.blur(); rotate(p.id, 90); }} title="Rotate right" aria-label="Rotate right"><RotateCw size={12} /></button>
-                  <button className="btn btn-sm btn-icon" onClick={(e) => { e.currentTarget.blur(); move(p.id, -1); }} disabled={n <= 0} title="Move earlier" aria-label="Move earlier"><ChevronLeft size={12} /></button>
-                  <button className="btn btn-sm btn-icon" onClick={(e) => { e.currentTarget.blur(); move(p.id, 1); }} disabled={n >= pages.length - 1} title="Move later" aria-label="Move later"><ChevronRight size={12} /></button>
-                  <button className="btn btn-sm btn-icon" onClick={(e) => { e.currentTarget.blur(); removePages(new Set([p.id])); }} title="Delete page" aria-label="Delete page"><X size={12} /></button>
+                  <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); rotate(p.id, -90); }} title="Rotate left" aria-label="Rotate left"><RotateCcw size={12} /></button>
+                  <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); rotate(p.id, 90); }} title="Rotate right" aria-label="Rotate right"><RotateCw size={12} /></button>
+                  <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); move(p.id, -1); }} disabled={n <= 0} title="Move earlier" aria-label="Move earlier"><ChevronLeft size={12} /></button>
+                  <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); move(p.id, 1); }} disabled={n >= pages.length - 1} title="Move later" aria-label="Move later"><ChevronRight size={12} /></button>
+                  <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); removePages(new Set([p.id])); }} title="Delete page" aria-label="Delete page"><X size={12} /></button>
                 </div>
               </div>
             );
@@ -378,7 +378,7 @@ export default function PdfTools({ active }) {
       </div>
 
       <FlipRow>
-        <button className="btn btn-icon" onClick={(e) => { e.currentTarget.blur(); inputRef.current?.click(); }} title="Add PDFs" aria-label="Add PDFs">
+        <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Add PDFs" aria-label="Add PDFs">
           <FilePlus size={14} />
         </button>
         <button className={`btn btn-primary ${done.save ? 'btn-done' : ''}`} onClick={saveAll} disabled={none || !!busy}>

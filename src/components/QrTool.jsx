@@ -31,17 +31,18 @@ const QR_PX = 1024; // size of the downloaded PNG
 const qrOptions = (level) => ({ errorCorrectionLevel: level, margin: 2, color: { dark: '#000000', light: '#ffffff' } });
 
 // Reads a QR code from an image or video frame. Big images are scanned at
-// a smaller size first (much faster), then at full size if nothing's found.
-function decodeFrom(source, w, h) {
-  const canvas = document.createElement('canvas');
+// a smaller size first (much faster), then at full size if nothing's found,
+// light-on-dark codes too. A camera frame gets one quick look instead (the
+// next frame is 200ms away; the full scan of each froze the page for seconds).
+function decodeFrom(source, w, h, { sizes = [1024, 2048], invert = 'attemptBoth', canvas = document.createElement('canvas') } = {}) {
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  for (const max of [1024, 2048]) {
+  for (const max of sizes) {
     const s = Math.min(1, max / Math.max(w, h));
     canvas.width = Math.max(1, Math.round(w * s));
     canvas.height = Math.max(1, Math.round(h * s));
     ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
     const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const found = jsQR(data.data, canvas.width, canvas.height, { inversionAttempts: 'attemptBoth' });
+    const found = jsQR(data.data, canvas.width, canvas.height, { inversionAttempts: invert });
     if (found) return found.data;
     if (s === 1) break;
   }
@@ -92,20 +93,20 @@ function MakeQr({ active }) {
   });
 
   const downloadPng = async (e) => {
-    e.currentTarget.blur();
+    if (e.detail) e.currentTarget.blur();
     downloadBlob(await pngBlob(), 'qr-code.png');
     flagDone('png');
   };
 
   const downloadSvg = async (e) => {
-    e.currentTarget.blur();
+    if (e.detail) e.currentTarget.blur();
     const svg = await QRCode.toString(text, { ...qrOptions(level), type: 'svg' });
     downloadBlob(new Blob([svg], { type: 'image/svg+xml' }), 'qr-code.svg');
     flagDone('svg');
   };
 
   const copy = async (e) => {
-    e.currentTarget.blur();
+    if (e.detail) e.currentTarget.blur();
     if (await copyImageBlob(pngBlob())) {
       flagDone('copy');
       toast('QR code copied');
@@ -203,7 +204,7 @@ function ScanQr({ active }) {
   const activeRef = useRef(active);
   activeRef.current = active;
   const startCamera = async (e) => {
-    e.currentTarget.blur();
+    if (e.detail) e.currentTarget.blur();
     if (!navigator.mediaDevices?.getUserMedia) {
       toast('no camera access in this browser', { warn: true });
       return;
@@ -235,9 +236,10 @@ function ScanQr({ active }) {
     video.srcObject = streamRef.current;
     video.play().catch(() => {});
     let stopped = false;
+    const frame = document.createElement('canvas');
     const timer = setInterval(() => {
       if (stopped || video.readyState < 2 || !video.videoWidth) return;
-      const text = decodeFrom(video, video.videoWidth, video.videoHeight);
+      const text = decodeFrom(video, video.videoWidth, video.videoHeight, { sizes: [640], invert: 'dontInvert', canvas: frame });
       if (text) {
         stopped = true;
         stopCamera();
@@ -281,14 +283,14 @@ function ScanQr({ active }) {
       </AutoHeight>
 
       <FlipRow>
-        <button className="btn btn-icon" onClick={(e) => { e.currentTarget.blur(); inputRef.current?.click(); }} title="Choose an image" aria-label="Choose an image">
+        <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Choose an image" aria-label="Choose an image">
           <ImageUp size={14} />
         </button>
         {/* One button: its words swap (text swap) and it eases to its new width */}
         <button
           className="btn"
           onClick={(e) => {
-            if (camera) { e.currentTarget.blur(); stopCamera(); }
+            if (camera) { if (e.detail) e.currentTarget.blur(); stopCamera(); }
             else startCamera(e);
           }}
         >
@@ -309,7 +311,7 @@ function ScanQr({ active }) {
                 <button
                   className={`btn ${done.copy ? 'btn-done' : ''}`}
                   onClick={async (e) => {
-                    e.currentTarget.blur();
+                    if (e.detail) e.currentTarget.blur();
                     if (await copyText(shown.text)) flagDone('copy');
                     else toast("couldn't copy — select the text and copy it", { warn: true });
                   }}

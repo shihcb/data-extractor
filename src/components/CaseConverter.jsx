@@ -17,7 +17,7 @@ export default function CaseConverter({ active }) {
   const stats = useMemo(() => textStats(text), [text]);
 
   const handlePaste = async (e) => {
-    e.currentTarget.blur();
+    if (e.detail) e.currentTarget.blur();
     try {
       const clip = await navigator.clipboard.readText();
       if (clip) {
@@ -34,7 +34,7 @@ export default function CaseConverter({ active }) {
   };
 
   const handleConvert = async (e, c) => {
-    e.currentTarget.blur();
+    if (e.detail) e.currentTarget.blur();
     const converted = c.fn(text);
     setText(converted);
     flashOutline(textareaRef.current);

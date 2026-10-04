@@ -169,7 +169,7 @@ export default function ImageConverter({ active }) {
   }, [selected, settings]);
 
   const handleDownload = async (e) => {
-    e.currentTarget.blur();
+    if (e.detail) e.currentTarget.blur();
     if (!items.length || busy) return;
     const list = items;
     try {
@@ -215,7 +215,7 @@ export default function ImageConverter({ active }) {
   };
 
   const handleCopy = async (e) => {
-    e.currentTarget.blur();
+    if (e.detail) e.currentTarget.blur();
     if (!selected) return;
     // Started inside the click (Safari only allows it there); the clipboard
     // takes PNG, so that's what's copied whatever the format.
@@ -279,7 +279,7 @@ export default function ImageConverter({ active }) {
                 <div className={`page-card ${isSel ? 'selected' : ''}`}>
                   <button
                     className="page-thumb"
-                    onClick={(e) => { e.currentTarget.blur(); toggle(item.id); }}
+                    onClick={(e) => { if (e.detail) e.currentTarget.blur(); toggle(item.id); }}
                     aria-pressed={isSel}
                     title={isSel ? 'Unselect image' : 'Select image'}
                   >
@@ -290,9 +290,9 @@ export default function ImageConverter({ active }) {
                     <span>{item.w} × {item.h}</span>
                   </div>
                   <div className="page-buttons">
-                    <button className="btn btn-sm btn-icon" onClick={(e) => { e.currentTarget.blur(); move(item.id, -1); }} disabled={n <= 0} title="Move earlier" aria-label="Move earlier"><ChevronLeft size={12} /></button>
-                    <button className="btn btn-sm btn-icon" onClick={(e) => { e.currentTarget.blur(); move(item.id, 1); }} disabled={n < 0 || n >= items.length - 1} title="Move later" aria-label="Move later"><ChevronRight size={12} /></button>
-                    <button className="btn btn-sm btn-icon" onClick={(e) => { e.currentTarget.blur(); removeItems(new Set([item.id])); }} title="Remove" aria-label={`Remove ${name}`}><X size={12} /></button>
+                    <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); move(item.id, -1); }} disabled={n <= 0} title="Move earlier" aria-label="Move earlier"><ChevronLeft size={12} /></button>
+                    <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); move(item.id, 1); }} disabled={n < 0 || n >= items.length - 1} title="Move later" aria-label="Move later"><ChevronRight size={12} /></button>
+                    <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); removeItems(new Set([item.id])); }} title="Remove" aria-label={`Remove ${name}`}><X size={12} /></button>
                   </div>
                 </div>
               );
@@ -359,7 +359,7 @@ export default function ImageConverter({ active }) {
       <FlipRow>
         <button
           className="btn btn-icon"
-          onClick={(e) => { e.currentTarget.blur(); inputRef.current?.click(); }}
+          onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }}
           title="Add images"
           aria-label="Add images"
         >

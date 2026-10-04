@@ -106,7 +106,12 @@ export async function readBlock(canvas) {
     const speck = (w) => w.text.length <= 2 && (w.sure < 60 || !/[\p{L}\p{N}]/u.test(w.text));
     while (ws.length > 1 && speck(ws[0])) ws.shift();
     while (ws.length > 1 && speck(ws[ws.length - 1])) ws.pop();
-    if (!ws.length || !ws.some(w => /[\p{L}\p{N}]/u.test(w.text) && w.sure >= 30)) continue;
+    // (believable, as on a page: sure of, or long runs of letters and
+    // numbers — sideways or smudged print reads as short words it isn't)
+    const alnum = (t) => (t.match(/[\p{L}\p{N}]/gu) || []).length;
+    const believable = (w) => alnum(w.text) > 0 && (w.sure >= 50 || (alnum(w.text) >= w.text.length * 0.8 && w.text.length >= 6));
+    const chars = ws.reduce((t, w) => t + w.text.length, 0);
+    if (!ws.length || ws.filter(believable).reduce((t, w) => t + w.text.length, 0) < chars * 0.5) continue;
     const b = line.baseline;
     const slope = b && b.has_baseline !== false && Number.isFinite(b.y0) && b.x1 !== b.x0 ? (b.y1 - b.y0) / (b.x1 - b.x0) : 0;
     const x0 = ws[0].bbox.x0;
@@ -115,7 +120,11 @@ export async function readBlock(canvas) {
     const at = (w, y) => y - slope * ((w.bbox.x0 + w.bbox.x1) / 2 - x0);
     const bottoms = ws.map(w => at(w, w.bbox.y1)).sort((p, q) => p - q);
     const tops = ws.map(w => at(w, w.bbox.y0)).sort((p, q) => p - q);
-    const base = bottoms[Math.floor((bottoms.length - 1) * 0.3)];
+    // The line's own baseline where Tesseract found one (a picture's line is
+    // one line: its words' bottoms reach down to the tails of g, p and _ —
+    // one long word, an email address, made its letters a quarter too tall)
+    const found = b && b.has_baseline !== false && Number.isFinite(b.y0) && b.x1 !== b.x0;
+    const base = found ? baselineAt(line, x0) : bottoms[Math.floor((bottoms.length - 1) * 0.3)];
     const top = tops[Math.ceil((tops.length - 1) / 2)];
     out.push({ text: ws.map(w => w.text).join(' '), x0, x1, y0: base, y1: base + slope * (x1 - x0), cap: Math.max(2, base - top) });
   }

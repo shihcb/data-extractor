@@ -258,8 +258,10 @@ async function picturesOf(page, OPS) {
       const pts = [[0, 0], [1, 0], [0, 1], [1, 1]].map(([x, y]) => applyM(ctm, x, y));
       const xs = pts.map(p => p[0]);
       const ys = pts.map(p => p[1]);
-      // Only straight pictures (a turned one can't be covered and retyped)
-      if (Math.abs(ctm[1]) > 1e-3 || Math.abs(ctm[2]) > 1e-3) return;
+      // Only pictures square to the page: straight, or turned a quarter or half
+      // (a sideways picture on a page turned to show it upright reads fine)
+      const square = (Math.abs(ctm[1]) < 1e-3 && Math.abs(ctm[2]) < 1e-3) || (Math.abs(ctm[0]) < 1e-3 && Math.abs(ctm[3]) < 1e-3);
+      if (!square) return;
       out.push({ x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) });
     }
   });
@@ -301,16 +303,27 @@ function rectFor(r, view) {
 // The pictures that look like a line of text, as items
 function pictureItems(pictures, texts, view, n) {
   const items = [];
+  // How the page shows: its scale, and the PDF point under a spot on screen
+  const [a, b, c, d, e0, f0] = view.transform;
+  const scale = Math.hypot(a, b);
+  const det = a * d - b * c;
+  const toPdf = (vx, vy) => [(d * (vx - e0) - c * (vy - f0)) / det, (-b * (vx - e0) + a * (vy - f0)) / det];
   pictures.forEach((r, k) => {
-    const w = r.x1 - r.x0;
-    const h = r.y1 - r.y0;
+    const rect = rectFor(r, view);
+    // Its size as it shows (a sideways picture on a turned page shows upright)
+    const w = ((rect.width / 100) * view.width) / scale;
+    const h = ((rect.height / 100) * view.height) / scale;
     // A line of text: short and wide (not a photo, a logo block or a rule)
     if (h < 2 || h > 60 || w < 6 || w / h < 1.6) return;
     // Real text already there: nothing to read
     if (texts.some(t => t.pdf.x >= r.x0 && t.pdf.x <= r.x1 && t.pdf.y >= r.y0 && t.pdf.y <= r.y1)) return;
-    // Until it's read: a box over the whole picture (baseline a fifth up)
-    const pdf = { x: r.x0, y: r.y0 + h * 0.2, size: h * 0.8, width: w, ascent: 1, descent: -0.25, angle: 0 };
-    const rect = rectFor(r, view);
+    // Until it's read: a box over the whole picture, its baseline a fifth up
+    // from its bottom as it shows, running left to right as it shows
+    const left = (rect.left / 100) * view.width;
+    const bottom = ((rect.top + rect.height) / 100) * view.height;
+    const [x, y] = toPdf(left, bottom - h * scale * 0.2);
+    const [x2, y2] = toPdf(left + 1, bottom - h * scale * 0.2);
+    const pdf = { x, y, size: h * 0.8, width: w, ascent: 1, descent: -0.25, angle: Math.atan2(y2 - y, x2 - x) };
     items.push({
       id: `${n}-p${k}`,
       page: n - 1,
@@ -480,8 +493,35 @@ export default function PdfEditor({ active }) {
     if (Math.abs(k - 1) < 1e-9) return;
     const left = sc.scrollLeft;
     const top = sc.scrollTop;
+    // Kept on the page under the spot, at the same place on it (the space
+    // around and between the pages doesn't grow with them: scaling the
+    // scroll alone drifted by hundreds of pixels a few pages down)
+    const box = sc.getBoundingClientRect();
+    const pageAt = () => {
+      let best = null;
+      inner.querySelectorAll('.pdf-page').forEach((el) => {
+        const r = el.getBoundingClientRect();
+        const y = r.top - box.top;
+        const far = ay < y ? y - ay : ay > y + r.height ? ay - y - r.height : 0;
+        if (!best || far < best.far) best = { el, far };
+      });
+      return best?.el || null;
+    };
+    const page = pageAt();
+    const before = page?.getBoundingClientRect();
     inner.style.setProperty('--zoom', String(z));
     zoomNow.current = z;
+    if (page && before?.width && before.height) {
+      const fx = (box.left + ax - before.left) / before.width;
+      const fy = (box.top + ay - before.top) / before.height;
+      const after = page.getBoundingClientRect();
+      // Where that point is now, in the scroller's content
+      const px = after.left - box.left + left + fx * after.width;
+      const py = after.top - box.top + top + fy * after.height;
+      sc.scrollLeft = px - ax;
+      sc.scrollTop = py - ay;
+      return;
+    }
     sc.scrollLeft = (left + ax) * k - ax;
     sc.scrollTop = (top + ay) * k - ay;
   };
@@ -513,11 +553,16 @@ export default function PdfEditor({ active }) {
     };
     zoomAnim.current = requestAnimationFrame(step);
   };
+  // Back to fitting the box, at the top-left of the first page (a new PDF
+  // opened where the last one was scrolled to, on its fourth page)
   const resetZoom = () => {
     cancelAnimationFrame(zoomAnim.current);
+    zooming.current = false;
     zoomNow.current = 1;
     innerRef.current?.style.setProperty('--zoom', '1');
     setZoomState(1);
+    const sc = scrollRef.current;
+    if (sc) { sc.scrollTop = 0; sc.scrollLeft = 0; }
   };
 
   // Pinch (two fingers) and trackpad pinch / ctrl + wheel zoom around the
@@ -560,7 +605,10 @@ export default function PdfEditor({ active }) {
       cancelAnimationFrame(zoomAnim.current);
       zooming.current = true;
       const [ax, ay] = spot(e.clientX, e.clientY);
-      applyZoom(clampZoom(zoomNow.current * Math.exp(-e.deltaY * 0.01)), ax, ay);
+      // In pixels (a mouse wheel can count in lines or pages), a notch at a
+      // time at most: a wheel's 100px a notch jumped 2.7× at once
+      const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
+      applyZoom(clampZoom(zoomNow.current * Math.exp(-Math.max(-40, Math.min(40, dy)) * 0.01)), ax, ay);
       clearTimeout(wheelDone);
       wheelDone = setTimeout(() => { setZoomState(zoomNow.current); settleZoom(); }, 150);
     };
@@ -689,8 +737,23 @@ export default function PdfEditor({ active }) {
 
   usePastedFiles(active, isPdfFile, openFile);
 
-  // Zoomed in, the pages are drawn again at the size they're shown (once the
-  // zoom has settled: drawing a page is heavy work, never while things move)
+  // Zoomed in, the pages in view (and a screen's worth either side) are
+  // drawn again at the size they're shown, once the zoom or the scrolling
+  // has settled: drawing a page is heavy work, never while things move.
+  // (Every page of a long PDF, each a big picture, was too much for a phone.)
+  const [scrolled, setScrolled] = useState(0);
+  useEffect(() => {
+    const sc = scrollRef.current;
+    if (!sc) return undefined;
+    let t = null;
+    const onScroll = () => {
+      if (zoomNow.current <= 1) return;
+      clearTimeout(t);
+      t = setTimeout(() => setScrolled(n => n + 1), 250);
+    };
+    sc.addEventListener('scroll', onScroll, { passive: true });
+    return () => { clearTimeout(t); sc.removeEventListener('scroll', onScroll); };
+  }, []);
   useEffect(() => {
     if (!doc) return undefined;
     let stale = false;
@@ -698,11 +761,15 @@ export default function PdfEditor({ active }) {
       const open = viewRef.current;
       if (!open || open.id !== doc.id) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const sc = scrollRef.current;
       for (const p of doc.pages) {
-        if (stale) return;
+        if (stale || zooming.current) return;
         const img = imgRefs.current[p.key];
         if (!img) continue;
-        const cssWidth = img.getBoundingClientRect().width;
+        const r = img.getBoundingClientRect();
+        const view = sc?.getBoundingClientRect();
+        if (view && (r.bottom < view.top - view.height || r.top > view.bottom + view.height)) continue;
+        const cssWidth = r.width;
         if (!cssWidth || p.maxed || p.px >= cssWidth * dpr * 0.9) continue;
         try {
           const page = await open.view.getPage(p.num);
@@ -735,9 +802,9 @@ export default function PdfEditor({ active }) {
       }
     }, MOTION_MS + 250);
     return () => { stale = true; clearTimeout(t); };
-    // Only when the zoom or the document changes (not each sharper page)
+    // Only when the zoom, the scrolling or the document changes (not each sharper page)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zoom, doc?.id]);
+  }, [zoom, scrolled, doc?.id]);
 
   useEffect(() => () => release(docRef.current), []);
 
@@ -778,8 +845,11 @@ export default function PdfEditor({ active }) {
   // white margin around it. Falls back to the page on screen.
   const pictureCanvas = async (item) => {
     const r = item.picture.rect;
-    const hUnits = item.picture.y1 - item.picture.y0;
-    const wUnits = item.picture.x1 - item.picture.x0;
+    // Its height and length as it shows (on a turned page the PDF's own
+    // height of it is its length: it was read far too small to measure)
+    const viewScale = Math.hypot(item.view.transform[0], item.view.transform[1]);
+    const hUnits = ((r.height / 100) * item.view.height) / viewScale;
+    const wUnits = ((r.width / 100) * item.view.width) / viewScale;
     const scale = Math.max(1, Math.min(16, 100 / hUnits, 6000 / wUnits));
     const make = (w, h) => {
       const pad = Math.round(h * 0.25);
@@ -811,6 +881,8 @@ export default function PdfEditor({ active }) {
         const { canvas, ctx, pad } = make(crop.width, crop.height);
         ctx.drawImage(crop, pad, pad);
         crop.width = crop.height = 0;
+        // Its pixels back to the PDF's units, through the page's own turn
+        canvas.toPdf = (px, py) => viewport.convertToPdfPoint(px - pad + left, py - pad + top);
         return canvas;
       } catch {
         // Drawn from the page on screen instead
@@ -823,7 +895,18 @@ export default function PdfEditor({ active }) {
     const k = Math.max(1, Math.min(4, 100 / Math.max(1, sh)));
     const { canvas, ctx, pad } = make(sw * k, sh * k);
     ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(img, (r.left / 100) * img.naturalWidth, (r.top / 100) * img.naturalHeight, sw, sh, pad, pad, canvas.width - 2 * pad, canvas.height - 2 * pad);
+    const sx = (r.left / 100) * img.naturalWidth;
+    const sy = (r.top / 100) * img.naturalHeight;
+    ctx.drawImage(img, sx, sy, sw, sh, pad, pad, canvas.width - 2 * pad, canvas.height - 2 * pad);
+    // Its pixels back to the PDF's units: to the drawn page's, then through
+    // the page's view (turn and all)
+    const [a, b, c, d, e0, f0] = item.view.transform;
+    const det = a * d - b * c;
+    canvas.toPdf = (px, py) => {
+      const vx = (sx + ((px - pad) / (canvas.width - 2 * pad)) * sw) * (item.view.width / img.naturalWidth);
+      const vy = (sy + ((py - pad) / (canvas.height - 2 * pad)) * sh) * (item.view.height / img.naturalHeight);
+      return [(d * (vx - e0) - c * (vy - f0)) / det, (-b * (vx - e0) + a * (vy - f0)) / det];
+    };
     return canvas;
   };
 
@@ -864,11 +947,10 @@ export default function PdfEditor({ active }) {
       }));
       return;
     }
-    // Canvas pixels → the PDF's units
-    const { x0, x1, y0, y1 } = item.picture;
+    // Canvas pixels → the PDF's units (the picture was drawn upright on
+    // screen, which on a turned page isn't the PDF's own up)
     const { pad } = canvas;
-    const toX = (px) => x0 + ((px - pad) / (canvas.width - 2 * pad)) * (x1 - x0);
-    const toY = (py) => y1 - ((py - pad) / (canvas.height - 2 * pad)) * (y1 - y0);
+    const toPdf = canvas.toPdf;
     // Each line takes its own band of the picture (to the middle of the
     // gap to the next), which is what's covered when it's changed
     const bands = lines.map((l, i) => {
@@ -877,12 +959,20 @@ export default function PdfEditor({ active }) {
       return [Math.max(pad, top), Math.min(canvas.height - pad, bottom)];
     });
     const reads = lines.map((l, i) => {
-      const baseY = toY((l.y0 + l.y1) / 2);
-      const size = Math.max(2, (l.cap / (canvas.height - 2 * pad)) * (y1 - y0) / 0.72); // tall letters stand ~0.72 of the size
-      const pdf = { x: toX(l.x0), y: baseY, size, width: toX(l.x1) - toX(l.x0), ascent: 0.9, descent: -0.22, angle: 0 };
+      // Its baseline from start to end, and how tall its letters stand
+      const [sx, sy] = toPdf(l.x0, l.y0);
+      const [ex, ey] = toPdf(l.x1, l.y1);
+      const [tx, ty] = toPdf(l.x0, l.y0 - l.cap);
+      const size = Math.max(2, Math.hypot(tx - sx, ty - sy) / 0.72); // tall letters stand ~0.72 of the size
+      const pdf = { x: sx, y: sy, size, width: Math.hypot(ex - sx, ey - sy), ascent: 0.9, descent: -0.22, angle: Math.atan2(ey - sy, ex - sx) };
       const [bt, bb] = bands[i];
-      const own = lines.length === 1 ? item.picture : { x0, x1, y0: toY(bb), y1: toY(bt) };
-      const picture = lines.length === 1 ? item.picture : { ...own, rect: rectFor(own, item.view) };
+      // Its band of the picture, straight in the PDF (its four corners' bounds)
+      const corners = [[pad, bt], [canvas.width - pad, bt], [pad, bb], [canvas.width - pad, bb]].map(([px, py]) => toPdf(px, py));
+      const own = {
+        x0: Math.min(...corners.map(q => q[0])), x1: Math.max(...corners.map(q => q[0])),
+        y0: Math.min(...corners.map(q => q[1])), y1: Math.max(...corners.map(q => q[1])),
+      };
+      const picture = lines.length === 1 ? item.picture : { ...own, rect: rectFor(own, item.view), band: [(bt - pad) / (canvas.height - 2 * pad), (bb - pad) / (canvas.height - 2 * pad)] };
       // Its colours, read sharp from its own band (small letters blur on the page on screen)
       const colors = colorsIn(canvas, pad, Math.round(bt), canvas.width - 2 * pad, Math.max(1, Math.round(bb - bt)));
       return {
@@ -904,7 +994,8 @@ export default function PdfEditor({ active }) {
     if (docRef.current?.id !== doc.id) return;
     // The line that was tapped (the tap's height in the picture)
     const at = tapAt.current?.id === item.id ? tapAt.current.y : 0;
-    const pick = reads.find(r => (y1 - r.picture.y1) / (y1 - y0) <= at && at <= (y1 - r.picture.y0) / (y1 - y0) + 1e-6) || reads[0];
+    // (its band's place down the drawn picture, which is upright as on screen)
+    const pick = reads.find(r => r.picture.band && r.picture.band[0] <= at && at <= r.picture.band[1] + 1e-6) || reads[0];
     // A change typed in before its lines were read goes onto that line (and
     // so do the undo steps that name it)
     if (pick.id !== item.id) {
@@ -924,11 +1015,11 @@ export default function PdfEditor({ active }) {
     }
   };
 
-  // The line being changed, saved; the box closes on blur (Enter, a tap
-  // elsewhere), or moves on to the next line (Tab)
   // A new line an undo or redo still names isn't dropped (it'd come back
   // with nothing to show it on)
   const inHistory = (id) => history.past.some(e => e[id]) || history.future.some(e => e[id]);
+  // The line being changed, saved; the box closes on blur (Enter, a tap
+  // elsewhere), or moves on to the next line (Tab)
   const commit = (item) => {
     if (cancelled.current) { // Escape: the blur that follows doesn't save
       cancelled.current = false;
@@ -955,7 +1046,7 @@ export default function PdfEditor({ active }) {
   };
 
   const save = async (e) => {
-    e.currentTarget.blur();
+    if (e.detail) e.currentTarget.blur();
     if (!doc || busy) return;
     setBusy(true);
     try {
@@ -1051,12 +1142,21 @@ export default function PdfEditor({ active }) {
         const pad = size * PAD;
         if (item.picture) {
           // A picture of text: covered whole (and as far as the new words reach)
+          // (stretched to where the new words end, along their own way:
+          // on a turned page that isn't the PDF's x — stretched along x, it
+          // covered the lines below)
           const { x0, y0, x1, y1 } = item.picture;
+          const endX = x + newWidth * cos;
+          const endY = y + newWidth * sin;
+          const lo = [Math.min(x0, endX), Math.min(y0, endY)];
+          const hi = [Math.max(x1, endX), Math.max(y1, endY)];
+          // (only along the words: across them it keeps the picture's band)
+          if (Math.abs(cos) > Math.abs(sin)) { lo[1] = y0; hi[1] = y1; } else { lo[0] = x0; hi[0] = x1; }
           page.drawRectangle({
-            x: x0 - 0.5,
-            y: y0 - 0.5,
-            width: Math.max(x1, x + newWidth) - x0 + 1,
-            height: y1 - y0 + 1,
+            x: lo[0] - 0.5,
+            y: lo[1] - 0.5,
+            width: hi[0] - lo[0] + 1,
+            height: hi[1] - lo[1] + 1,
             color: color(edit.bg),
             borderWidth: 0,
           });
@@ -1348,7 +1448,7 @@ export default function PdfEditor({ active }) {
   useEffect(() => {
     if (!active) return undefined;
     const onKey = (e) => {
-      if (!(e.ctrlKey || e.metaKey) || e.altKey || !keys.current.has) return;
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || !keys.current.has || document.body.classList.contains('modal-open')) return;
       const t = e.target;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
       const k = e.key.toLowerCase();
@@ -1378,6 +1478,9 @@ export default function PdfEditor({ active }) {
     setEditing(null);
     setFindOpen(false);
     setAdding(false);
+    // Zoom and scroll back to the start once its pages have popped out
+    // where they were (unless another PDF has opened meanwhile)
+    setTimeout(() => { if (!docRef.current) resetZoom(); }, MOTION_MS + 50);
   };
 
   return (
@@ -1429,8 +1532,9 @@ export default function PdfEditor({ active }) {
                     const gone = leaving ? leavingDoc.current : null;
                     const edit = (gone ? gone.edits : edits)[item.id];
                     const typing = !gone && editing === item.id && draftColors;
-                    // A new line with nothing in it (undone): not shown
-                    if (item.added && !edit && !typing) return null;
+                    // (A new line with nothing in it, undone, stays drawn — empty, so
+                    // nothing shows and nothing's there to tap — so its words fade
+                    // out on undo and back in on redo, like any line's)
                     const look = lookOf(item, typing ? draft : (edit ? edit.text : item.str), !!typing, gone ? gone.fonts : doc?.fonts);
                     // The box runs from the PDF font's ascent to its descent; the
                     // text sits with its baseline on the PDF's (ascent below the
@@ -1547,9 +1651,9 @@ export default function PdfEditor({ active }) {
         </div>
         {/* Zoom: pinch too (or the trackpad / ctrl + scroll) */}
         <div className={`zoom-pill ${doc ? 'show' : ''}`} aria-hidden={!doc}>
-          <button className="zoom-btn" onClick={(e) => { e.currentTarget.blur(); zoomTo(zoom / ZOOM_STEP); }} disabled={!doc || zoom <= 1} title="Zoom out" aria-label="Zoom out"><ZoomOut size={14} /></button>
+          <button className="zoom-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); zoomTo(zoom / ZOOM_STEP); }} disabled={!doc || zoom <= 1} title="Zoom out" aria-label="Zoom out"><ZoomOut size={14} /></button>
           <span className="zoom-num"><Count value={Math.round(zoom * 100)} />%</span>
-          <button className="zoom-btn" onClick={(e) => { e.currentTarget.blur(); zoomTo(zoom * ZOOM_STEP); }} disabled={!doc || zoom >= ZOOM_MAX} title="Zoom in" aria-label="Zoom in"><ZoomIn size={14} /></button>
+          <button className="zoom-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); zoomTo(zoom * ZOOM_STEP); }} disabled={!doc || zoom >= ZOOM_MAX} title="Zoom in" aria-label="Zoom in"><ZoomIn size={14} /></button>
         </div>
       </div>
       <input
@@ -1585,7 +1689,7 @@ export default function PdfEditor({ active }) {
             />
             <button
               className={`btn btn-icon match-case ${matchCase ? 'btn-on' : ''}`}
-              onClick={(e) => { e.currentTarget.blur(); setMatchCase(m => !m); }}
+              onClick={(e) => { if (e.detail) e.currentTarget.blur(); setMatchCase(m => !m); }}
               title={matchCase ? 'Match case: on' : 'Match case: off'}
               aria-label="Match case"
               aria-pressed={matchCase}
@@ -1601,7 +1705,7 @@ export default function PdfEditor({ active }) {
               spellCheck={false}
               aria-label="Replace with"
             />
-            <button className="btn" onClick={(e) => { e.currentTarget.blur(); replaceAll(); }} disabled={!matches.size}>
+            <button className="btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); replaceAll(); }} disabled={!matches.size}>
               replace all
             </button>
           </div>
@@ -1609,7 +1713,7 @@ export default function PdfEditor({ active }) {
       </Collapse>
 
       <FlipRow>
-        <button className="btn btn-icon" onClick={(e) => { e.currentTarget.blur(); inputRef.current?.click(); }} title="Open a PDF" aria-label="Open a PDF">
+        <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Open a PDF" aria-label="Open a PDF">
           <FileUp size={14} />
         </button>
         <button className={`btn btn-primary ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!doc || !editCount || busy}>
@@ -1619,15 +1723,15 @@ export default function PdfEditor({ active }) {
       {/* Undo / redo (one change at a time), adding text, find and replace,
           and close: the bottom bar, like every tab */}
       <ActionBar active={active} open={!!doc} closeLabel="close" onClose={close} label="Editing">
-        <button className="bulk-btn bulk-icon" onClick={(e) => { e.currentTarget.blur(); undo(); }} disabled={!history.past.length} title="Undo (Ctrl + Z)" aria-label="Undo">
+        <button className="bulk-btn bulk-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); undo(); }} disabled={!history.past.length} title="Undo (Ctrl + Z)" aria-label="Undo">
           <Undo2 size={14} />
         </button>
-        <button className="bulk-btn bulk-icon" onClick={(e) => { e.currentTarget.blur(); redo(); }} disabled={!history.future.length} title="Redo (Ctrl + Shift + Z)" aria-label="Redo">
+        <button className="bulk-btn bulk-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); redo(); }} disabled={!history.future.length} title="Redo (Ctrl + Shift + Z)" aria-label="Redo">
           <Redo2 size={14} />
         </button>
         <button
           className={`bulk-btn ${adding ? 'on' : ''}`}
-          onClick={(e) => { e.currentTarget.blur(); setAdding(a => !a); }}
+          onClick={(e) => { if (e.detail) e.currentTarget.blur(); setAdding(a => !a); }}
           title="Add text: tap a spot on a page (or double-click one)"
           aria-pressed={adding}
         >
@@ -1636,7 +1740,7 @@ export default function PdfEditor({ active }) {
         <button
           className={`bulk-btn ${findOpen ? 'on' : ''}`}
           onClick={(e) => {
-            e.currentTarget.blur();
+            if (e.detail) e.currentTarget.blur();
             const open = !findOpen;
             setFindOpen(open);
             if (open) requestAnimationFrame(() => findRef.current?.focus({ preventScroll: true }));

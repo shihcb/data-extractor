@@ -186,6 +186,8 @@ export default function App() {
   useEffect(() => {
     const onKey = (e) => {
       if (e.ctrlKey || e.metaKey || e.altKey || isTyping()) return;
+      // (a pop-up open: only ? (to close it) — no switching tabs behind it)
+      if (e.key !== '?' && document.body.classList.contains('modal-open')) return;
       if (e.key === '?') {
         e.preventDefault();
         setShortcutsOpen(open => !open);
@@ -224,7 +226,7 @@ export default function App() {
 
       <button
         className="btn btn-icon shortcuts-btn"
-        onClick={(e) => { e.currentTarget.blur(); setShortcutsOpen(true); }}
+        onClick={(e) => { if (e.detail) e.currentTarget.blur(); setShortcutsOpen(true); }}
         title="Keyboard shortcuts (?)"
         aria-label="Keyboard shortcuts"
       >

@@ -1420,6 +1420,12 @@ a.btn {
   font-size: 0.82rem;
 }
 
+/* "… 12 unchanged lines": a long unchanged stretch, folded */
+.diff-line-fold {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 .diff-line {
   display: flex;
   padding: 0 16px 0 8px;

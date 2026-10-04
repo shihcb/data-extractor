@@ -68,7 +68,7 @@ export default function ActionBar({ active, open: wanted, children, closeLabel =
         inert={open ? undefined : true}
       >
         {children}
-        <button className="bulk-btn" onClick={(e) => { e.currentTarget.blur(); onClose(); }} disabled={closeDisabled}>
+        <button className="bulk-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); onClose(); }} disabled={closeDisabled}>
           {closeLabel}
         </button>
       </div>

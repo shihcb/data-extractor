@@ -154,7 +154,18 @@ export default function TabSwitcher({ tabs, active, onChange, className = '' }) 
           role="tab"
           aria-selected={active === tab.key}
           className={`tab-switcher-btn ${active === tab.key ? 'active' : ''}`}
-          onClick={(e) => { e.currentTarget.blur(); onChange(tab.key); }}
+          tabIndex={active === tab.key ? 0 : -1}
+          onClick={(e) => { if (e.detail) e.currentTarget.blur(); onChange(tab.key); }}
+          // Arrow keys move between tabs (Home / End to the ends), focus following
+          onKeyDown={(e) => {
+            const i = tabs.findIndex(t => t.key === tab.key);
+            const to = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+            if (to === undefined) return;
+            e.preventDefault();
+            const next = tabs[(to + tabs.length) % tabs.length];
+            onChange(next.key);
+            tabRefs.current[next.key]?.focus();
+          }}
         >
           {tab.label}
         </button>

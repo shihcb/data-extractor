@@ -8,6 +8,8 @@ const perLine = (fn) => (text) => text.split('\n').map(fn).join('\n');
 // → parse, HTML, Text).
 export function splitWords(line) {
   return line
+    // An apostrophe inside a word keeps it one word ("don't" → "dont", not "don t")
+    .replace(/(\p{L})['’](?=\p{L})/gu, '$1')
     .replace(/([\p{Ll}\p{N}])(\p{Lu})/gu, '$1 $2')
     .replace(/(\p{Lu}+)(\p{Lu}\p{Ll})/gu, '$1 $2')
     .split(/[^\p{L}\p{M}\p{N}]+/u) // (accents and vowel signs are part of their letter)
@@ -28,7 +30,8 @@ export const toTitle = (text) =>
 export const toSentence = (text) =>
   text
     .toLowerCase()
-    .replace(/(^|[.!?]\s+|\n\s*)(\p{L})/gu, (_, before, letter) => before + letter.toUpperCase())
+    // (after leading spaces and opening quotes or brackets too: '"hello"')
+    .replace(/(^|[.!?]\s+|\n)([\s"“‘'«([¿¡]*)(\p{L})/gu, (_, before, open, letter) => before + open + letter.toUpperCase())
     .replace(/(^|[^\p{L}\p{N}'’.])i(?=$|[^\p{L}\p{N}.])/gu, '$1I'); // (not "i.e.")
 
 export const toCamel = perLine((line) => {

@@ -122,3 +122,20 @@ Rules that keep it smooth (each was a real bug):
   picture that fades in when loaded does it from script, once.
 - A hint centred over a box that eases is centred in the outer box, not
   the inner one that changes size at once (the QR hint jumped 24px).
+- A button lets go of focus only after a pointer click (`if (e.detail)
+  e.currentTarget.blur()`): blurring on a keyboard press threw keyboard
+  users back to the top. Never in a key handler (Enter in the PDF editor's
+  text box blurs to save, unconditionally).
+- The PDF editor's zoom keeps the point under the fingers on the same spot
+  of the same page (the space between pages doesn't scale); only pages near
+  the view are redrawn sharper; a new PDF opens at the top, at 100%.
+
+Files out and updates:
+- PDF tools: every page of one file → that file rearranged in place (forms,
+  outline stay); otherwise each file's pages copied in one go (shared fonts
+  and pictures once). Pages left out are never kept in the file.
+- The service worker serves /assets/ (hashed) from its cache first, never
+  lets a 404 or a web page replace a good copy, keeps the previous build's
+  cache for open tabs, and keeps cmaps / OCR files in `toolbox-runtime`.
+  `loadLibrary` reloads only when the app really changed (never offline,
+  never while saving).

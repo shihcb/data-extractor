@@ -22,9 +22,12 @@ const DIFF_TIMEOUT_MS = 250;
 function compare(a, b, mode) {
   if (!a && !b) return { parts: [], added: 0, removed: 0, changed: false };
   const opts = { timeout: DIFF_TIMEOUT_MS };
+  // Windows line endings (\r\n) are just line breaks, in every mode
+  a = a.replace(/\r\n?/g, '\n');
+  b = b.replace(/\r\n?/g, '\n');
   // Same line endings, and every line ending in one: otherwise a last line
   // without a newline counts as changed when a line is added after it
-  const asLines = (t) => { const n = t.replace(/\r\n?/g, '\n'); return !n || n.endsWith('\n') ? n : `${n}\n`; };
+  const asLines = (n) => (!n || n.endsWith('\n') ? n : `${n}\n`);
   const parts = mode === 'lines' ? diffLines(asLines(a), asLines(b), opts)
     : mode === 'words' ? diffWordsWithSpace(a, b, opts)
     : diffChars(a, b, opts);
@@ -41,19 +44,44 @@ function compare(a, b, mode) {
   return { parts, added, removed, changed: parts.some(p => p.added || p.removed) };
 }
 
-// Lines mode: one row per line, marked + / − in the gutter
+// Lines mode: one row per line, marked + / − in the gutter. A long run of
+// unchanged lines folds to the 3 next to each change and a "… N unchanged
+// lines" row, and it stops at 3000 rows: twenty thousand rows froze the page.
+const CONTEXT = 3;
+const MAX_ROWS = 3000;
 function LineRows({ parts }) {
   const rows = [];
-  parts.forEach((p, i) => {
+  const row = (key, kind, text) => rows.push(
+    <div key={key} className={`diff-line diff-line-${kind}`}>
+      <span className="diff-gutter" aria-hidden="true">{kind === 'add' ? '+' : kind === 'del' ? '−' : ' '}</span>
+      <span className="diff-text">{text || ' '}</span>
+    </div>
+  );
+  const note = (key, text) => rows.push(
+    <div key={key} className="diff-line diff-line-fold">
+      <span className="diff-gutter" aria-hidden="true">⋯</span>
+      <span className="diff-text">{text}</span>
+    </div>
+  );
+  for (let i = 0; i < parts.length; i++) {
+    if (rows.length >= MAX_ROWS) {
+      note('more', 'and more — too long to show it all');
+      break;
+    }
+    const p = parts[i];
     const lines = p.value.replace(/\n$/, '').split('\n');
     const kind = p.added ? 'add' : p.removed ? 'del' : 'same';
-    lines.forEach((line, j) => rows.push(
-      <div key={`${i}-${j}`} className={`diff-line diff-line-${kind}`}>
-        <span className="diff-gutter" aria-hidden="true">{kind === 'add' ? '+' : kind === 'del' ? '−' : ' '}</span>
-        <span className="diff-text">{line || ' '}</span>
-      </div>
-    ));
-  });
+    const head = i > 0 ? CONTEXT : 0;
+    const tail = i < parts.length - 1 ? CONTEXT : 0;
+    if (kind === 'same' && lines.length > head + tail + 1) {
+      lines.slice(0, head).forEach((line, j) => row(`${i}-${j}`, kind, line));
+      const n = lines.length - head - tail;
+      note(`${i}-fold`, `${n} unchanged ${n === 1 ? 'line' : 'lines'}`);
+      lines.slice(lines.length - tail).forEach((line, j) => row(`${i}-t${j}`, kind, line));
+    } else {
+      lines.slice(0, MAX_ROWS).forEach((line, j) => row(`${i}-${j}`, kind, line));
+    }
+  }
   return rows;
 }
 
@@ -67,7 +95,8 @@ export default function TextDiff({ active }) {
 
   const empty = !left && !right;
   const same = result && !empty && !result.changed;
-  const status = empty ? 'empty' : !result ? 'slow' : same ? 'same' : 'diff';
+  // (changed, but no word or line added or removed: only spaces or line breaks)
+  const status = empty ? 'empty' : !result ? 'slow' : same ? 'same' : !result.added && !result.removed ? 'space' : 'diff';
 
   const hasOutput = !!result && !empty;
   const [lastView, setLastView] = useState(null);
@@ -112,7 +141,7 @@ export default function TextDiff({ active }) {
       </FlipRow>
       {/* Swapping and clearing: in the bottom bar, like every tab */}
       <ActionBar active={active} open={!empty} onClose={() => { setLeft(''); setRight(''); }} label="Texts">
-        <button className="bulk-btn" onClick={(e) => { e.currentTarget.blur(); setLeft(right); setRight(left); }} title="Swap the two texts">
+        <button className="bulk-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); setLeft(right); setRight(left); }} title="Swap the two texts">
           <ArrowLeftRight size={13} /> swap
         </button>
       </ActionBar>
@@ -120,7 +149,8 @@ export default function TextDiff({ active }) {
       <AutoHeight className="tool-meta" aria-live="polite">
         <FadeText k={status}>
           {status === 'empty' && 'paste two texts to compare'}
-          {status === 'slow' && 'too different to compare this way — try lines'}
+          {status === 'slow' && (mode === 'lines' ? 'too long to compare' : 'too different to compare this way — try lines')}
+          {status === 'space' && 'only spaces or line breaks differ'}
           {status === 'same' && 'no differences'}
           {status === 'diff' && (
             <>
