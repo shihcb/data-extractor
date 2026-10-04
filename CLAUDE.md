@@ -73,6 +73,17 @@ Editing in the PDF editor:
   undo; open, it reads the pictures of text too).
 - Double-click an empty spot (or tap one with "add text" on) to add a line,
   in the size and font of the nearest line; left empty, it goes again.
+- Scanned / photographed pages (one picture over most of the page, no text
+  of its own) are read in the background once open (`readPage` in
+  `src/ocr.js`): drawn ~5000px on the long side, made black on white
+  (`src/inkWorker.js`, local threshold, off the page's thread), read whole;
+  lines split at gaps of ~5 letters (columns), junk dropped (words Tesseract
+  isn't sure of unless long letter/number runs), and pieces whose words
+  span several close rows re-found from the ink and re-read line by line.
+  Each becomes a line to change, turned with the scan's tilt, in Courier
+  when its letters all take the same room. The ink colour everywhere is a
+  solid stroke's (75% of the way to the darkest inked pixel), not the
+  darkest speck.
 
 Every stats line in the app is label first ("characters 3 · words 1", "added 2 ·
 removed 1") so only the numbers change, counting.

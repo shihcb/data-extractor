@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Download, FileUp, Redo2, Replace, Type, Undo2, ZoomIn, ZoomOut } from 'lucide-react';
 import { closePdf, loadPdfLib, loadPdfjs, openPdf, renderPage, isPasswordError } from '../pdf';
-import { readLine } from '../ocr';
+import { readLine, readPage } from '../ocr';
 import { removeText } from '../pdfText';
 import { baseName, canvasToBlob, downloadBlob, isPdfFile, loadLibrary, useDoneFlags, usePastedFiles } from '../utils';
 import { MOTION_MS, motionEase, prefersReducedMotion } from '../motion';
@@ -87,14 +87,21 @@ function colorsIn(source, x, y, w, h) {
   counts.forEach(({ n, c }) => { if (n > best) { best = n; bg = c; } });
   let ink = bg[0] + bg[1] + bg[2] > 382 ? [0, 0, 0] : [255, 255, 255];
   let far = -1;
+  const inner = [];
   for (let j = 2; j < h - 2; j++) {
     for (let i = 2; i < w - 2; i++) {
       const c = px(i, j);
       const d = (c[0] - bg[0]) ** 2 + (c[1] - bg[1]) ** 2 + (c[2] - bg[2]) ** 2;
-      if (d > far) { far = d; ink = c; }
+      inner.push([d, c]);
+      if (d > far) far = d;
     }
   }
-  if (far < 900) ink = bg[0] + bg[1] + bg[2] > 382 ? [0, 0, 0] : [255, 255, 255];
+  if (far < 900) return { bg, ink };
+  // The ink: a solid stroke's colour, not the one pixel furthest from the
+  // paper (on a scan, a speck far darker than the faded print around it):
+  // of the clearly inked pixels, one three quarters of the way to the darkest
+  const inked = inner.filter(([d]) => d >= far * 0.5).sort((p, q) => p[0] - q[0]);
+  ink = inked[Math.floor((inked.length - 1) * 0.75)][1];
   return { bg, ink };
 }
 
@@ -534,14 +541,21 @@ export default function PdfEditor({ active }) {
         // Lines of text drawn as pictures (an email's header, say)
         // How the PDF's units land on the drawn page (for pictures, new text)
         const pageView = { transform: viewport.transform, width: viewport.width, height: viewport.height };
+        let scan = false;
         try {
           const { OPS } = await loadPdfjs();
-          items.push(...pictureItems(await picturesOf(page, OPS), items, pageView, n));
+          const pictures = await picturesOf(page, OPS);
+          items.push(...pictureItems(pictures, items, pageView, n));
+          // A scan or photo of a page: one picture over most of it, and no
+          // text of its own (a searchable scan has its words as text already)
+          const [vx0, vy0, vx1, vy1] = page.view;
+          const area = Math.abs((vx1 - vx0) * (vy1 - vy0));
+          scan = items.length <= 2 && pictures.some(r => (r.x1 - r.x0) * (r.y1 - r.y0) >= area * 0.5);
         } catch {
           // No pictures read: just the text
         }
         page.cleanup();
-        pages.push({ num: n, url, px, items, view: pageView, width: viewport.width, height: viewport.height });
+        pages.push({ num: n, url, px, items, scan, view: pageView, width: viewport.width, height: viewport.height });
       }
       // A new document's pages pop in as the old one's pop out
       const id = nextDocId++;
@@ -836,7 +850,7 @@ export default function PdfEditor({ active }) {
       // whole gets a patch over it instead
       const gone = new Set();
       doc.pages.forEach((p) => {
-        const boxes = p.items.filter(item => edits[item.id] && !item.picture && !item.added).map(item => ({ id: item.id, ...item.pdf }));
+        const boxes = p.items.filter(item => edits[item.id] && !item.picture && !item.added && !item.scan).map(item => ({ id: item.id, ...item.pdf }));
         if (!boxes.length) return;
         try {
           removeText(lib, pdf.getPage(p.num - 1), boxes).forEach(id => gone.add(id));
@@ -978,6 +992,70 @@ export default function PdfEditor({ active }) {
     document.fonts?.addEventListener?.('loadingdone', again);
     return () => document.fonts?.removeEventListener?.('loadingdone', again);
   }, [alignRuns]);
+
+  // ── Scans ──
+  // A scanned or photographed page is read once it's open (in the
+  // background, a page at a time): each line it finds becomes a line to
+  // change like any other, turned with the scan's tilt, in a fixed-width
+  // font when the print's letters all take the same room (a receipt).
+  useEffect(() => {
+    const open = viewRef.current;
+    if (!doc || !open || open.id !== doc.id || !doc.pages.some(p => p.scan)) return undefined;
+    let stop = false;
+    (async () => {
+      for (const p of doc.pages) {
+        if (stop || !p.scan) continue;
+        let canvas = null;
+        try {
+          const page = await open.view.getPage(p.num);
+          const base = page.getViewport({ scale: 1 });
+          // About 5000px on its long side: small print reads (larger read
+          // no better), big scans stay quick
+          const scale = Math.min(4, 5000 / Math.max(base.width, base.height));
+          const drawn = await renderPage(page, { scale, maxPixels: 12e6 });
+          canvas = drawn.canvas;
+          const { viewport } = drawn;
+          page.cleanup();
+          if (stop) return;
+          const lines = await readPage(canvas);
+          if (stop || viewRef.current !== open) return;
+          // Canvas pixels → the PDF's units
+          const [a, b, c, d, e0, f0] = viewport.transform;
+          const det = a * d - b * c;
+          const toPdf = (px, py) => [(d * (px - e0) - c * (py - f0)) / det, (-b * (px - e0) + a * (py - f0)) / det];
+          const items = lines.map((l, k) => {
+            const [x, y] = toPdf(l.x0, l.y0);
+            const [x1, y1] = toPdf(l.x1, l.y1);
+            const size = Math.max(2, l.cap / viewport.scale / 0.72); // tall letters stand ~0.72 of the size
+            // (a shallow tail below: printed lines sit close, the patch mustn't cut into the next)
+            const pdf = { x, y, size, width: Math.hypot(x1 - x, y1 - y), ascent: 0.9, descent: -0.15, angle: Math.atan2(y1 - y, x1 - x) };
+            return {
+              id: `${p.num}-s${k}`,
+              page: p.num - 1,
+              str: l.text,
+              scan: true,
+              view: p.view,
+              pdf,
+              box: boxFor(pdf, p.view),
+              fontKey: null,
+              font: { base: l.mono ? 'Courier' : 'Helvetica', bold: false, italic: false },
+            };
+          });
+          setDoc(prev => (!prev || prev.id !== doc.id ? prev : {
+            ...prev,
+            pages: prev.pages.map(q => (q.num !== p.num ? q : { ...q, scan: false, items: [...q.items, ...items] })),
+          }));
+        } catch {
+          // Not read: that page stays as it is
+        } finally {
+          if (canvas) canvas.width = canvas.height = 0;
+        }
+      }
+    })();
+    return () => { stop = true; };
+    // Once per document
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doc?.id]);
 
   // ── New text ──
   // Double-click an empty spot on a page (or tap one with "add text" on):
