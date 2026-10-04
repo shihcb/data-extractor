@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Download, FileUp, Redo2, Undo2, ZoomIn, ZoomOut } from 'lucide-react';
-import { closePdf, loadPdfLib, openPdf, renderPage, isPasswordError } from '../pdf';
+import { closePdf, loadPdfLib, loadPdfjs, openPdf, renderPage, isPasswordError } from '../pdf';
+import { readLine } from '../ocr';
 import { baseName, canvasToBlob, downloadBlob, isPdfFile, loadLibrary, useDoneFlags, usePastedFiles } from '../utils';
 import { MOTION_MS, motionEase, prefersReducedMotion } from '../motion';
 import { useToast } from '../toastContext';
@@ -172,6 +173,104 @@ function itemsOf(page, content, viewport, n, fonts) {
       },
       fontKey: item.fontName,
       font: info?.style || { base: 'Helvetica', bold: false, italic: false },
+    });
+  });
+  return items;
+}
+
+// ── Pictures of text ──────────────────────────────────────────────────
+// Some PDFs draw lines of text as pictures (Apple Mail prints an email's
+// From / Subject / Date / To that way). Each short, wide picture on a page
+// becomes an item too: tapped, its words are read (OCR) and can be changed
+// like any text — it's covered whole, and the new words written on its line.
+
+const applyM = (m, x, y) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
+const compose = (a, b) => [
+  a[0] * b[0] + a[2] * b[1], a[1] * b[0] + a[3] * b[1],
+  a[0] * b[2] + a[2] * b[3], a[1] * b[2] + a[3] * b[3],
+  a[0] * b[4] + a[2] * b[5] + a[4], a[1] * b[4] + a[3] * b[5] + a[5],
+];
+
+// Where each picture is drawn on the page, in the PDF's units
+async function picturesOf(page, OPS) {
+  const list = await page.getOperatorList();
+  const out = [];
+  let ctm = [1, 0, 0, 1, 0, 0];
+  const stack = [];
+  list.fnArray.forEach((fn, i) => {
+    const args = list.argsArray[i];
+    if (fn === OPS.save) stack.push(ctm);
+    else if (fn === OPS.restore) ctm = stack.pop() || ctm;
+    else if (fn === OPS.transform) ctm = compose(ctm, args);
+    else if (fn === OPS.paintFormXObjectBegin) { stack.push(ctm); if (args?.[0]) ctm = compose(ctm, args[0]); }
+    else if (fn === OPS.paintFormXObjectEnd) ctm = stack.pop() || ctm;
+    else if (fn === OPS.paintImageXObject || fn === OPS.paintInlineImageXObject || fn === OPS.paintImageMaskXObject) {
+      const pts = [[0, 0], [1, 0], [0, 1], [1, 1]].map(([x, y]) => applyM(ctm, x, y));
+      const xs = pts.map(p => p[0]);
+      const ys = pts.map(p => p[1]);
+      // Only straight pictures (a turned one can't be covered and retyped)
+      if (Math.abs(ctm[1]) > 1e-3 || Math.abs(ctm[2]) > 1e-3) return;
+      out.push({ x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) });
+    }
+  });
+  return out;
+}
+
+// A text-like item's box on screen, from where it sits in the PDF
+function boxFor(pdf, view) {
+  const { x, y, size, width, ascent, descent, angle = 0 } = pdf;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const at = (along, up) => applyM(view.transform, x + along * cos - up * sin, y + along * sin + up * cos);
+  const tl = at(0, ascent * size);
+  const tr = at(width, ascent * size);
+  const bl = at(0, descent * size);
+  const scale = Math.hypot(view.transform[0], view.transform[1]);
+  return {
+    left: (tl[0] / view.width) * 100,
+    top: (tl[1] / view.height) * 100,
+    width: (Math.hypot(tr[0] - tl[0], tr[1] - tl[1]) / view.width) * 100,
+    height: (Math.hypot(bl[0] - tl[0], bl[1] - tl[1]) / view.height) * 100,
+    turn: 0,
+    fontSize: ((size * scale) / view.width) * 100,
+  };
+}
+
+// A picture's rectangle in % of the drawn page
+function rectFor(r, view) {
+  const a = applyM(view.transform, r.x0, r.y1);
+  const b = applyM(view.transform, r.x1, r.y0);
+  return {
+    left: (Math.min(a[0], b[0]) / view.width) * 100,
+    top: (Math.min(a[1], b[1]) / view.height) * 100,
+    width: (Math.abs(b[0] - a[0]) / view.width) * 100,
+    height: (Math.abs(b[1] - a[1]) / view.height) * 100,
+  };
+}
+
+// The pictures that look like a line of text, as items
+function pictureItems(pictures, texts, view, n) {
+  const items = [];
+  pictures.forEach((r, k) => {
+    const w = r.x1 - r.x0;
+    const h = r.y1 - r.y0;
+    // A line of text: short and wide (not a photo, a logo block or a rule)
+    if (h < 4 || h > 60 || w < 12 || w / h < 1.6) return;
+    // Real text already there: nothing to read
+    if (texts.some(t => t.pdf.x >= r.x0 && t.pdf.x <= r.x1 && t.pdf.y >= r.y0 && t.pdf.y <= r.y1)) return;
+    // Until it's read: a box over the whole picture (baseline a fifth up)
+    const pdf = { x: r.x0, y: r.y0 + h * 0.2, size: h * 0.8, width: w, ascent: 1, descent: -0.25, angle: 0 };
+    const rect = rectFor(r, view);
+    items.push({
+      id: `${n}-p${k}`,
+      page: n - 1,
+      str: '',
+      picture: { ...r, rect },
+      view,
+      pdf,
+      box: { ...boxFor(pdf, view), sample: rect },
+      fontKey: null,
+      font: { base: 'Helvetica', bold: false, italic: false },
     });
   });
   return items;
@@ -387,6 +486,14 @@ export default function PdfEditor({ active }) {
         canvas.width = canvas.height = 0;
         const content = await page.getTextContent();
         const items = itemsOf(page, content, viewport, n, fonts);
+        // Lines of text drawn as pictures (an email's header, say)
+        try {
+          const { OPS } = await loadPdfjs();
+          const view = { transform: viewport.transform, width: viewport.width, height: viewport.height };
+          items.push(...pictureItems(await picturesOf(page, OPS), items, view, n));
+        } catch {
+          // No pictures read: just the text
+        }
         page.cleanup();
         pages.push({ num: n, url, px, items, width: viewport.width, height: viewport.height });
       }
@@ -509,6 +616,54 @@ export default function PdfEditor({ active }) {
     setDraftColors({ bg: colors.bg, ink: colors.ink });
     setDraft(edit?.text ?? item.str);
     setEditing(item.id);
+    if (item.picture && !item.read) readPicture(item);
+  };
+
+  // A picture of text, tapped for the first time: its words are read and
+  // put in the box (unless you've started typing), and the item takes their
+  // size and line, so the new words sit where the old ones were
+  const readPicture = async (item) => {
+    const img = imgRefs.current[`${doc.id}-${item.page + 1}`];
+    if (!img?.naturalWidth) return;
+    const r = item.picture.rect;
+    const sx = (r.left / 100) * img.naturalWidth;
+    const sy = (r.top / 100) * img.naturalHeight;
+    const sw = (r.width / 100) * img.naturalWidth;
+    const sh = (r.height / 100) * img.naturalHeight;
+    // Read larger: small text reads better at a few times its size
+    const k = Math.max(1, Math.min(4, 64 / Math.max(1, sh)));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(sw * k));
+    canvas.height = Math.max(1, Math.round(sh * k));
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+    let found = null;
+    try {
+      found = await readLine(canvas);
+    } catch (err) {
+      toast(err?.code === 'library' ? err.message : "couldn't read this picture — type the new words", { warn: true });
+      return;
+    }
+    if (!found?.text) return;
+    // Canvas pixels → the PDF's units
+    const { x0, x1, y0, y1 } = item.picture;
+    const toX = (px) => x0 + (px / canvas.width) * (x1 - x0);
+    const toY = (py) => y1 - (py / canvas.height) * (y1 - y0);
+    let pdf = item.pdf;
+    if (Number.isFinite(found.baseline)) {
+      const baseY = toY(found.baseline);
+      const size = Math.max(2, (toY(found.top) - baseY) / 0.72); // tall letters stand ~0.72 of the size
+      pdf = { x: toX(found.left), y: baseY, size, width: toX(found.right) - toX(found.left), ascent: 0.9, descent: -0.22, angle: 0 };
+    }
+    const read = { ...item, read: true, str: found.text, pdf, box: { ...boxFor(pdf, item.view), sample: item.picture.rect } };
+    setDoc(prev => (!prev || prev.id !== doc.id ? prev : {
+      ...prev,
+      pages: prev.pages.map(p => (p.num !== item.page + 1 ? p : { ...p, items: p.items.map(q => (q.id === item.id ? read : q)) })),
+    }));
+    setDraft(d => (d === '' ? found.text : d));
   };
 
   const commit = (item) => {
@@ -600,12 +755,24 @@ export default function PdfEditor({ active }) {
           font = await getFont(standardFontKey(item.font));
           const safe = encodable(font, edit.text);
           lost = lost || safe.lost;
-          squeeze = squeezeFor(width, font.widthOfTextAtSize(item.str, size));
+          squeeze = item.str ? squeezeFor(width, font.widthOfTextAtSize(item.str, size)) : 1;
           if (safe.text) runs = [{ text: safe.text, along: 0 }];
           newWidth = safe.text ? font.widthOfTextAtSize(safe.text, size) * squeeze : 0;
         }
 
         const pad = size * PAD;
+        if (item.picture) {
+          // A picture of text: covered whole (and as far as the new words reach)
+          const { x0, y0, x1, y1 } = item.picture;
+          page.drawRectangle({
+            x: x0 - 0.5,
+            y: y0 - 0.5,
+            width: Math.max(x1, x + newWidth) - x0 + 1,
+            height: y1 - y0 + 1,
+            color: color(edit.bg),
+            borderWidth: 0,
+          });
+        } else {
         // The patch's corner: back along the baseline and down from it, turned with the text
         const along = -pad;
         const up = descent * size - pad;
@@ -618,6 +785,7 @@ export default function PdfEditor({ active }) {
           color: color(edit.bg),
           borderWidth: 0,
         });
+        }
         if (squeeze !== 1) page.pushOperators(pushGraphicsState(), setCharacterSqueeze(squeeze * 100));
         runs.forEach((r) => page.drawText(r.text, { ...at(r.along), size, font, color: color(edit.ink), rotate: turn }));
         if (squeeze !== 1) page.pushOperators(popGraphicsState());
@@ -764,9 +932,23 @@ export default function PdfEditor({ active }) {
                       transform: `${item.box.turn ? `rotate(${item.box.turn}deg) ` : ''}translateY(${Math.min(0, shift)}em)${typing && look.squeeze !== 1 ? ` scaleX(${look.squeeze})` : ''}`,
                       ...look.css,
                     };
+                    // A picture of text being changed: covered whole on screen too
+                    const cover = item.picture && (typing || edit) ? (
+                      <div
+                        key={`${item.id}-cover`}
+                        className="pdf-pic-cover"
+                        style={{
+                          left: `${item.picture.rect.left}%`,
+                          top: `${item.picture.rect.top}%`,
+                          width: `${item.picture.rect.width}%`,
+                          height: `${item.picture.rect.height}%`,
+                          background: rgbCss((typing ? draftColors : edit).bg),
+                        }}
+                      />
+                    ) : null;
                     if (typing) {
                       const colors = draftColors;
-                      return (
+                      return [cover, (
                         <input
                           key={item.id}
                           className="pdf-text-input"
@@ -785,15 +967,15 @@ export default function PdfEditor({ active }) {
                           aria-label="Change text"
                           spellCheck={false}
                         />
-                      );
+                      )];
                     }
-                    return (
+                    return [cover, (
                       <button
                         key={item.id}
                         className={`pdf-text-item ${edit ? 'edited' : ''}`}
                         style={edit ? { ...pos, background: rgbCss(edit.bg), color: rgbCss(edit.ink) } : pos}
                         onClick={() => startEdit(item)}
-                        title={edit ? `was: ${item.str}` : 'Change this text'}
+                        title={edit ? `was: ${item.str || 'a picture of text'}` : item.picture ? 'Change the words in this picture' : 'Change this text'}
                       >
                         {edit ? (
                           // The words, squeezed to the original's room, and a mark on
@@ -804,7 +986,7 @@ export default function PdfEditor({ active }) {
                           </span>
                         ) : ''}
                       </button>
-                    );
+                    )];
                   })}
                 </div>
               </div>

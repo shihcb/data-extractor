@@ -1179,6 +1179,12 @@ kbd {
   transform-origin: 0 0;
 }
 
+/* Covers a picture of text whole while its words are changed */
+.pdf-pic-cover {
+  position: absolute;
+  pointer-events: none;
+}
+
 .pdf-run {
   display: inline-block;
   transform-origin: 0 0;

@@ -41,6 +41,38 @@ function pdfjsAssets() {
   }
 }
 
+// Reading words from pictures of text (the PDF editor, for emails whose
+// header is pictures): Tesseract's worker, its engine (the LSTM builds; it
+// picks the one the browser runs fastest) and its English data, served from
+// /ocr/. Fetched only the first time a picture is read.
+const OCR_FILES = {
+  'worker.min.js': 'node_modules/tesseract.js/dist/worker.min.js',
+  'tesseract-core-lstm.wasm.js': 'node_modules/tesseract.js-core/tesseract-core-lstm.wasm.js',
+  'tesseract-core-simd-lstm.wasm.js': 'node_modules/tesseract.js-core/tesseract-core-simd-lstm.wasm.js',
+  'tesseract-core-relaxedsimd-lstm.wasm.js': 'node_modules/tesseract.js-core/tesseract-core-relaxedsimd-lstm.wasm.js',
+  'eng.traineddata.gz': 'node_modules/@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz',
+}
+
+function ocrAssets() {
+  return {
+    name: 'ocr-assets',
+    configureServer(server) {
+      server.middlewares.use('/ocr', (req, res, next) => {
+        const name = decodeURIComponent((req.url || '').split('?')[0]).replace(/^\/+/, '')
+        const file = OCR_FILES[name]
+        if (!file) return next()
+        res.setHeader('Content-Type', name.endsWith('.gz') ? 'application/octet-stream' : 'text/javascript')
+        fs.createReadStream(path.resolve(file)).pipe(res)
+      })
+    },
+    generateBundle() {
+      for (const [name, file] of Object.entries(OCR_FILES)) {
+        this.emitFile({ type: 'asset', fileName: `ocr/${name}`, source: fs.readFileSync(path.resolve(file)) })
+      }
+    },
+  }
+}
+
 // Offline support: writes sw.js with every built file in its keep list,
 // named by this build's content (so a new build replaces the old cache).
 // Character maps are left to be cached as they're used (there are ~170).
@@ -50,7 +82,9 @@ function serviceWorker() {
     apply: 'build',
     generateBundle(_, bundle) {
       const files = Object.keys(bundle)
-        .filter(f => !f.startsWith('pdfjs/cmaps/') && !f.endsWith('.map'))
+        // (character maps and the picture-reading files are big and rarely
+        // needed: kept as they're used, not up front)
+        .filter(f => !f.startsWith('pdfjs/cmaps/') && !f.startsWith('ocr/') && !f.endsWith('.map'))
         .map(f => `/${f}`)
       const publicFiles = fs.readdirSync('public').filter(f => f !== 'sw.js').map(f => `/${f}`)
       const precache = ['/', ...publicFiles, ...files]
@@ -69,5 +103,5 @@ function serviceWorker() {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss(), pdfjsAssets(), serviceWorker()],
+  plugins: [react(), tailwindcss(), pdfjsAssets(), ocrAssets(), serviceWorker()],
 })
