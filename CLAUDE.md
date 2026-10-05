@@ -45,13 +45,12 @@ original's details into its JPG / PNG / WEBP copies ("keep details", on by
 default; redrawn, a copy had none and looked saved from the web), the turn
 reset to upright, the size the new one, the old preview left out. Under the
 switcher the converter's box leaves 466px (`--box-room` on `.image-panes`).
-The metadata editor uses the converter's box too: its photo is one card
-centred both ways, popping in and out like the converter's (a new photo:
-the old card pops out as the new pops in, the fields fading in; cleared:
-the card's spot and list hold their height while it pops out, or the list
-easing shut clipped it). Its list never eases its height (`_heightMotion` on `.meta-slot`): the card
-is centred, so a list growing from nothing moved the centre and the card slid
-up 130px as it popped in. Its thumbnail waits for `whenStill()`; a row's
+The metadata editor uses the converter's box, grid and cards (several
+photos; picture, label row, ‹ › ×), popping in and out and clearing the same
+way. One photo is selected at a time (tap its card): the details below are
+its own, kept per photo while you switch (the new one's fade in). Save
+writes every photo with its own changes (one as itself, several in a zip);
+one that can't be saved is selected and named. Its thumbnail waits for `whenStill()`; a row's
 remove ↔ put back icon is the text swap.
 
 PDF tools and the image converter are the same layout (and the PDF editor

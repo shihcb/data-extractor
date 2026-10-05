@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Download, ImageUp, Undo2, X } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight, Download, ImageUp, Undo2, X } from 'lucide-react';
+import { zipSync } from 'fflate';
 import { GROUPS, applyFields, readFields, readMeta, sizeText, writeMeta, writeTiff } from '../exif';
 import { loadImage, makeThumb } from '../imageConvert';
-import { downloadBlob, isImageFile, isPdfFile, shortName, useDoneFlags, usePastedFiles } from '../utils';
+import { downloadBlob, isImageFile, isPdfFile, keepFocusAfterRemove, shortName, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
 import { MOTION_MS, fadeIn, fadeInOnLoad } from '../motion';
 import { whenStill } from '../engine';
 import { useToast } from '../toastContext';
@@ -60,225 +61,313 @@ function FieldInput({ f, value, onChange }) {
   );
 }
 
+let nextId = 1;
+const startValues = (fields) => Object.fromEntries(fields.map(f => [f.id, f.value]));
+
+// A photo's file with its details as they are now: the picture's own bytes
+// are copied untouched ({ bytes } or { error })
+function edited(it) {
+  const res = applyFields(it.meta.tiff, it.fields, it.values);
+  if (res.error) return res;
+  const opts = { dropXmp: it.values.xmp === '', dropIptc: it.values.iptc === '', size: { width: it.w, height: it.h } };
+  try {
+    return { bytes: writeMeta(it.bytes, writeTiff(res.tiff), opts) };
+  } catch (err) {
+    // Too much for a JPG's block: the small preview goes first
+    if (!res.tiff.thumb) return { error: err?.message || "couldn't save" };
+    return { bytes: writeMeta(it.bytes, writeTiff({ ...res.tiff, thumb: null, ifd1: new Map() }), opts), smaller: true };
+  }
+}
+
 // A photo's details, changed or removed in the file itself: the picture's
 // own bytes are copied as they are, so a photo from an iPhone still says
-// it was taken on that iPhone (a redrawn copy loses all of it)
+// it was taken on that iPhone (a redrawn copy loses all of it). The photos
+// sit in the converter's box as the same cards; the one selected (one at
+// a time) is the one whose details show below.
 export default function MetaEditor({ active }) {
-  const [item, setItem] = useState(null); // { file, bytes, meta, fields, thumb, w, h }
-  const [values, setValues] = useState({});
+  const [items, setItems] = useState([]); // { id, file, bytes, meta, fields, values, thumb, w, h }
+  const [pickedId, setPickedId] = useState(null);
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [done, flagDone] = useDoneFlags();
-  // What shows while the fields leave
-  const [shown, setShown] = useState(null);
   const inputRef = useRef(null);
+  const boxRef = useRef(null);
   const fieldsRef = useRef(null);
   const toast = useToast();
-  // The photo leaving (the clear): its spot holds its height while the card
-  // pops out where it is, then the box goes back to empty (as in the converter)
-  const slotRef = useRef(null);
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+
+  // The last photos leaving (the clear): the box's content holds its height
+  // while they pop out where they are, then the box goes back to empty
   const [hold, setHold] = useState(0);
   const holdTimer = useRef(null);
+  const holdWhileLeaving = () => {
+    const inner = boxRef.current?.firstElementChild;
+    if (!inner) return;
+    setHold(inner.offsetHeight);
+    clearTimeout(holdTimer.current);
+    holdTimer.current = setTimeout(() => setHold(0), MOTION_MS + 100);
+  };
   useEffect(() => () => clearTimeout(holdTimer.current), []);
-  // The card is centred, so the list around it mustn't ease its height: as
-  // it grew from nothing the centre moved, and the card slid up 130px while
-  // it popped in. It takes its size at once (as the PDF editor's boxes do
-  // while zooming); the card pops in where it stays, as in the converter.
-  useLayoutEffect(() => {
-    const slot = slotRef.current;
-    slot._heightMotion = { running: () => true, animatesChanges: () => false };
-    return () => { slot._heightMotion = null; };
-  }, []);
 
-  const release = (it) => { if (it) setTimeout(() => URL.revokeObjectURL(it.thumb), MOTION_MS + 300); };
+  const picked = items.find(i => i.id === pickedId) || null;
+  // What the fields show: the selected photo, or the last one while the
+  // panel closes
+  const [shownId, setShownId] = useState(null);
+  const lastShown = useRef(null);
+  if (picked) lastShown.current = picked;
+  const shown = picked || (shownId !== null ? lastShown.current : null);
 
-  const addFile = useCallback(async (fileList) => {
-    const file = [...fileList].find(isImageFile);
-    if (!file) {
+  const release = (list) => setTimeout(() => list.forEach(it => URL.revokeObjectURL(it.thumb)), MOTION_MS + 300);
+  useEffect(() => () => itemsRef.current.forEach(it => URL.revokeObjectURL(it.thumb)), []);
+
+  // Another photo's details fade in where the last one's were
+  const select = (id) => {
+    if (id === pickedId) return;
+    if (pickedId !== null) requestAnimationFrame(() => fadeIn(fieldsRef.current));
+    setPickedId(id);
+    setShownId(id);
+  };
+
+  const addFiles = useCallback(async (fileList) => {
+    const files = [...fileList].filter(isImageFile);
+    if (!files.length) {
       if (fileList.length) toast(isPdfFile(fileList[0]) ? 'PDFs go in PDF tools' : "that isn't an image", { warn: true });
       return;
     }
-    const url = URL.createObjectURL(file);
-    try {
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      let meta;
+    const failed = [];
+    let wrongKind = 0;
+    const loaded = await Promise.all(files.map(async (file) => {
+      const url = URL.createObjectURL(file);
       try {
-        meta = readMeta(bytes);
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        let meta;
+        try {
+          meta = readMeta(bytes);
+        } catch {
+          meta = { format: null };
+        }
+        if (!meta.format) {
+          wrongKind++;
+          return null;
+        }
+        const img = await loadImage(url);
+        // Drawn small once nothing's moving (heavy work on the page's thread)
+        await whenStill();
+        const thumb = await makeThumb(img);
+        const fields = [...readFields(meta.tiff), ...extraFields(meta)];
+        return { id: nextId++, file, bytes, meta, fields, values: startValues(fields), thumb, w: img.naturalWidth, h: img.naturalHeight };
       } catch {
-        meta = { format: null };
+        failed.push(file);
+        return null;
+      } finally {
+        URL.revokeObjectURL(url);
       }
-      if (!meta.format) {
-        toast('only JPG, PNG and WEBP details can be changed here', { warn: true });
-        return;
-      }
-      const img = await loadImage(url);
-      // Drawn small once nothing's moving (it's heavy work on the page's thread)
-      await whenStill();
-      const thumb = await makeThumb(img);
-      const fields = [...readFields(meta.tiff), ...extraFields(meta)];
-      const next = { file, bytes, meta, fields, thumb, w: img.naturalWidth, h: img.naturalHeight };
-      clearTimeout(holdTimer.current);
-      setHold(0);
-      setItem((old) => { release(old); return next; });
-      setShown(next);
-      setValues(Object.fromEntries(fields.map(f => [f.id, f.value])));
-      // Another photo's fields fade in where the last one's were
-      if (itemRef.current) requestAnimationFrame(() => fadeIn(fieldsRef.current));
-    } catch {
-      toast(`couldn't open ${shortName(file.name) || 'that image'}`, { warn: true });
-    } finally {
-      URL.revokeObjectURL(url);
-    }
+    }));
+    // Said once for all that couldn't be used
+    if (wrongKind) toast('only JPG, PNG and WEBP details can be changed here', { warn: true });
+    else if (failed.length) toast(failed.length === 1 ? `couldn't open ${shortName(failed[0].name) || 'that image'}` : `couldn't open ${failed.length} images`, { warn: true });
+    const ok = loaded.filter(Boolean);
+    if (!ok.length) return;
+    clearTimeout(holdTimer.current);
+    setHold(0);
+    setItems(prev => [...prev, ...ok]);
+    // Nothing selected yet: the first new photo is
+    setPickedId(id => id ?? ok[0].id);
+    setShownId(id => id ?? ok[0].id);
   }, [toast]);
 
-  usePastedFiles(active, isImageFile, addFile);
+  usePastedFiles(active, isImageFile, addFiles);
 
-  const clear = () => {
-    if (!item) return;
-    setHold(slotRef.current?.offsetHeight || 0);
-    clearTimeout(holdTimer.current);
-    holdTimer.current = setTimeout(() => setHold(0), MOTION_MS + 100);
-    release(item);
-    setItem(null);
+  const removeItems = (ids) => {
+    const gone = items.filter(i => ids.has(i.id));
+    if (!gone.length) return;
+    const rest = items.filter(i => !ids.has(i.id));
+    if (!rest.length) holdWhileLeaving();
+    setItems(rest);
+    // The selected one gone: the one that took its place (or the one before)
+    if (ids.has(pickedId) && rest.length) {
+      const at = items.findIndex(i => i.id === pickedId);
+      const next = items.slice(at + 1).find(i => !ids.has(i.id)) || items.slice(0, at).reverse().find(i => !ids.has(i.id));
+      select(next.id);
+    } else if (!rest.length) {
+      setPickedId(null);
+    }
+    release(gone);
   };
-  const itemRef = useRef(item);
-  itemRef.current = item;
-  const shownRef = useRef(shown);
-  shownRef.current = shown;
-  useEffect(() => () => { if (shownRef.current) URL.revokeObjectURL(shownRef.current.thumb); }, []);
 
-  const fields = shown?.fields || [];
-  const set = (id, v) => setValues(vals => ({ ...vals, [id]: v }));
+  const clearAll = () => {
+    if (!items.length) return;
+    holdWhileLeaving();
+    release(items);
+    setItems([]);
+    setPickedId(null);
+  };
+
+  const move = (id, by) => setItems(prev => {
+    const i = prev.findIndex(p => p.id === id);
+    const j = i + by;
+    if (i < 0 || j < 0 || j >= prev.length) return prev;
+    const next = prev.slice();
+    [next[i], next[j]] = [next[j], next[i]];
+    return next;
+  });
+
+  const setValue = (fieldId, v) => setItems(prev => prev.map(it => (it.id === pickedId ? { ...it, values: { ...it.values, [fieldId]: v } } : it)));
+  const reset = () => setItems(prev => prev.map(it => (it.id === pickedId ? { ...it, values: startValues(it.fields) } : it)));
 
   const stats = useMemo(() => {
     let filled = 0;
     let changed = 0;
     let removed = 0;
-    if (item) {
-      item.fields.forEach((f) => {
-        const now = values[f.id] ?? '';
-        if (now.trim()) filled++;
-        if (f.value && !now.trim()) removed++;
-        else if (now !== f.value && now.trim()) changed++;
-      });
-    }
+    picked?.fields.forEach((f) => {
+      const now = picked.values[f.id] ?? '';
+      if (now.trim()) filled++;
+      if (f.value && !now.trim()) removed++;
+      else if (now !== f.value && now.trim()) changed++;
+    });
     return { filled, changed, removed };
-  }, [item, values]);
+  }, [picked]);
 
-  const reset = () => item && setValues(Object.fromEntries(item.fields.map(f => [f.id, f.value])));
-
+  // Every photo, each with its own changes: one as itself, several in a zip
   const save = async (e) => {
     if (e.detail) e.currentTarget.blur();
-    if (!item || busy) return;
-    const res = applyFields(item.meta.tiff, item.fields, values);
-    if (res.error) {
-      toast(res.error, { warn: true });
-      return;
-    }
+    if (!items.length || busy) return;
     setBusy(true);
     try {
-      const opts = { dropXmp: values.xmp === '', dropIptc: values.iptc === '', size: { width: item.w, height: item.h } };
-      let out;
-      try {
-        out = writeMeta(item.bytes, writeTiff(res.tiff), opts);
-      } catch (err) {
-        // Too much for a JPG's block: the small preview goes first
-        if (!res.tiff.thumb) throw err;
-        out = writeMeta(item.bytes, writeTiff({ ...res.tiff, thumb: null, ifd1: new Map() }), opts);
-        toast('the small preview was left out to fit', { warn: true });
+      const outs = [];
+      for (const it of items) {
+        const out = edited(it);
+        if (out.error) {
+          // Its details show, so the one to put right is in view
+          select(it.id);
+          toast(items.length > 1 ? `${shortName(it.file.name) || 'a photo'}: ${out.error}` : out.error, { warn: true });
+          return;
+        }
+        outs.push({ it, ...out });
       }
-      downloadBlob(new Blob([out], { type: item.file.type || 'image/jpeg' }), item.file.name || `photo.${item.meta.format === 'jpeg' ? 'jpg' : item.meta.format}`);
+      const nameOf = (it) => it.file.name || `photo.${it.meta.format === 'jpeg' ? 'jpg' : it.meta.format}`;
+      if (outs.length === 1) {
+        const [{ it, bytes }] = outs;
+        downloadBlob(new Blob([bytes], { type: it.file.type || 'image/jpeg' }), nameOf(it));
+      } else {
+        const unique = uniqueNamer();
+        const files = {};
+        outs.forEach(({ it, bytes }) => { files[unique(nameOf(it))] = bytes; });
+        downloadBlob(new Blob([zipSync(files, { level: 0 })], { type: 'application/zip' }), 'photos.zip');
+      }
       flagDone('save');
-    } catch (err) {
-      toast(err?.message ? `couldn't save: ${err.message}` : "couldn't save", { warn: true });
+      if (outs.some(o => o.smaller)) toast('the small preview was left out to fit', { warn: true });
     } finally {
       setBusy(false);
     }
   };
 
+  const onDragLeave = (e) => {
+    if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false);
+  };
+
+  const fields = shown?.fields || [];
+  const values = shown?.values || {};
   const groups = GROUPS
     .map(([key, title]) => [key, title, fields.filter(f => f.group === key)])
     .filter(([, , list]) => list.length);
 
   return (
     <div className="tool">
-      <p className="tool-desc">change or remove a photo's details — the picture itself isn't touched</p>
-      {/* The converter's box: the photo is a card that pops in and out the
-          same way, centred */}
+      <p className="tool-desc">change or remove photos' details — the pictures themselves aren't touched</p>
+      {/* The converter's box: the photos as the same cards, popping in and out */}
       <div
-        className={`tool-box pdf-drop image-drop meta-drop ${item ? 'has-pages' : ''} ${dragging ? 'dragging' : ''}`}
-        onClick={(e) => { if (!item || e.target === e.currentTarget || e.target.classList.contains('pdf-drop-inner')) inputRef.current?.click(); }}
+        ref={boxRef}
+        className={`tool-box pdf-drop image-drop ${items.length ? 'has-pages' : ''} ${dragging ? 'dragging' : ''}`}
+        onClick={(e) => { if (!items.length || e.target === e.currentTarget || e.target.classList.contains('pdf-drop-inner')) inputRef.current?.click(); }}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-        onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false); }}
-        onDrop={(e) => { e.preventDefault(); setDragging(false); addFile(e.dataTransfer?.files || []); }}
-        role="button"
-        tabIndex={0}
-        aria-label="Choose a photo"
-        onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); inputRef.current?.click(); } }}
+        onDragLeave={onDragLeave}
+        onDrop={(e) => { e.preventDefault(); setDragging(false); addFiles(e.dataTransfer?.files || []); }}
+        aria-label="Add photos"
       >
-        <div className={`pdf-drop-inner ${item || hold ? 'full' : 'drop-box-empty'}`}>
-          <FadeText k={!item && !hold ? 'hint' : ''} quiet={!!item} className="tool-hint">{!item && !hold ? 'drop, paste or click to add a photo' : null}</FadeText>
-          <div ref={slotRef} className="meta-slot" style={hold ? { minHeight: `${hold}px` } : undefined}>
-            <MotionList
-              items={item ? [item] : []}
-              getKey={it => it.thumb}
-              variant="grid"
-              className="meta-grid"
-              renderItem={it => (
-                <div className="page-card meta-card">
-                  <div className="page-thumb">
-                    <img src={it.thumb} alt={it.file.name || 'photo'} decoding="async" draggable={false} onLoad={fadeInOnLoad} />
-                  </div>
+        <div
+          className={`pdf-drop-inner ${items.length || hold ? 'full' : 'drop-box-empty'}`}
+          style={hold ? { minHeight: `${hold}px` } : undefined}
+        >
+          <FadeText k={!items.length && !hold ? 'hint' : ''} quiet={items.length > 0} className="tool-hint">{!items.length && !hold ? 'drop, paste or click to add photos' : null}</FadeText>
+          <MotionList
+            items={items}
+            getKey={it => it.id}
+            variant="grid"
+            className="page-grid"
+            renderItem={(it) => {
+              const n = items.findIndex(q => q.id === it.id);
+              const isSel = it.id === pickedId;
+              const name = it.file.name || 'pasted image';
+              return (
+                <div className={`page-card ${isSel ? 'selected' : ''}`}>
+                  <button
+                    className="page-thumb"
+                    onClick={(e) => { if (e.detail) e.currentTarget.blur(); select(it.id); }}
+                    aria-pressed={isSel}
+                    title={isSel ? 'Showing its details' : 'Show its details'}
+                  >
+                    <img src={it.thumb} alt={name} decoding="async" draggable={false} onLoad={fadeInOnLoad} />
+                  </button>
                   <div className="page-label">
-                    <span className="page-src page-name">{it.file.name || 'pasted image'}</span>
+                    <span className="page-src page-name">{name}</span>
                     <span>{it.w}×{it.h}</span>
                   </div>
+                  <div className="page-buttons">
+                    <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); move(it.id, -1); }} disabled={n <= 0} title="Move earlier" aria-label="Move earlier"><ChevronLeft size={12} /></button>
+                    <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); move(it.id, 1); }} disabled={n < 0 || n >= items.length - 1} title="Move later" aria-label="Move later"><ChevronRight size={12} /></button>
+                    <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); else keepFocusAfterRemove(e.currentTarget); removeItems(new Set([it.id])); }} title="Remove" aria-label={`Remove ${name}`}><X size={12} /></button>
+                  </div>
                 </div>
-              )}
-            />
-          </div>
+              );
+            }}
+          />
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/*"
+            multiple
+            hidden
+            onChange={(e) => { addFiles(e.target.files || []); e.target.value = ''; }}
+          />
         </div>
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/*"
-          hidden
-          onChange={(e) => { addFile(e.target.files || []); e.target.value = ''; }}
-        />
       </div>
 
+      {/* Label first, only the numbers change: the photos, then the
+          selected one's details */}
       <div className="tool-meta tool-stats" aria-live="polite">
-        details <Count value={stats.filled} /> · changed <Count value={stats.changed} /> · removed <Count value={stats.removed} />
+        images <Count value={items.length} /> · details <Count value={stats.filled} /> · changed <Count value={stats.changed} /> · removed <Count value={stats.removed} />
       </div>
 
-      <Collapse open={!!item} className="options-collapse">
+      <Collapse open={!!picked} className="options-collapse">
         <AutoHeight className="tool-box meta-fields-box" innerClassName="meta-fields-inner">
           <div ref={fieldsRef} className="meta-fields">
-          {groups.map(([key, title, list]) => (
-            <section key={`${shown?.thumb}-${key}`} className="meta-group">
-              <h3 className="meta-group-title">{title}</h3>
-              {list.map((f) => {
-                const now = values[f.id] ?? '';
-                const changed = now !== f.value;
-                return (
-                  <div key={f.id} className={`meta-row ${changed ? 'changed' : ''}`}>
-                    <label className="meta-label" htmlFor={`meta-${f.id}`}>{f.label}</label>
-                    <FieldInput f={f} value={now} onChange={v => set(f.id, v)} />
-                    <button
-                      className="btn btn-sm btn-icon meta-remove"
-                      onClick={(e) => { if (e.detail) e.currentTarget.blur(); set(f.id, changed && !now ? f.value : ''); }}
-                      disabled={!now && !changed}
-                      title={!now && changed ? `Put back ${f.label}` : `Remove ${f.label}`}
-                      aria-label={!now && changed ? `Put back ${f.label}` : `Remove ${f.label}`}
-                    >
-                      {/* The icons swap (the text swap) */}
-                      <FadeText k={!now && changed ? 'undo' : 'x'} className="meta-icon">{!now && changed ? <Undo2 size={12} /> : <X size={12} />}</FadeText>
-                    </button>
-                  </div>
-                );
-              })}
-            </section>
-          ))}
+            {groups.map(([key, title, list]) => (
+              <section key={`${shown?.id}-${key}`} className="meta-group">
+                <h3 className="meta-group-title">{title}</h3>
+                {list.map((f) => {
+                  const now = values[f.id] ?? '';
+                  const changed = now !== f.value;
+                  return (
+                    <div key={f.id} className={`meta-row ${changed ? 'changed' : ''}`}>
+                      <label className="meta-label" htmlFor={`meta-${f.id}`}>{f.label}</label>
+                      <FieldInput f={f} value={now} onChange={v => setValue(f.id, v)} />
+                      <button
+                        className="btn btn-sm btn-icon meta-remove"
+                        onClick={(e) => { if (e.detail) e.currentTarget.blur(); setValue(f.id, changed && !now ? f.value : ''); }}
+                        disabled={!now && !changed}
+                        title={!now && changed ? `Put back ${f.label}` : `Remove ${f.label}`}
+                        aria-label={!now && changed ? `Put back ${f.label}` : `Remove ${f.label}`}
+                      >
+                        {/* The icons swap (the text swap) */}
+                        <FadeText k={!now && changed ? 'undo' : 'x'} className="meta-icon">{!now && changed ? <Undo2 size={12} /> : <X size={12} />}</FadeText>
+                      </button>
+                    </div>
+                  );
+                })}
+              </section>
+            ))}
           </div>
         </AutoHeight>
       </Collapse>
@@ -286,16 +375,16 @@ export default function MetaEditor({ active }) {
       <datalist id="meta-models">{MODELS.map(m => <option key={m} value={m} />)}</datalist>
 
       <FlipRow>
-        <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Choose a photo" aria-label="Choose a photo">
+        <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Add photos" aria-label="Add photos">
           <ImageUp size={14} />
         </button>
-        <button className={`btn btn-primary ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!item || busy}>
+        <button className={`btn btn-primary ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!items.length || busy}>
           <Download size={14} />
           save
         </button>
       </FlipRow>
 
-      <ActionBar active={active} open={!!item} onClose={clear} closeDisabled={!item} label="Details">
+      <ActionBar active={active} open={items.length > 0} onClose={clearAll} closeDisabled={!items.length} label="Details">
         <button className="bulk-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); reset(); }} disabled={!stats.changed && !stats.removed}>
           reset
         </button>

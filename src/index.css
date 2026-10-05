@@ -1396,37 +1396,6 @@ body.has-bar .feature-toast {
   --box-room: 466px;
 }
 
-/* The photo's box: the converter's, its one card centred both ways */
-.meta-drop > .pdf-drop-inner.full {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100%;
-}
-.meta-drop > .pdf-drop-inner > .tool-hint {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-}
-.meta-slot {
-  width: min(100%, 240px);
-}
-/* (in the converter, an emptied box pins its list to the top: here the
-   card stays centred where it was while it pops out) */
-.meta-drop .pdf-drop-inner:not(.full) > .meta-slot {
-  display: none;
-}
-/* Held while the card leaves: the list keeps its height too (easing to
-   nothing, it clipped the card as it popped out) */
-.meta-slot > .motion-list-box {
-  min-height: inherit;
-}
-.meta-grid.motion-list-grid {
-  grid-template-columns: minmax(0, 1fr);
-}
-
 .meta-fields-box {
   overflow: hidden;
 }
