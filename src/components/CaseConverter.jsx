@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useDeferredValue, useMemo, useRef, useState } from 'react';
 import { ClipboardPaste } from 'lucide-react';
 import { CASES, textStats } from '../textCase';
 import { copyText, useDoneFlags } from '../utils';
@@ -14,7 +14,12 @@ export default function CaseConverter({ active }) {
   const [done, flagDone] = useDoneFlags();
   const textareaRef = useRef(null);
   const toast = useToast();
-  const stats = useMemo(() => textStats(text), [text]);
+  // (counted a beat behind on huge text: every key waited on the count)
+  const counted = useDeferredValue(text);
+  const stats = useMemo(() => textStats(counted), [counted]);
+  // A conversion replaces the box's text, and the browser's own undo with
+  // it: Ctrl + Z right after puts the text back as it was
+  const lastConvert = useRef(null);
 
   const handlePaste = async (e) => {
     if (e.detail) e.currentTarget.blur();
@@ -36,6 +41,7 @@ export default function CaseConverter({ active }) {
   const handleConvert = async (e, c) => {
     if (e.detail) e.currentTarget.blur();
     const converted = c.fn(text);
+    if (converted !== text) lastConvert.current = { from: text, to: converted };
     setText(converted);
     flashOutline(textareaRef.current);
     if (await copyText(converted)) {
@@ -52,6 +58,14 @@ export default function CaseConverter({ active }) {
         className="tool-textarea"
         value={text}
         onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          const last = lastConvert.current;
+          if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z' && last && last.to === text) {
+            e.preventDefault();
+            lastConvert.current = null;
+            setText(last.from);
+          }
+        }}
         placeholder="type or paste text"
         spellCheck={false}
         autoComplete="off"

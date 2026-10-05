@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Download, FilePlus, RotateCcw, RotateCw, X } from 'lucide-react';
 import { zipSync } from 'fflate';
 import { closePdf, loadPdfLib, openPdf, renderPage, isPasswordError, refusedWords, whyRefused } from '../pdf';
-import { baseName, canvasToBlob, downloadBlob, isPdfFile, shortName, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
+import { baseName, canvasToBlob, downloadBlob, isImageFile, isPdfFile, keepFocusAfterRemove, shortName, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
 import { MOTION_MS, fadeInOnLoad } from '../motion';
 import { useToast } from '../toastContext';
 import MotionList from './MotionList';
@@ -54,7 +54,11 @@ export default function PdfTools({ active }) {
 
   const addFiles = useCallback(async (fileList) => {
     const files = [...fileList].filter(isPdfFile);
-    if (!files.length) return;
+    if (!files.length) {
+      if (fileList.length) toast(isImageFile(fileList[0]) ? 'images go in the image converter' : "that isn't a PDF", { warn: true });
+      return;
+    }
+    const failed = [];
     // (a count: two drops at once are both loading until both are done)
     loadingCount.current += 1;
     setLoading('loading');
@@ -78,6 +82,7 @@ export default function PdfTools({ active }) {
         // Both libraries must agree the page is there (a damaged file can
         // look longer to the forgiving one)
         const count = Math.min(view.numPages, lib.getPageCount());
+        if (!count) throw new Error('empty');
         // Every page goes in at once as a blank card, so the box eases once
         // to its final height (one by one, it shrank to a row, then grew);
         // the pictures fill in as they're drawn
@@ -108,9 +113,11 @@ export default function PdfTools({ active }) {
           toast(err.message, { warn: true });
           break;
         }
-        toast(`${shortName(file.name)} ${refusedWords(isPasswordError(err) ? 'password' : err?.message)}`, { warn: true });
+        failed.push(`${shortName(file.name)} ${refusedWords(isPasswordError(err) ? 'password' : err?.message)}`);
       }
     }
+    // Said once (one after another, only the last showed)
+    if (failed.length) toast(failed.length === 1 ? failed[0] : `couldn't open ${failed.length} of the files`, { warn: true });
     loadingCount.current -= 1;
     if (!loadingCount.current) setLoading('');
   }, [toast]);
@@ -273,7 +280,7 @@ export default function PdfTools({ active }) {
   const split = (e) => run(e, 'split', async () => {
     const files = {};
     const unique = uniqueNamer();
-    const stem = baseName(outName(pages, ''));
+    const stem = outName(pages, ''); // (already without .pdf: cut again, "Invoice 2024.03" lost its ".03")
     for (let i = 0; i < pages.length; i++) {
       const blob = await buildPdf([pages[i]]);
       files[unique(`${stem}-page-${i + 1}.pdf`)] = new Uint8Array(await blob.arrayBuffer());
@@ -284,7 +291,7 @@ export default function PdfTools({ active }) {
   const toImages = (e) => run(e, 'images', async () => {
     const files = {};
     const unique = uniqueNamer();
-    const stem = baseName(outName(pages, ''));
+    const stem = outName(pages, ''); // (already without .pdf: cut again, "Invoice 2024.03" lost its ".03")
     for (let i = 0; i < pages.length; i++) {
       const p = pages[i];
       const page = await sources.current.get(p.srcId).view.getPage(p.index + 1);
@@ -355,7 +362,7 @@ export default function PdfTools({ active }) {
                   <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); rotate(p.id, 90); }} title="Rotate right" aria-label="Rotate right"><RotateCw size={12} /></button>
                   <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); move(p.id, -1); }} disabled={n <= 0} title="Move earlier" aria-label="Move earlier"><ChevronLeft size={12} /></button>
                   <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); move(p.id, 1); }} disabled={n >= pages.length - 1} title="Move later" aria-label="Move later"><ChevronRight size={12} /></button>
-                  <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); removePages(new Set([p.id])); }} title="Delete page" aria-label="Delete page"><X size={12} /></button>
+                  <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); else keepFocusAfterRemove(e.currentTarget); removePages(new Set([p.id])); }} title="Delete page" aria-label="Delete page"><X size={12} /></button>
                 </div>
               </div>
             );

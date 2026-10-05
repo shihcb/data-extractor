@@ -40,10 +40,17 @@ const ASSET_BASE = `${import.meta.env.BASE_URL}pdfjs/`;
 // Opens a PDF for reading/drawing. `data` is an ArrayBuffer; pdf.js takes
 // ownership of what it's given, so it gets its own copy.
 // `options`: more pdf.js options (the editor keeps fonts' details).
+// One reading thread for every open PDF (each got its own: fifty files
+// merged on a phone were fifty threads, each loading the 1.3 MB reader)
+let sharedWorker = null;
 export async function openPdf(data, password, options = {}) {
   const pdfjs = await loadPdfjs();
+  if (!sharedWorker || sharedWorker.destroyed) {
+    try { sharedWorker = new pdfjs.PDFWorker(); } catch { sharedWorker = null; }
+  }
   const task = pdfjs.getDocument({
     ...options,
+    ...(sharedWorker ? { worker: sharedWorker } : null),
     data: new Uint8Array(data.slice(0)),
     password,
     cMapUrl: `${ASSET_BASE}cmaps/`,
@@ -105,4 +112,5 @@ export async function whyRefused(bytes, err) {
 // What a toast says about a file that couldn't be opened
 export const refusedWords = (why) => (why === 'locked'
   ? "is locked against changes, so it can't be changed here"
-  : why === 'password' ? 'is password-protected' : "isn't a PDF this can open");
+  : why === 'password' ? 'is password-protected'
+    : why === 'empty' ? 'has no pages' : "isn't a PDF this can open");

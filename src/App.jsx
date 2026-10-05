@@ -22,6 +22,15 @@ const TABS = [
   { key: 'diff',      label: 'text diff' },
 ];
 
+// A file dropped anywhere outside a drop box must not open in the browser
+// in place of the app (and take all the work with it). Drop boxes handle
+// their own drops first; here the rest are just stopped.
+if (typeof window !== 'undefined') {
+  const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
+  window.addEventListener('dragover', (e) => { if (hasFiles(e)) e.preventDefault(); });
+  window.addEventListener('drop', (e) => { if (hasFiles(e)) e.preventDefault(); });
+}
+
 const readTab = () => {
   try {
     const saved = localStorage.getItem('active_tab');

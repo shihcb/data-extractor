@@ -73,6 +73,23 @@ export function shortName(name, max = 28) {
   return `${name.slice(0, max - 1 - tail)}…${name.slice(-tail)}`;
 }
 
+// A card removed from the keyboard: focus goes on to the next card's same
+// button (or the one before; with none left, the tool's first button), not
+// left on the leaving copy and then dropped to the top of the page
+export function keepFocusAfterRemove(btn) {
+  if (!btn) return;
+  const list = btn.closest('.motion-list') || btn.closest('.tool');
+  const title = btn.getAttribute('title');
+  const all = [...(list?.querySelectorAll(`button[title="${title}"]`) || [])].filter(b => !b.closest('[aria-hidden="true"]'));
+  const i = all.indexOf(btn);
+  const next = all[i + 1] || all[i - 1];
+  const tool = btn.closest('.tool');
+  requestAnimationFrame(() => {
+    const to = next?.isConnected && !next.closest('[aria-hidden="true"]') ? next : tool?.querySelector('.btn:not(:disabled)');
+    to?.focus({ preventScroll: true });
+  });
+}
+
 export function formatBytes(n) {
   if (!Number.isFinite(n)) return '';
   if (n < 1024) return `${n} B`;
@@ -180,9 +197,20 @@ async function fileIsGone(err) {
 // false (while saving: a reload would throw away the work being saved).
 // Anything else (offline, a flaky connection) fails with a message, and
 // the page stays as it is.
+// Tabs holding work (anything their bottom bar would act on: pages, images,
+// text): an update's reload would throw it all away, so then it isn't done
+export const workHeld = new Set();
+
 export function loadLibrary(load, { reload = true } = {}) {
   return load().catch(async (err) => {
-    if (reload && (await fileIsGone(err)) && reloadForUpdate()) return new Promise(() => {});
+    const gone = await fileIsGone(err);
+    if (gone && reload && !workHeld.size && reloadForUpdate()) return new Promise(() => {});
+    if (gone) {
+      const e = new Error('the app was updated — reload the page to use this (save your work first)');
+      e.code = 'library';
+      e.cause = err;
+      throw e;
+    }
     const e = new Error("couldn't load this tool — check your connection");
     e.code = 'library';
     e.cause = err;

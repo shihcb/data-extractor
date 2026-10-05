@@ -85,18 +85,35 @@ function LineRows({ parts }) {
   return rows;
 }
 
+// `value`, or while `wait` is on, its last value once it's been still 300ms
+function useSettled(value, wait) {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    if (!wait) { setSettled(value); return undefined; }
+    const t = setTimeout(() => setSettled(value), 300);
+    return () => clearTimeout(t);
+  }, [value, wait]);
+  return wait ? settled : value;
+}
+
 export default function TextDiff({ active }) {
   const [left, setLeft] = useState('');
   const [right, setRight] = useState('');
   const [mode, setMode] = useState('lines');
-  const a = useDeferredValue(left);
-  const b = useDeferredValue(right);
+  // Huge texts are compared once typing pauses (each key ran a whole
+  // comparison, up to a second on 50,000 lines); small ones at once
+  const big = left.length + right.length > 200000;
+  const a = useDeferredValue(useSettled(left, big));
+  const b = useDeferredValue(useSettled(right, big));
   const result = useMemo(() => compare(a, b, mode), [a, b, mode]);
 
   const empty = !left && !right;
   const same = result && !empty && !result.changed;
   // (changed, but no word or line added or removed: only spaces or line breaks)
-  const status = empty ? 'empty' : !result ? 'slow' : same ? 'same' : !result.added && !result.removed ? 'space' : 'diff';
+  // (decided the same way in every mode: by lines or letters a changed
+  // space counted as one added)
+  const spacesOnly = !empty && a !== b && a.replace(/\s+/g, ' ').trim() === b.replace(/\s+/g, ' ').trim();
+  const status = empty ? 'empty' : !result ? 'slow' : same ? 'same' : spacesOnly || (!result.added && !result.removed) ? 'space' : 'diff';
 
   const hasOutput = !!result && !empty;
   const [lastView, setLastView] = useState(null);

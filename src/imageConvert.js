@@ -10,9 +10,11 @@ export const IMAGE_FORMATS = [
 
 const EXT_FOR_MIME = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' };
 
-// Biggest canvas every browser can make (iOS Safari: 16.7M pixels, and
-// 16384px a side elsewhere).
-const MAX_PIXELS = 16777216;
+// Biggest canvas the browser can make: iOS Safari 16.7M pixels; elsewhere
+// far more (held to 64M pixels, 256 MB, for memory) and 16384px a side
+const IOS = typeof navigator !== 'undefined'
+  && (/iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+const MAX_PIXELS = IOS ? 16777216 : 64e6;
 const MAX_SIDE = 16384;
 
 export function loadImage(url) {

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Copy, Download, ImageUp, X } from 'lucide-react';
 import { zipSync } from 'fflate';
 import { IMAGE_FORMATS, encodeImage, estimateImage, jpegsToPdf, loadImage, makeThumb, targetSize } from '../imageConvert';
-import { baseName, copyImageBlob, downloadBlob, isImageFile, shortName, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
+import { baseName, copyImageBlob, downloadBlob, isImageFile, isPdfFile, keepFocusAfterRemove, shortName, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
 import { MOTION_MS, fadeInOnLoad } from '../motion';
 import { useToast } from '../toastContext';
 import TabSwitcher from './TabSwitcher';
@@ -22,7 +22,8 @@ const RESIZE_MODES = [
 let nextId = 1;
 
 // Always in KB, so only the number changes (never "B" → "KB" → "MB")
-const kb = (n) => `${Math.round(n / 1024).toLocaleString()} KB`;
+// (a tiny file is still at least 1 KB: "0 KB" read as nothing at all)
+const kb = (n) => `${(n > 0 ? Math.max(1, Math.round(n / 1024)) : 0).toLocaleString()} KB`;
 
 // Frees what an image holds once it's gone: its links and its decoded copy
 function releaseItem(item) {
@@ -76,7 +77,12 @@ export default function ImageConverter({ active }) {
 
   const addFiles = useCallback(async (fileList) => {
     const files = [...fileList].filter(isImageFile);
-    if (!files.length) return;
+    if (!files.length) {
+      // (a PDF dropped here did nothing at all)
+      if (fileList.length) toast(isPdfFile(fileList[0]) ? 'PDFs go in PDF tools' : "that isn't an image", { warn: true });
+      return;
+    }
+    const failed = [];
     const loaded = await Promise.all(files.map(async (file) => {
       const url = URL.createObjectURL(file);
       try {
@@ -85,10 +91,12 @@ export default function ImageConverter({ active }) {
         return { id: nextId++, file, url, thumb, img, w: img.naturalWidth, h: img.naturalHeight };
       } catch {
         URL.revokeObjectURL(url);
-        toast(`couldn't open ${shortName(file.name) || 'that image'}`, { warn: true });
+        failed.push(file);
         return null;
       }
     }));
+    // Said once for all that failed (one after another, only the last showed)
+    if (failed.length) toast(failed.length === 1 ? `couldn't open ${shortName(failed[0].name) || 'that image'}` : `couldn't open ${failed.length} images`, { warn: true });
     const ok = loaded.filter(Boolean);
     if (!ok.length) return;
     clearTimeout(holdTimer.current);
@@ -145,6 +153,7 @@ export default function ImageConverter({ active }) {
   // page, which stuttered the slide-in); a settings change is quick, so the
   // size doesn't sit on the old format's number.
   const estimatedFor = useRef(null);
+  const lastEstimated = useRef(null);
   useEffect(() => {
     if (!selected) {
       setEstimate(null);
@@ -153,6 +162,14 @@ export default function ImageConverter({ active }) {
     }
     let cancelled = false;
     const newImage = estimatedFor.current !== selected.id;
+    // The last image's decoded copy is let go once another is the one
+    // estimated (kept, every photo ever picked held a full-size copy)
+    const before = lastEstimated.current;
+    if (before && before !== selected) {
+      before._bitmap?.then(b => b.close(), () => {});
+      before._bitmap = null;
+    }
+    lastEstimated.current = selected;
     const t = setTimeout(async () => {
       try {
         const out = await estimateImage(selected, settings);
@@ -176,11 +193,13 @@ export default function ImageConverter({ active }) {
       let blob;
       let name;
       let fellBack = false;
+      let clamped = false;
       if (format === 'pdf') {
         const pages = [];
         for (let i = 0; i < list.length; i++) {
           setBusy('on');
           pages.push(await encodeImage(list[i].img, settings));
+          clamped = clamped || pages[i].clamped;
         }
         setBusy('on');
         blob = await jpegsToPdf(pages);
@@ -190,6 +209,7 @@ export default function ImageConverter({ active }) {
         const out = await encodeImage(list[0].img, settings);
         blob = out.blob;
         fellBack = out.fellBack;
+        clamped = out.clamped;
         name = `${baseName(list[0].file.name)}.${out.ext}`;
       } else {
         const files = {};
@@ -198,6 +218,7 @@ export default function ImageConverter({ active }) {
           setBusy('on');
           const out = await encodeImage(list[i].img, settings);
           fellBack = fellBack || out.fellBack;
+          clamped = clamped || out.clamped;
           files[unique(`${baseName(list[i].file.name)}.${out.ext}`)] = new Uint8Array(await out.blob.arrayBuffer());
         }
         // Images are already compressed: store them as they are
@@ -207,6 +228,8 @@ export default function ImageConverter({ active }) {
       downloadBlob(blob, name);
       flagDone('download');
       if (fellBack) toast(`this browser can't make ${fmt.label}, so it saved PNG`, { warn: true });
+      // (it said nothing: an 8000 × 6000 photo came out smaller at 100%)
+      else if (clamped) toast('made smaller: that size is more than this browser can draw', { warn: true });
     } catch (err) {
       toast(err?.message ? `couldn't convert: ${err.message}` : "couldn't convert", { warn: true });
     } finally {
@@ -292,7 +315,7 @@ export default function ImageConverter({ active }) {
                   <div className="page-buttons">
                     <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); move(item.id, -1); }} disabled={n <= 0} title="Move earlier" aria-label="Move earlier"><ChevronLeft size={12} /></button>
                     <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); move(item.id, 1); }} disabled={n < 0 || n >= items.length - 1} title="Move later" aria-label="Move later"><ChevronRight size={12} /></button>
-                    <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); removeItems(new Set([item.id])); }} title="Remove" aria-label={`Remove ${name}`}><X size={12} /></button>
+                    <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); else keepFocusAfterRemove(e.currentTarget); removeItems(new Set([item.id])); }} title="Remove" aria-label={`Remove ${name}`}><X size={12} /></button>
                   </div>
                 </div>
               );

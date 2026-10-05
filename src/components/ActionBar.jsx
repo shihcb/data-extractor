@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { canAnimate } from '../motion';
 import { animateTo, drawnValue, stop } from '../engine';
+import { workHeld } from '../utils';
 
 // The bar every tab keeps its "what's open" actions in: the instagram
 // repo's bulk bar (outlined count, plain buttons, delete in red), floating
@@ -25,6 +26,11 @@ export default function ActionBar({ active, open: wanted, children, closeLabel =
     const el = ref.current;
     if (was.current === open) return;
     was.current = open;
+    // Closing with the keys on one of its buttons (clear, delete the last):
+    // they go to the tab's first button, not dropped to the top of the page
+    if (!open && el.contains(document.activeElement)) {
+      document.querySelector('.tab-pane.active:not(.tab-pane .tab-pane) .btn:not(:disabled)')?.focus({ preventScroll: true });
+    }
     if (!canAnimate(el)) {
       // (and its starting opacity 0 gone: with reduced motion it stayed invisible)
       el.style.visibility = open ? '' : 'hidden';
@@ -53,6 +59,14 @@ export default function ActionBar({ active, open: wanted, children, closeLabel =
     const el = ref.current;
     return () => stop(el);
   }, []);
+
+  // Something to act on, showing or not: an update mustn't reload over it
+  useEffect(() => {
+    const me = id.current;
+    if (wanted) workHeld.add(me);
+    else workHeld.delete(me);
+    return () => workHeld.delete(me);
+  }, [wanted]);
 
   // While a bar shows, toasts sit above it (body.has-bar)
   useEffect(() => {

@@ -31,8 +31,10 @@ export const toSentence = (text) =>
   text
     .toLowerCase()
     // (after leading spaces and opening quotes or brackets too: '"hello"')
-    .replace(/(^|[.!?]\s+|\n)([\s"“‘'«([¿¡]*)(\p{L})/gu, (_, before, open, letter) => before + open + letter.toUpperCase())
-    .replace(/(^|[^\p{L}\p{N}'’.])i(?=$|[^\p{L}\p{N}.])/gu, '$1I'); // (not "i.e.")
+    // (not after an abbreviation: "i.e. this", "e.g. that", "Dr. Smith"; "etc." often ends one)
+    .replace(/(^|(?<!\b(?:i\.e|e\.g|vs|mr|mrs|ms|dr))[.!?]\s+|\n)([\s"“‘'«([¿¡]*)(\p{L})/gu, (_, before, open, letter) => before + open + letter.toUpperCase())
+    // (not "i.e.", but "so do i." yes)
+    .replace(/(^|[^\p{L}\p{N}'’.])i(?=$|[^\p{L}\p{N}.]|\.(?!\p{L}))/gu, '$1I');
 
 export const toCamel = perLine((line) => {
   const words = splitWords(line).map(w => w.toLowerCase());
@@ -72,7 +74,11 @@ let segmenter = null;
 export function textStats(text) {
   if (!text) return { chars: 0, words: 0, lines: 0 };
   let chars;
-  if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+  // Plain ASCII: one letter a character (a "\r\n" counts once); counting
+  // a megabyte by graphemes took ~280ms a key
+  if (!/[^\t\n\r -~]/.test(text)) {
+    chars = text.length - (text.match(/\r\n/g)?.length || 0);
+  } else if (typeof Intl !== 'undefined' && Intl.Segmenter) {
     segmenter = segmenter || new Intl.Segmenter(undefined, { granularity: 'grapheme' });
     chars = 0;
     for (const _ of segmenter.segment(text)) chars++; // eslint-disable-line no-unused-vars

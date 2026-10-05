@@ -184,6 +184,13 @@ function ScanQr({ active }) {
     const url = URL.createObjectURL(file);
     try {
       const img = await loadImage(url);
+      // A picture given while the camera's on: the camera goes (still
+      // scanning, it wrote over what the picture showed)
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+        setCamera(false);
+      }
       show(decodeFrom(img, img.naturalWidth, img.naturalHeight));
     } catch {
       toast(`couldn't open ${shortName(file.name) || 'that image'}`, { warn: true });
