@@ -1003,21 +1003,12 @@ body.has-bar .feature-toast {
   box-shadow: inset 0 0 0 0.5px var(--text-main);
 }
 
-/* Just an icon (undo, redo) */
-.bulk-btn.bulk-icon {
-  padding: 0 9px;
-}
-
 /* A phone's width: a little tighter, so a full bar fits */
 @media (max-width: 420px) {
   .bulk-btn,
   .bulk-count {
     padding: 0 8px;
     font-size: 0.74rem;
-  }
-
-  .bulk-btn.bulk-icon {
-    padding: 0 7px;
   }
 }
 

@@ -1,6 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Redo2, Undo2 } from 'lucide-react';
 import { canAnimate } from '../motion';
 import { animateTo, drawnValue, stop } from '../engine';
 import { workHeld } from '../utils';
@@ -93,11 +92,11 @@ export default function ActionBar({ active, open: wanted, children, closeLabel =
       >
         {history && (
           <>
-            <button className="bulk-btn bulk-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); history.undo(); }} disabled={!history.canUndo} title="Undo (Ctrl + Z)" aria-label="Undo">
-              <Undo2 size={14} />
+            <button className="bulk-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); history.undo(); }} disabled={!history.canUndo} title="Undo (Ctrl + Z)">
+              undo
             </button>
-            <button className="bulk-btn bulk-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); history.redo(); }} disabled={!history.canRedo} title="Redo (Ctrl + Shift + Z)" aria-label="Redo">
-              <Redo2 size={14} />
+            <button className="bulk-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); history.redo(); }} disabled={!history.canRedo} title="Redo (Ctrl + Shift + Z)">
+              redo
             </button>
           </>
         )}
