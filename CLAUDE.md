@@ -100,6 +100,11 @@ Editing in the PDF editor:
   and the reading most of the three agree on is kept (`rereadLine`,
   `agreedReading`), updating the line in place unless it's being changed.
   A read line lying on the page's own text (a searchable scan) isn't added.
+  A read line's colours come from the sharp scan it was read from, not the
+  page on screen (small print's ink came out grey); a line already changed
+  isn't re-worded by a later re-read. Letters and numbers mixed up inside a
+  word are put right by the rest of it (`tidy`: "1O5" → "105", "C0MPANY"
+  → "COMPANY").
   Bold print is found by stroke thickness for its height against the page's
   usual (`strokeOf`); Courier only when word widths fit fixed-width letters
   better than proportional ones (a few plain words passed by letter count).
@@ -133,6 +138,9 @@ Rules that keep it smooth (each was a real bug):
   transitions (PDF pages' pictures flickered on every reorder). `MotionList`
   places items with CSS `order` and fixes the page's order once still; a
   picture that fades in when loaded does it from script, once.
+- The camera, stopped, keeps its last frame while it pops out (paused);
+  its tracks stop once it's gone (stopped at once, it went black and
+  seemed to snap away before the box eased shut).
 - A hint centred over a box that eases is centred in the outer box, not
   the inner one that changes size at once (the QR hint jumped 24px).
 - A button lets go of focus only after a pointer click (`if (e.detail)

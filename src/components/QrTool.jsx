@@ -167,6 +167,30 @@ function ScanQr({ active }) {
   // The camera's picture pops in and out like the cards
   usePop(videoRef, camera);
 
+  // Stopping: the picture holds its last frame while it pops out (the
+  // tracks stopped at once, it went blank and seemed to snap away before
+  // the box eased shut); the camera itself goes off once it's gone
+  const ending = useRef(null); // { stream, timer }
+  const endNow = useCallback(() => {
+    const end = ending.current;
+    if (!end) return;
+    ending.current = null;
+    clearTimeout(end.timer);
+    end.stream.getTracks().forEach(t => t.stop());
+    const video = videoRef.current;
+    if (video && video.srcObject === end.stream) video.srcObject = null;
+  }, []);
+  const stopCamera = useCallback((now = false) => {
+    const stream = streamRef.current;
+    streamRef.current = null;
+    setCamera(false);
+    if (!stream) return;
+    endNow();
+    videoRef.current?.pause();
+    ending.current = { stream, timer: setTimeout(endNow, MOTION_MS + 100) };
+    if (now === true) endNow();
+  }, [endNow]);
+
   const show = (text) => {
     const next = text ? { text } : { none: true };
     setResult(next);
@@ -186,26 +210,16 @@ function ScanQr({ active }) {
       const img = await loadImage(url);
       // A picture given while the camera's on: the camera goes (still
       // scanning, it wrote over what the picture showed)
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(t => t.stop());
-        streamRef.current = null;
-        setCamera(false);
-      }
+      if (streamRef.current) stopCamera();
       show(decodeFrom(img, img.naturalWidth, img.naturalHeight));
     } catch {
       toast(`couldn't open ${shortName(file.name) || 'that image'}`, { warn: true });
     } finally {
       URL.revokeObjectURL(url);
     }
-  }, [toast]);
+  }, [toast, stopCamera]);
 
   usePastedFiles(active, isImageFile, scanFiles);
-
-  const stopCamera = useCallback(() => {
-    streamRef.current?.getTracks().forEach(t => t.stop());
-    streamRef.current = null;
-    setCamera(false);
-  }, []);
 
   const asking = useRef(false);
   const activeRef = useRef(active);
@@ -226,6 +240,8 @@ function ScanQr({ active }) {
         stream.getTracks().forEach(t => t.stop());
         return;
       }
+      // (one still popping out goes off now: the picture is the new one's)
+      endNow();
       streamRef.current = stream;
       // Shown only once the picture's size is known: shown first, the video
       // took a placeholder size, then jumped to the camera's mid-pop, and the
@@ -277,7 +293,7 @@ function ScanQr({ active }) {
 
   // The camera goes off when you leave the tab (and when the app closes)
   useEffect(() => { if (!active) stopCamera(); }, [active, stopCamera]);
-  useEffect(() => stopCamera, [stopCamera]);
+  useEffect(() => () => stopCamera(true), [stopCamera]);
 
   // What the result box shows (the last result, while it closes)
   const shown = result || lastResult;

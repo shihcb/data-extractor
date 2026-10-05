@@ -1184,6 +1184,8 @@ export default function PdfEditor({ active }) {
   // A new line an undo or redo still names isn't dropped (it'd come back
   // with nothing to show it on)
   const inHistory = (id) => history.past.some(e => e[id]) || history.future.some(e => e[id]);
+  const inHistoryRef = useRef(inHistory);
+  inHistoryRef.current = inHistory;
   // The line being changed, saved; the box closes on blur (Enter, a tap
   // elsewhere), or moves on to the next line (Tab)
   const commit = (item) => {
@@ -1502,6 +1504,30 @@ export default function PdfEditor({ active }) {
           });
         };
         const fresh = items.filter(it => !onOwn(it));
+        // Each line's colours, from the sharp copy it was read from (the
+        // page on screen blurs small print: its ink came out grey). A few
+        // lines at a time, once nothing moves (it's the page's thread)
+        const { raw, ink } = got;
+        for (let k = 0; k < items.length; k++) {
+          if (stop || viewRef.current !== open) break;
+          if (k % 8 === 0) await whenStill();
+          const l = lines[k];
+          const pad = l.cap * 0.3;
+          const x = Math.max(0, Math.floor(l.x0 - pad));
+          const y = Math.max(0, Math.floor(Math.min(l.y0, l.y1) - l.cap * 1.25));
+          const w = Math.min(raw.width, Math.ceil(l.x1 + pad)) - x;
+          const h = Math.min(raw.height, Math.ceil(Math.max(l.y0, l.y1) + l.cap * 0.35)) - y;
+          try {
+            if (w > 4 && h > 4) items[k].colors = colorsIn(raw, x, y, w, h);
+          } catch {
+            // (sampled from the page on screen when it's changed)
+          }
+        }
+        if (stop || viewRef.current !== open) {
+          raw.width = raw.height = 0;
+          ink.width = ink.height = 0;
+          return;
+        }
         setDoc(prev => (!prev || prev.id !== doc.id ? prev : {
           ...prev,
           pages: prev.pages.map(q => (q.num !== p.num ? q : { ...q, scan: false, items: [...q.items, ...fresh] })),
@@ -1509,8 +1535,7 @@ export default function PdfEditor({ active }) {
         // Then each line it wasn't sure of, read twice more on its own (a
         // close-up of the page as it was, and of it made black on white):
         // the reading most of the three agree on is kept, the line's words
-        // updating in place (unless it's being changed right now)
-        const { raw, ink } = got;
+        // updating in place (unless it's being changed, or has been)
         try {
           for (let k = 0; k < lines.length; k++) {
             if (stop || viewRef.current !== open) break;
@@ -1520,9 +1545,12 @@ export default function PdfEditor({ active }) {
             const agreed = agreedReading([{ text: lines[k].text, sure: lines[k].sure }, fromRaw, fromInk]);
             if (stop || viewRef.current !== open || !agreed || agreed.text === lines[k].text) continue;
             const id = items[k].id;
+            // (a line already changed keeps the words it was changed from:
+            // its "was" and its undo steps name them)
+            const free = (it) => it.id === id && editingRef.current !== id && !editsRef.current[id] && !inHistoryRef.current(id);
             setDoc(prev => (!prev || prev.id !== doc.id ? prev : {
               ...prev,
-              pages: prev.pages.map(q => (q.num !== p.num ? q : { ...q, items: q.items.map(it => (it.id === id && editingRef.current !== id ? { ...it, str: agreed.text } : it)) })),
+              pages: prev.pages.map(q => (q.num !== p.num ? q : { ...q, items: q.items.map(it => (free(it) ? { ...it, str: agreed.text } : it)) })),
             }));
           }
         } finally {

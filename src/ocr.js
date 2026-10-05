@@ -58,7 +58,27 @@ function read(canvas, psm) {
 }
 
 const linesOf = (data) => (data.blocks || []).flatMap(b => b.paragraphs.flatMap(p => p.lines));
-const wordsOf = (line) => line.words.map(w => ({ text: w.text.trim(), sure: w.confidence, bbox: w.bbox })).filter(w => w.text);
+const wordsOf = (line) => line.words.map(w => ({ text: tidy(w.text.trim()), sure: w.confidence, bbox: w.bbox })).filter(w => w.text);
+
+// Letters and numbers Tesseract mixes up, put right by the word around
+// them (same length, so its letters' places hold): in a number, O → 0 and
+// l / I / | → 1 ("1O5", "$4l.20"); in a word, 0 → O ("C0MPANY", "g0ld").
+// Only where the rest of the word leaves no doubt: mostly one or the other.
+export function tidy(text) {
+  return text.replace(/[\p{L}\p{N}|][\p{L}\p{N}|.,:/-]*/gu, (w) => {
+    const digits = (w.match(/\p{N}/gu) || []).length;
+    const mixed = (w.match(/[OoIl|]/g) || []).length;
+    if (mixed && digits >= 2 && digits > mixed && !/[^\p{N}OoIl|.,:/-]/u.test(w)) {
+      return w.replace(/[Oo]/g, '0').replace(/[Il|]/g, '1');
+    }
+    const zeros = (w.match(/0/g) || []).length;
+    const letters = (w.match(/\p{L}/gu) || []).length;
+    if (zeros && letters >= 2 && zeros < letters && !/[^\p{L}0]/u.test(w)) {
+      return w.replace(/0/g, w === w.toUpperCase() ? 'O' : 'o');
+    }
+    return w;
+  });
+}
 // Where a line's baseline is at x (it may slope: a scan is rarely straight)
 const baselineAt = (line, x) => {
   const b = line.baseline;
