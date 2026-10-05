@@ -349,6 +349,19 @@ function boxFor(pdf, view) {
   };
 }
 
+// A page's items in reading order: top to bottom, and along a row left to
+// right (pictures, read lines and new lines were added at the end, so Tab
+// jumped from the body back up to an email's header)
+function readingOrder(items) {
+  return items.slice().sort((a, b) => {
+    const ab = a.box || {};
+    const bb = b.box || {};
+    const near = Math.min(ab.height || 1, bb.height || 1) * 0.5;
+    if (Math.abs((ab.top ?? 0) - (bb.top ?? 0)) > near) return (ab.top ?? 0) - (bb.top ?? 0);
+    return (ab.left ?? 0) - (bb.left ?? 0);
+  });
+}
+
 // A picture's rectangle in % of the drawn page
 function rectFor(r, view) {
   const a = applyM(view.transform, r.x0, r.y1);
@@ -449,10 +462,15 @@ function TextItem({ edited, editStyle, plainStyle, content, className, ...rest }
       last.finished.then(() => { if (!was.current && anims.current.includes(last)) setLeaving(false); }, () => {});
     }
   }, [edited]);
-  // Gone: its look dropped while still faded out, then the fade let go
+  // Gone: its look dropped while still faded out, then the fade let go —
+  // only once leaving has ended (run in the same commit as the change that
+  // started it, this cancelled the fade at once and the old words stayed)
+  const wasLeaving = useRef(leaving);
   useLayoutEffect(() => {
-    if (!leaving && !edited && anims.current.length) stopAll();
-  }, [leaving, edited]);
+    const ended = wasLeaving.current && !leaving;
+    wasLeaving.current = leaving;
+    if (ended && !was.current && anims.current.length) stopAll();
+  }, [leaving]);
   const showing = edited || leaving;
   return (
     <button
@@ -463,6 +481,36 @@ function TextItem({ edited, editStyle, plainStyle, content, className, ...rest }
     >
       {edited ? content : leaving ? kept.current.content : ''}
     </button>
+  );
+}
+
+// A picture of text's cover: on as soon as it's changed, and on going it
+// stays while the new words fade out, then fades itself (gone at once, the
+// picture's own words showed under the new ones still fading)
+function PicCover({ show, rect, bg }) {
+  const ref = useRef(null);
+  const kept = useRef(bg);
+  const [leaving, setLeaving] = useState(false);
+  const was = useRef(show);
+  if (show) kept.current = bg;
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (was.current === show) return;
+    was.current = show;
+    el?.getAnimations().forEach(a => a.cancel());
+    if (show) { setLeaving(false); return; }
+    if (!el || !canAnimate(el)) { setLeaving(false); return; }
+    setLeaving(true);
+    const a = el.animate([{ opacity: 1 }, { opacity: 0 }], { ...HALF, delay: HALF.duration, fill: 'forwards' });
+    a.finished.then(() => { if (!was.current) setLeaving(false); }, () => {});
+  }, [show]);
+  if (!show && !leaving) return null;
+  return (
+    <div
+      ref={ref}
+      className="pdf-pic-cover"
+      style={{ left: `${rect.left}%`, top: `${rect.top}%`, width: `${rect.width}%`, height: `${rect.height}%`, background: rgbCss(kept.current) }}
+    />
   );
 }
 
@@ -544,6 +592,9 @@ export default function PdfEditor({ active }) {
   // the box staying where it is; the buttons ease it on the app's curve.
   const [zoom, setZoomState] = useState(1); // where it's headed (the % shown)
   const zoomNow = useRef(1); // where it's drawn
+  // Where it's headed: the buttons step from here (the zoom state lags a
+  // ctrl + scroll by 150ms, and a button pressed then stepped from before it)
+  const zoomAim = useRef(1);
   const zooming = useRef(false);
   const zoomAnim = useRef(null);
   const applyZoom = (z, ax, ay) => {
@@ -595,6 +646,7 @@ export default function PdfEditor({ active }) {
     const sc = scrollRef.current;
     if (!sc) return;
     target = clampZoom(target);
+    zoomAim.current = target;
     if (ax === undefined) { ax = sc.clientWidth / 2; ay = sc.clientHeight / 2; }
     cancelAnimationFrame(zoomAnim.current);
     setZoomState(target);
@@ -620,6 +672,7 @@ export default function PdfEditor({ active }) {
     cancelAnimationFrame(zoomAnim.current);
     zooming.current = false;
     zoomNow.current = 1;
+    zoomAim.current = 1;
     innerRef.current?.style.setProperty('--zoom', '1');
     setZoomState(1);
     const sc = scrollRef.current;
@@ -652,6 +705,7 @@ export default function PdfEditor({ active }) {
       const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
       const [ax, ay] = spot((a.clientX + b.clientX) / 2, (a.clientY + b.clientY) / 2);
       applyZoom(clampZoom(pinch.zoom * (dist / pinch.dist)), ax, ay);
+      zoomAim.current = zoomNow.current;
     };
     const onEnd = (e) => {
       if (!pinch || e.touches.length >= 2) return;
@@ -670,6 +724,7 @@ export default function PdfEditor({ active }) {
       // time at most: a wheel's 100px a notch jumped 2.7× at once
       const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
       applyZoom(clampZoom(zoomNow.current * Math.exp(-Math.max(-40, Math.min(40, dy)) * 0.01)), ax, ay);
+      zoomAim.current = zoomNow.current;
       clearTimeout(wheelDone);
       wheelDone = setTimeout(() => { setZoomState(zoomNow.current); settleZoom(); }, 150);
     };
@@ -693,7 +748,9 @@ export default function PdfEditor({ active }) {
   const openFile = useCallback(async (files) => {
     const file = [...files].find(isPdfFile);
     if (!file) return;
-    const ticket = ++opening.current;
+    // (the ticket is taken once it's known to be a PDF: a bad file picked
+    // just after a good one threw the good one away)
+    let ticket = null;
     let view = null;
     let made = [];
     try {
@@ -704,12 +761,15 @@ export default function PdfEditor({ active }) {
       } catch (err) {
         throw new Error(await whyRefused(bytes, err));
       }
+      ticket = ++opening.current;
       // Keeping each font's file and letters, to write new words in it
       view = await openPdf(bytes, undefined, { fontExtraProperties: true });
       const fonts = {};
       const pages = [];
       made = pages;
       for (let n = 1; n <= view.numPages; n++) {
+        // Overtaken (another file, or closed): no more pages drawn for it
+        if (ticket !== opening.current) throw new Error('superseded');
         const page = await view.getPage(n);
         const { canvas, viewport } = await renderPage(page, { cssWidth: PAGE_CSS_WIDTH });
         const url = URL.createObjectURL(await canvasToBlob(canvas, 'image/png'));
@@ -784,7 +844,7 @@ export default function PdfEditor({ active }) {
     } catch (err) {
       // The pages drawn before it failed
       made.forEach(p => URL.revokeObjectURL(p.url));
-      if (ticket !== opening.current) return;
+      if (ticket !== null && ticket !== opening.current) return;
       if (err?.code === 'library') {
         // Not the file's fault: the PDF reader itself didn't load
         toast(err.message, { warn: true });
@@ -1245,6 +1305,8 @@ export default function PdfEditor({ active }) {
         if (squeeze !== 1) page.pushOperators(popGraphicsState());
       }
       const out = await pdf.save();
+      // Closed (or another PDF opened) while saving: nothing comes of it
+      if (docRef.current?.id !== doc.id) return;
       downloadBlob(new Blob([out], { type: 'application/pdf' }), `${baseName(doc.name)}-edited.pdf`);
       flagDone('save');
       if (lost) toast('some characters aren\'t in the standard PDF fonts and were saved as "?"', { warn: true });
@@ -1349,7 +1411,11 @@ export default function PdfEditor({ active }) {
             problem = again?.code === 'library' ? again.message : problem;
           }
         }
-        if (stop || viewRef.current !== open) return;
+        if (stop || viewRef.current !== open) {
+          // (its big canvases freed now, not whenever memory's swept: a phone's tight)
+          if (got) { got.raw.width = got.raw.height = 0; got.ink.width = got.ink.height = 0; }
+          return;
+        }
         if (!got) continue;
         const { lines, viewport } = got;
         found += lines.length;
@@ -1511,7 +1577,7 @@ export default function PdfEditor({ active }) {
   const fold = (t) => (matchCase ? t : t.toLowerCase());
   const findKey = findOpen && doc ? fold(findText) : '';
   const matches = new Set();
-  if (findKey.trim()) {
+  if (findKey) {
     doc.pages.forEach(p => p.items.forEach((item) => {
       if (fold(textOf(item)).includes(findKey)) matches.add(item.id);
     }));
@@ -1557,13 +1623,15 @@ export default function PdfEditor({ active }) {
     const onKey = (e) => {
       if (!(e.ctrlKey || e.metaKey) || e.altKey || !keys.current.has || document.body.classList.contains('modal-open')) return;
       const t = e.target;
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
       const k = e.key.toLowerCase();
+      // Typing, only find is the editor's (the browser's own find bar came up)
+      const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+      if (typing && k !== 'f') return;
       if (k === 'z' && !e.shiftKey) keys.current.undo();
       else if ((k === 'z' && e.shiftKey) || k === 'y') keys.current.redo();
       else if (k === 'f') {
         keys.current.open();
-        requestAnimationFrame(() => findRef.current?.focus());
+        requestAnimationFrame(() => { findRef.current?.focus(); findRef.current?.select(); });
       } else return;
       e.preventDefault();
     };
@@ -1571,11 +1639,19 @@ export default function PdfEditor({ active }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [active]);
   const findRef = useRef(null);
+  const findBtnRef = useRef(null);
+  // Escape in the panel: closed, and the keys go back to its button (left
+  // in the closing field, they kept typing into it)
+  const closeFind = () => {
+    setFindOpen(false);
+    findBtnRef.current?.focus({ preventScroll: true });
+  };
 
   editsRef.current = edits;
   const editCount = Object.keys(edits).length;
   const textCount = doc ? doc.pages.reduce((n, p) => n + p.items.filter(item => !item.added || edits[item.id]).length, 0) : 0;
   const close = () => {
+    opening.current++; // (a PDF still loading doesn't show up after it)
     leavingDoc.current = doc ? { fonts: doc.fonts, edits } : null;
     dropView();
     releaseLater(doc);
@@ -1634,7 +1710,7 @@ export default function PdfEditor({ active }) {
                   onClick={(e) => { if (adding && !leaving && e.target === e.currentTarget) addAt(p, e); }}
                   onDoubleClick={(e) => { if (!leaving && e.target === e.currentTarget) addAt(p, e); }}
                 >
-                  {p.items.map(item => {
+                  {readingOrder(p.items).map(item => {
                     // (a page on its way out shows its own document's changes)
                     const gone = leaving ? leavingDoc.current : null;
                     const edit = (gone ? gone.edits : edits)[item.id];
@@ -1667,17 +1743,12 @@ export default function PdfEditor({ active }) {
                       ...look.css,
                     };
                     // A picture of text being changed: covered whole on screen too
-                    const cover = item.picture && (typing || edit) ? (
-                      <div
+                    const cover = item.picture ? (
+                      <PicCover
                         key={`${item.id}-cover`}
-                        className="pdf-pic-cover"
-                        style={{
-                          left: `${item.picture.rect.left}%`,
-                          top: `${item.picture.rect.top}%`,
-                          width: `${item.picture.rect.width}%`,
-                          height: `${item.picture.rect.height}%`,
-                          background: rgbCss((typing ? draftColors : edit).bg),
-                        }}
+                        show={!!(typing || edit)}
+                        rect={item.picture.rect}
+                        bg={typing || edit ? (typing ? draftColors : edit).bg : null}
                       />
                     ) : null;
                     if (typing) {
@@ -1700,12 +1771,17 @@ export default function PdfEditor({ active }) {
                           onChange={(e) => setDraft(e.target.value)}
                           onBlur={() => commit(item)}
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter') e.currentTarget.blur();
+                            // (Enter choosing a word in an input method isn't the end of the line)
+                            if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+                            // Done from the keyboard: back on the line's own button, not
+                            // thrown to the top of the page
+                            const refocus = () => requestAnimationFrame(() => document.querySelector(`.pdf-text-item[data-item="${item.id}"]`)?.focus({ preventScroll: true }));
+                            if (e.key === 'Enter') { e.currentTarget.blur(); refocus(); }
                             if (e.key === 'Tab') {
                               // On to the next line (Shift: the one before), saving this one
                               e.preventDefault();
                               // (not new lines with nothing in them: not shown, nothing to change)
-                              const all = doc.pages.flatMap(pg => pg.items).filter(q => q.id === item.id || !q.added || edits[q.id]);
+                              const all = doc.pages.flatMap(pg => readingOrder(pg.items)).filter(q => q.id === item.id || !q.added || edits[q.id]);
                               const next = all[all.findIndex(q => q.id === item.id) + (e.shiftKey ? -1 : 1)];
                               finish(item);
                               if (next) startEdit(next);
@@ -1714,6 +1790,7 @@ export default function PdfEditor({ active }) {
                             if (e.key === 'Escape') {
                               cancelled.current = true;
                               setEditing(null);
+                              refocus();
                               // A new line given nothing: gone again
                               if (item.added && !edits[item.id] && !inHistory(item.id)) dropAdded(item);
                             }
@@ -1726,6 +1803,7 @@ export default function PdfEditor({ active }) {
                     return [cover, (
                       <TextItem
                         key={item.id}
+                        data-item={item.id}
                         className={`pdf-text-item ${!gone && matches.has(item.id) ? 'match' : ''}`}
                         edited={!!edit}
                         // (the patch reaches a little past its box: the old words' tails
@@ -1758,9 +1836,9 @@ export default function PdfEditor({ active }) {
         </div>
         {/* Zoom: pinch too (or the trackpad / ctrl + scroll) */}
         <div className={`zoom-pill ${doc ? 'show' : ''}`} aria-hidden={!doc}>
-          <button className="zoom-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); zoomTo(zoom / ZOOM_STEP); }} disabled={!doc || zoom <= 1} title="Zoom out" aria-label="Zoom out"><ZoomOut size={14} /></button>
+          <button className="zoom-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); zoomTo(zoomAim.current / ZOOM_STEP); }} disabled={!doc || zoom <= 1} title="Zoom out" aria-label="Zoom out"><ZoomOut size={14} /></button>
           <span className="zoom-num"><Count value={Math.round(zoom * 100)} />%</span>
-          <button className="zoom-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); zoomTo(zoom * ZOOM_STEP); }} disabled={!doc || zoom >= ZOOM_MAX} title="Zoom in" aria-label="Zoom in"><ZoomIn size={14} /></button>
+          <button className="zoom-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); zoomTo(zoomAim.current * ZOOM_STEP); }} disabled={!doc || zoom >= ZOOM_MAX} title="Zoom in" aria-label="Zoom in"><ZoomIn size={14} /></button>
         </div>
       </div>
       <input
@@ -1789,7 +1867,7 @@ export default function PdfEditor({ active }) {
               className="text-input"
               value={findText}
               onChange={(e) => setFindText(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Escape') setFindOpen(false); }}
+              onKeyDown={(e) => { if (e.key === 'Escape') closeFind(); }}
               placeholder="find"
               spellCheck={false}
               aria-label="Find"
@@ -1807,7 +1885,11 @@ export default function PdfEditor({ active }) {
               className="text-input"
               value={replaceText}
               onChange={(e) => setReplaceText(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') replaceAll(); if (e.key === 'Escape') setFindOpen(false); }}
+              onKeyDown={(e) => {
+                if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+                if (e.key === 'Enter') replaceAll();
+                if (e.key === 'Escape') closeFind();
+              }}
               placeholder="replace with"
               spellCheck={false}
               aria-label="Replace with"
@@ -1845,6 +1927,7 @@ export default function PdfEditor({ active }) {
           add text
         </button>
         <button
+          ref={findBtnRef}
           className={`bulk-btn ${findOpen ? 'on' : ''}`}
           onClick={(e) => {
             if (e.detail) e.currentTarget.blur();
