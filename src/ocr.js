@@ -58,7 +58,7 @@ function read(canvas, psm) {
 }
 
 const linesOf = (data) => (data.blocks || []).flatMap(b => b.paragraphs.flatMap(p => p.lines));
-const wordsOf = (line) => line.words.map(w => ({ text: tidy(w.text.trim()), sure: w.confidence, bbox: w.bbox })).filter(w => w.text);
+const wordsOf = (line) => line.words.map(w => ({ text: tidy(w.text.trim()), sure: w.confidence, bbox: w.bbox, symbols: w.symbols || [] })).filter(w => w.text);
 
 // Letters and numbers Tesseract mixes up, put right by the word around
 // them (same length, so its letters' places hold): in a number, O → 0 and
@@ -244,6 +244,8 @@ export async function readPage(canvas) {
       };
       const spread = spreadOf(long.map(w => (w.bbox.x1 - w.bbox.x0) / w.text.length));
       const spreadProp = spreadOf(long.map(w => (w.bbox.x1 - w.bbox.x0) / proportionalWidth(w.text)));
+      // Better, where its letters tell: from one letter to the next
+      const byPitch = monoByPitch(ws);
       out.push({
         text,
         x0,
@@ -251,7 +253,7 @@ export async function readPage(canvas) {
         y0: base,
         y1: base + slope * (x1 - x0),
         cap: Math.max(2, base - top),
-        mono: spread < 0.12 && spread < spreadProp * 0.75,
+        mono: byPitch ?? (spread < 0.12 && spread < spreadProp * 0.75),
         sure: ws.reduce((t, w) => t + w.sure, 0) / ws.length,
         // Words far taller than the print: rows packed close together, run
         // into one by Tesseract (worked out again below)
@@ -283,20 +285,62 @@ export async function readPage(canvas) {
   return { lines: kept, raw, ink: canvas };
 }
 
-// About how wide a word is in a proportional font (Helvetica's widths, by
-// kind of letter), in ems
+// Helvetica's widths (in 1/1000 em) for the printable ASCII letters, from
+// space to ~: how wide a letter is in an ordinary proportional font
+const HELVETICA = [
+  278, 278, 355, 556, 556, 889, 667, 191, 333, 333, 389, 584, 278, 333, 278, 278,
+  556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 278, 278, 584, 584, 584, 556,
+  1015, 667, 667, 722, 722, 667, 611, 778, 722, 278, 500, 667, 556, 833, 722, 778,
+  667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611, 278, 278, 278, 469, 556,
+  333, 556, 556, 500, 556, 556, 278, 556, 556, 222, 222, 500, 222, 833, 556, 556,
+  556, 556, 333, 500, 278, 556, 500, 722, 500, 500, 500, 334, 260, 334, 584,
+];
+const helveticaWidth = (ch) => {
+  const c = ch.codePointAt(0);
+  return c >= 32 && c <= 126 ? HELVETICA[c - 32] / 1000 : 0.556;
+};
+
+// About how wide a word is in a proportional font, in ems
 function proportionalWidth(text) {
   let w = 0;
-  for (const ch of text) {
-    if (/[ilj.,'|!:;]/.test(ch)) w += 0.25;
-    else if (/[frtI\-()]/.test(ch)) w += 0.33;
-    else if (/[mw]/.test(ch)) w += 0.83;
-    else if (/[MW]/.test(ch)) w += 0.88;
-    else if (/[A-Z]/.test(ch)) w += 0.69;
-    else if (/[0-9]/.test(ch)) w += 0.556;
-    else w += 0.54;
-  }
+  for (const ch of text) w += helveticaWidth(ch);
   return w || 1;
+}
+
+// Is a line in fixed-width letters (a typewriter, a receipt printer, an ID
+// card's typed name)? Told from one letter to the next: in a fixed-width
+// font the step from a letter's middle to the next one's is the same every
+// time; in a proportional one it grows and shrinks with the letters (an I
+// steps short, an M long) — however widely the letters are spaced out.
+// true / false, or null when its letters can't tell (too few, or ones
+// alike in width in either kind of font, like most capitals).
+export function monoByPitch(words) {
+  const seen = [];
+  const want = [];
+  for (const w of words) {
+    const syms = (w.symbols || []).filter(s => s.bbox && s.text && s.text.trim());
+    if (syms.length !== [...w.text].length) continue; // (boxes and letters must line up)
+    for (let k = 1; k < syms.length; k++) {
+      const a = syms[k - 1];
+      const b = syms[k];
+      seen.push((b.bbox.x0 + b.bbox.x1) / 2 - (a.bbox.x0 + a.bbox.x1) / 2);
+      want.push((helveticaWidth(a.text) + helveticaWidth(b.text)) / 2);
+    }
+  }
+  if (seen.length < 5) return null;
+  const mean = (v) => v.reduce((t, x) => t + x, 0) / v.length;
+  const ms = mean(seen);
+  const mw = mean(want);
+  if (!(ms > 0)) return null;
+  const sd = (v, m) => Math.sqrt(v.reduce((t, x) => t + (x - m) ** 2, 0) / v.length);
+  const seenSpread = sd(seen, ms) / ms;
+  const wantSpread = sd(want, mw) / mw;
+  // Its letters would step alike in a proportional font too: can't tell
+  if (wantSpread < 0.1) return null;
+  // How closely the steps follow the proportional font's
+  const cov = seen.reduce((t, x, k) => t + (x - ms) * (want[k] - mw), 0) / seen.length;
+  const follows = cov / ((sd(seen, ms) || 1e-9) * (sd(want, mw) || 1e-9));
+  return seenSpread < 0.1 && follows < 0.4;
 }
 
 // How thick a line's strokes are for its height: the usual length of the

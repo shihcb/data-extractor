@@ -7,7 +7,7 @@ import { baseName, canvasToBlob, downloadBlob, isPdfFile, loadLibrary, shortName
 import { MOTION, MOTION_MS, canAnimate, motionEase, prefersReducedMotion } from '../motion';
 import { whenStill } from '../engine';
 import { useToast } from '../toastContext';
-import { cssFont, cssWidthEm, fontInfoOf, originalCanWrite, squeezeFor, standardFontKey, unicodeFontOf } from '../pdfFonts';
+import { capHeightOf, cssFont, cssWidthEm, fitWidth, fontInfoOf, originalCanWrite, standardFontKey, unicodeFontOf } from '../pdfFonts';
 import ActionBar from './ActionBar';
 import Collapse from './Collapse';
 import Count from './Count';
@@ -1219,7 +1219,7 @@ export default function PdfEditor({ active }) {
     setBusy(true);
     try {
       const lib = await loadPdfLib();
-      const { PDFDocument, StandardFonts, rgb, degrees, pushGraphicsState, popGraphicsState, setCharacterSqueeze } = lib;
+      const { PDFDocument, StandardFonts, rgb, degrees, pushGraphicsState, popGraphicsState, setCharacterSqueeze, setCharacterSpacing } = lib;
       const pdf = await PDFDocument.load(doc.bytes);
       // Standard fonts, and the PDF's own fonts (written with fontkit), once each
       const fonts = new Map();
@@ -1281,6 +1281,7 @@ export default function PdfEditor({ active }) {
         // (in the order it's drawn: right-to-left words were saved backwards)
         const { text: drawnText, rtl } = visualOrder(edit.text);
         let squeeze = 1;
+        let track = 0; // space after each letter (letter-spaced print)
         if (original) {
           // Word by word, in the font's own codes; the spaces are the PDF's own width
           font = original;
@@ -1304,9 +1305,11 @@ export default function PdfEditor({ active }) {
           // (the old words measured in the stand-in too: any letter it can't
           // write, a minus sign say, threw and the whole save failed)
           const was = item.str ? encodable(font, item.str).text : '';
-          squeeze = was ? squeezeFor(width, font.widthOfTextAtSize(was, size)) : 1;
+          const fit = was ? fitWidth(width, font.widthOfTextAtSize(was, size), [...was].length) : { squeeze: 1, track: 0 };
+          squeeze = fit.squeeze;
+          track = fit.track;
           if (safe.text) runs = [{ text: safe.text, along: 0 }];
-          newWidth = safe.text ? font.widthOfTextAtSize(safe.text, size) * squeeze : 0;
+          newWidth = safe.text ? font.widthOfTextAtSize(safe.text, size) * squeeze + track * Math.max(0, [...safe.text].length - 1) : 0;
         }
 
         // A right-to-left line keeps its right end where it was
@@ -1347,9 +1350,14 @@ export default function PdfEditor({ active }) {
           borderWidth: 0,
         });
         }
-        if (squeeze !== 1) page.pushOperators(pushGraphicsState(), setCharacterSqueeze(squeeze * 100));
+        const spaced = squeeze !== 1 || track;
+        if (spaced) {
+          page.pushOperators(pushGraphicsState());
+          if (squeeze !== 1) page.pushOperators(setCharacterSqueeze(squeeze * 100));
+          if (track) page.pushOperators(setCharacterSpacing(track));
+        }
         runs.forEach((r) => page.drawText(r.text, { ...at(r.along), size, font, color: color(edit.ink), rotate: turn }));
-        if (squeeze !== 1) page.pushOperators(popGraphicsState());
+        if (spaced) page.pushOperators(popGraphicsState());
       }
       const out = await pdf.save();
       // Closed (or another PDF opened) while saving: nothing comes of it
@@ -1375,7 +1383,9 @@ export default function PdfEditor({ active }) {
     if (info?.family && (typing || originalCanWrite(info, text))) {
       return { css: { fontFamily: `"${info.family}", ${stand.fontFamily}`, fontWeight: 400, fontStyle: 'normal' }, text, squeeze: 1 };
     }
-    return { css: stand, text, squeeze: squeezeFor(item.pdf.width / item.pdf.size, cssWidthEm(stand, item.str)) };
+    const fit = fitWidth(item.pdf.width / item.pdf.size, cssWidthEm(stand, item.str), [...item.str].length);
+    // (spaced out like the original: letter-spaced print stays letter-spaced)
+    return { css: fit.track ? { ...stand, letterSpacing: `${fit.track.toFixed(4)}em` } : stand, text, squeeze: fit.squeeze, track: fit.track };
   };
 
   // Each changed line's baseline, measured where it's actually drawn, is
@@ -1473,9 +1483,22 @@ export default function PdfEditor({ active }) {
         const items = lines.map((l, k) => {
           const [x, y] = toPdf(l.x0, l.y0);
           const [x1, y1] = toPdf(l.x1, l.y1);
-          const size = Math.max(2, l.cap / viewport.scale / 0.72); // tall letters stand ~0.72 of the size
+          const font = { base: l.mono ? 'Courier' : 'Helvetica', bold: !!l.bold, italic: false };
+          // (sized so its capitals stand as tall as the scan's, in the font it's written in)
+          let size = Math.max(2, l.cap / viewport.scale / capHeightOf(font));
+          // Fixed-width print: every letter takes 0.6 of the size, so the
+          // line's length says its size too — and more surely than its
+          // height, which tall lower-case letters (d, f, l) overstate: a
+          // smaller size the length gives is taken (within reason)
+          const letters = [...l.text].length;
+          if (l.mono && letters >= 4) {
+            const bySpan = Math.hypot(x1 - x, y1 - y) / (0.6 * letters - 0.1);
+            if (bySpan < size) size = Math.max(size * 0.85, bySpan);
+          }
           // (a shallow tail below: printed lines sit close, the patch mustn't cut into the next)
-          const pdf = { x, y, size, width: Math.hypot(x1 - x, y1 - y), ascent: 0.9, descent: -0.15, angle: Math.atan2(y1 - y, x1 - x) };
+          // (its box reaching as far above its capitals, and below, whatever the font)
+          const tall = capHeightOf(font) / 0.718;
+          const pdf = { x, y, size, width: Math.hypot(x1 - x, y1 - y), ascent: 0.9 * tall, descent: -0.15 * tall, angle: Math.atan2(y1 - y, x1 - x) };
           return {
             id: `${p.num}-s${k}`,
             page: p.num - 1,
@@ -1485,7 +1508,7 @@ export default function PdfEditor({ active }) {
             pdf,
             box: boxFor(pdf, p.view),
             fontKey: null,
-            font: { base: l.mono ? 'Courier' : 'Helvetica', bold: !!l.bold, italic: false },
+            font,
           };
         });
         // A line already there as the page's own text (a searchable scan's
@@ -1834,7 +1857,7 @@ export default function PdfEditor({ active }) {
                             ...pos,
                             background: rgbCss(colors.bg),
                             color: rgbCss(colors.ink),
-                            width: `${cssWidthEm(look.css, draft, { cache: false }) + 0.3}em`,
+                            width: `${cssWidthEm(look.css, draft, { cache: false }) + (look.track || 0) * [...draft].length + 0.3}em`,
                             // A picture still being read: just its outline (its box is the
                             // whole picture, so a caret there stood a few lines tall)
                             ...(item.picture && !item.read ? { color: 'transparent', caretColor: 'transparent', background: 'transparent' } : null),

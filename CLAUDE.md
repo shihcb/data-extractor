@@ -105,6 +105,15 @@ Editing in the PDF editor:
   isn't re-worded by a later re-read. Letters and numbers mixed up inside a
   word are put right by the rest of it (`tidy`: "1O5" → "105", "C0MPANY"
   → "COMPANY").
+  Fixed-width print (Courier) is told from one letter to the next
+  (`monoByPitch`: in a fixed-width font the step between letters' middles
+  never changes; in a proportional one it follows the letters' Helvetica
+  widths), falling back to word widths when the letters can't tell (most
+  capitals). A read line is sized by its font's capital height
+  (`capHeightOf`; fixed-width also by its length, 0.6em a letter). A
+  stand-in narrower than the original by over 6% is letter-spaced, not
+  stretched (`fitWidth`: CSS `letter-spacing`, PDF `Tc`) — stretched, a
+  letter-spaced typed name went fat and squat.
   Bold print is found by stroke thickness for its height against the page's
   usual (`strokeOf`); Courier only when word widths fit fixed-width letters
   better than proportional ones (a few plain words passed by letter count).

@@ -82,6 +82,29 @@ export const cssFont = ({ base, bold, italic }) => ({
 export const squeezeFor = (originalWidth, standInWidth) =>
   (originalWidth > 0 && standInWidth > 0 ? Math.min(1.35, Math.max(0.7, originalWidth / standInWidth)) : 1);
 
+// How a stand-in takes the original's room: squeezed when it's wider; when
+// it's narrower by more than a little, its letters spaced out instead
+// (letter-spaced print, an ID card's typed name: stretched to fit, the
+// letters went fat and squat). `track` is the space added after each
+// letter, in the units of the widths given (from the first letter's start
+// to the last one's end, so it's spread over the gaps between them).
+export function fitWidth(originalWidth, standInWidth, letters) {
+  if (!(originalWidth > 0 && standInWidth > 0)) return { squeeze: 1, track: 0 };
+  if (originalWidth > standInWidth * 1.06 && letters > 1) {
+    // (no more than a letter and a half between letters: a wrong reading
+    // mustn't fly apart)
+    const track = Math.min((originalWidth - standInWidth) / (letters - 1), (standInWidth / letters) * 1.5);
+    return { squeeze: 1, track };
+  }
+  return { squeeze: squeezeFor(originalWidth, standInWidth), track: 0 };
+}
+
+// How tall a standard font's capitals stand, as a share of its size: a
+// line read from a picture is sized so its letters stand as tall as the
+// picture's (Courier's capitals are far shorter for its size than
+// Helvetica's: sized alike, typed names came out small)
+export const capHeightOf = ({ base }) => (base === 'Courier' ? 0.571 : base === 'Times' ? 0.662 : 0.718);
+
 // The same, measured on screen for a CSS font (in ems), for the preview
 const measureCanvas = typeof document !== 'undefined' ? document.createElement('canvas') : null;
 const measured = new Map();
