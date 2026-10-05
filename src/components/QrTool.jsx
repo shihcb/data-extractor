@@ -129,7 +129,7 @@ function MakeQr({ active }) {
       flagDone('copy');
       toast('QR code copied');
     } else {
-      toast("this browser can't copy images — download it instead", { warn: true });
+      toast("this browser can't copy images — save it instead", { warn: true });
     }
   };
 

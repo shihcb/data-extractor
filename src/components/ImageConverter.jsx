@@ -310,7 +310,7 @@ function ConvertImages({ active }) {
       flagDone('copy');
       toast('image copied');
     } else {
-      toast("this browser can't copy images — download it instead", { warn: true });
+      toast("this browser can't copy images — save it instead", { warn: true });
     }
   };
 
