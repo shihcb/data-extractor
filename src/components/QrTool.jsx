@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Camera, ClipboardPaste, Copy, Download, ExternalLink, ImageUp } from 'lucide-react';
+import { ClipboardPaste, Copy, ImageUp } from 'lucide-react';
 import QRCode from 'qrcode';
 import jsQR from 'jsqr';
 import { copyImageBlob, copyText, downloadBlob, isImageFile, shortName, useDoneFlags, usePastedFiles } from '../utils';
@@ -144,12 +144,20 @@ function MakeQr({ active }) {
         spellCheck={false}
         aria-label="Text for the QR code"
       />
+      {/* The error level: a setting, so in the options panel (as the image
+          converter's), opening once there's text */}
+      <Collapse open={!!text} className="options-collapse">
+        <div className="options-panel">
+          <FlipRow className="field-grid">
+            <TabSwitcher className="tab-switcher-sm" tabs={LEVELS} active={level} onChange={setLevel} />
+          </FlipRow>
+        </div>
+      </Collapse>
       {/* As in every tab: the box's input button first (paste), then the rest */}
       <FlipRow>
         <button className={`btn btn-icon ${done.paste ? 'btn-done' : ''}`} onClick={paste} title="Paste from clipboard" aria-label="Paste from clipboard">
           <ClipboardPaste size={14} />
         </button>
-        <TabSwitcher className="tab-switcher-sm" tabs={LEVELS} active={level} onChange={setLevel} />
       </FlipRow>
       <AutoHeight className="tool-meta" >
         <FadeText k={error ? 'error' : text ? 'level' : 'empty'}>
@@ -162,13 +170,13 @@ function MakeQr({ active }) {
       </AutoHeight>
       <FlipRow>
         <button className={`btn btn-primary ${done.png ? 'btn-done' : ''}`} onClick={downloadPng} disabled={!hasCode}>
-          <Download size={14} /> PNG
+          save PNG
         </button>
         <button className={`btn ${done.svg ? 'btn-done' : ''}`} onClick={downloadSvg} disabled={!hasCode}>
-          <Download size={14} /> SVG
+          save SVG
         </button>
-        <button className={`btn ${done.copy ? 'btn-done' : ''}`} onClick={copy} disabled={!hasCode}>
-          <Copy size={14} /> copy
+        <button className={`btn btn-icon ${done.copy ? 'btn-done' : ''}`} onClick={copy} disabled={!hasCode} title="Copy the QR code" aria-label="Copy the QR code">
+          <Copy size={14} />
         </button>
       </FlipRow>
       <ActionBar active={active} open={!!text} onClose={() => history.reset('')} label="QR code" history={history} />
@@ -353,13 +361,12 @@ function ScanQr({ active }) {
         </button>
         {/* One button: its words swap (text swap) and it eases to its new width */}
         <button
-          className="btn"
+          className="btn btn-primary"
           onClick={(e) => {
             if (camera) { if (e.detail) e.currentTarget.blur(); stopCamera(); }
             else startCamera(e);
           }}
         >
-          {!camera && <Camera size={14} />}
           <FadeText k={camera ? 'stop' : 'use'} className="btn-label">{camera ? 'stop camera' : 'use camera'}</FadeText>
         </button>
       </FlipRow>
@@ -374,18 +381,20 @@ function ScanQr({ active }) {
               <FadeText as="p" k={shown.text} className="qr-result-text selectable">{shown.text}</FadeText>
               <FlipRow>
                 <button
-                  className={`btn ${done.copy ? 'btn-done' : ''}`}
+                  className={`btn btn-icon ${done.copy ? 'btn-done' : ''}`}
+                  title="Copy the text"
+                  aria-label="Copy the text"
                   onClick={async (e) => {
                     if (e.detail) e.currentTarget.blur();
                     if (await copyText(shown.text)) flagDone('copy');
                     else toast("couldn't copy — select the text and copy it", { warn: true });
                   }}
                 >
-                  <Copy size={14} /> copy
+                  <Copy size={14} />
                 </button>
                 {link && (
                   <a className="btn" href={link} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink size={14} /> open link
+                    open link
                   </a>
                 )}
               </FlipRow>
