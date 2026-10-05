@@ -3,7 +3,8 @@ import { Download, ImageUp, Undo2, X } from 'lucide-react';
 import { GROUPS, applyFields, readFields, readMeta, sizeText, writeMeta, writeTiff } from '../exif';
 import { loadImage, makeThumb } from '../imageConvert';
 import { downloadBlob, isImageFile, isPdfFile, shortName, useDoneFlags, usePastedFiles } from '../utils';
-import { MOTION_MS } from '../motion';
+import { MOTION_MS, fadeIn, fadeInOnLoad } from '../motion';
+import { whenStill } from '../engine';
 import { useToast } from '../toastContext';
 import AutoHeight from './AutoHeight';
 import Collapse from './Collapse';
@@ -11,7 +12,7 @@ import Count from './Count';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
 import ActionBar from './ActionBar';
-import usePop from './usePop';
+import MotionList from './MotionList';
 
 const MAKES = ['Apple', 'samsung', 'Google', 'Sony', 'Canon', 'NIKON CORPORATION', 'FUJIFILM', 'OLYMPUS', 'Panasonic', 'Xiaomi', 'OnePlus', 'HUAWEI'];
 const MODELS = [
@@ -69,12 +70,17 @@ export default function MetaEditor({ active }) {
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [done, flagDone] = useDoneFlags();
-  // What shows while the picture and the fields leave
+  // What shows while the fields leave
   const [shown, setShown] = useState(null);
   const inputRef = useRef(null);
-  const picRef = useRef(null);
+  const fieldsRef = useRef(null);
   const toast = useToast();
-  usePop(picRef, !!item);
+  // The photo leaving (the clear): its spot holds its height while the card
+  // pops out where it is, then the box goes back to empty (as in the converter)
+  const slotRef = useRef(null);
+  const [hold, setHold] = useState(0);
+  const holdTimer = useRef(null);
+  useEffect(() => () => clearTimeout(holdTimer.current), []);
 
   const release = (it) => { if (it) setTimeout(() => URL.revokeObjectURL(it.thumb), MOTION_MS + 300); };
 
@@ -98,12 +104,18 @@ export default function MetaEditor({ active }) {
         return;
       }
       const img = await loadImage(url);
+      // Drawn small once nothing's moving (it's heavy work on the page's thread)
+      await whenStill();
       const thumb = await makeThumb(img);
       const fields = [...readFields(meta.tiff), ...extraFields(meta)];
       const next = { file, bytes, meta, fields, thumb, w: img.naturalWidth, h: img.naturalHeight };
+      clearTimeout(holdTimer.current);
+      setHold(0);
       setItem((old) => { release(old); return next; });
       setShown(next);
       setValues(Object.fromEntries(fields.map(f => [f.id, f.value])));
+      // Another photo's fields fade in where the last one's were
+      if (itemRef.current) requestAnimationFrame(() => fadeIn(fieldsRef.current));
     } catch {
       toast(`couldn't open ${shortName(file.name) || 'that image'}`, { warn: true });
     } finally {
@@ -114,9 +126,15 @@ export default function MetaEditor({ active }) {
   usePastedFiles(active, isImageFile, addFile);
 
   const clear = () => {
+    if (!item) return;
+    setHold(slotRef.current?.offsetHeight || 0);
+    clearTimeout(holdTimer.current);
+    holdTimer.current = setTimeout(() => setHold(0), MOTION_MS + 100);
     release(item);
     setItem(null);
   };
+  const itemRef = useRef(item);
+  itemRef.current = item;
   const shownRef = useRef(shown);
   shownRef.current = shown;
   useEffect(() => () => { if (shownRef.current) URL.revokeObjectURL(shownRef.current.thumb); }, []);
@@ -140,12 +158,6 @@ export default function MetaEditor({ active }) {
   }, [item, values]);
 
   const reset = () => item && setValues(Object.fromEntries(item.fields.map(f => [f.id, f.value])));
-  const removeWhere = (test) => setValues(vals => {
-    const next = { ...vals };
-    fields.forEach((f) => { if (test(f)) next[f.id] = ''; });
-    return next;
-  });
-  const hasLocation = fields.some(f => (f.group === 'location' || f.ifd === 'gps') && (values[f.id] ?? '').trim());
 
   const save = async (e) => {
     if (e.detail) e.currentTarget.blur();
@@ -183,28 +195,41 @@ export default function MetaEditor({ active }) {
   return (
     <div className="tool">
       <p className="tool-desc">change or remove a photo's details — the picture itself isn't touched</p>
-      <AutoHeight
-        className={`tool-box meta-box-outer ${dragging ? 'dragging' : ''}`}
-        innerClassName="drop-box meta-box"
-        onClick={() => inputRef.current?.click()}
+      {/* The converter's box: the photo is a card that pops in and out the
+          same way, centred */}
+      <div
+        className={`tool-box pdf-drop image-drop meta-drop ${item ? 'has-pages' : ''} ${dragging ? 'dragging' : ''}`}
+        onClick={(e) => { if (!item || e.target === e.currentTarget || e.target.classList.contains('pdf-drop-inner')) inputRef.current?.click(); }}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false); }}
         onDrop={(e) => { e.preventDefault(); setDragging(false); addFile(e.dataTransfer?.files || []); }}
         role="button"
         tabIndex={0}
         aria-label="Choose a photo"
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inputRef.current?.click(); } }}
+        onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); inputRef.current?.click(); } }}
       >
-        <figure ref={picRef} className="meta-pic">
-          {shown && <img src={shown.thumb} alt={shown.file.name || 'photo'} draggable={false} />}
-          {shown && (
-            <figcaption className="page-label">
-              <span className="page-src page-name">{shown.file.name || 'pasted image'}</span>
-              <span>{shown.w}×{shown.h} · {sizeText(shown.file.size)}</span>
-            </figcaption>
-          )}
-        </figure>
-        <FadeText k={item ? '' : 'hint'} className="tool-hint">{item ? null : 'drop, paste or click to add a photo'}</FadeText>
+        <div className={`pdf-drop-inner ${item || hold ? 'full' : 'drop-box-empty'}`}>
+          <FadeText k={!item && !hold ? 'hint' : ''} quiet={!!item} className="tool-hint">{!item && !hold ? 'drop, paste or click to add a photo' : null}</FadeText>
+          <div ref={slotRef} className="meta-slot" style={hold ? { minHeight: `${hold}px` } : undefined}>
+            <MotionList
+              items={item ? [item] : []}
+              getKey={it => it.thumb}
+              variant="grid"
+              className="meta-grid"
+              renderItem={it => (
+                <div className="page-card meta-card">
+                  <div className="page-thumb">
+                    <img src={it.thumb} alt={it.file.name || 'photo'} decoding="async" draggable={false} onLoad={fadeInOnLoad} />
+                  </div>
+                  <div className="page-label">
+                    <span className="page-src page-name">{it.file.name || 'pasted image'}</span>
+                    <span>{it.w}×{it.h}</span>
+                  </div>
+                </div>
+              )}
+            />
+          </div>
+        </div>
         <input
           ref={inputRef}
           type="file"
@@ -212,14 +237,15 @@ export default function MetaEditor({ active }) {
           hidden
           onChange={(e) => { addFile(e.target.files || []); e.target.value = ''; }}
         />
-      </AutoHeight>
+      </div>
 
       <div className="tool-meta tool-stats" aria-live="polite">
         details <Count value={stats.filled} /> · changed <Count value={stats.changed} /> · removed <Count value={stats.removed} />
       </div>
 
       <Collapse open={!!item} className="options-collapse">
-        <AutoHeight className="tool-box meta-fields-box" innerClassName="meta-fields">
+        <AutoHeight className="tool-box meta-fields-box" innerClassName="meta-fields-inner">
+          <div ref={fieldsRef} className="meta-fields">
           {groups.map(([key, title, list]) => (
             <section key={`${shown?.thumb}-${key}`} className="meta-group">
               <h3 className="meta-group-title">{title}</h3>
@@ -237,13 +263,15 @@ export default function MetaEditor({ active }) {
                       title={!now && changed ? `Put back ${f.label}` : `Remove ${f.label}`}
                       aria-label={!now && changed ? `Put back ${f.label}` : `Remove ${f.label}`}
                     >
-                      {!now && changed ? <Undo2 size={12} /> : <X size={12} />}
+                      {/* The icons swap (the text swap) */}
+                      <FadeText k={!now && changed ? 'undo' : 'x'} className="meta-icon">{!now && changed ? <Undo2 size={12} /> : <X size={12} />}</FadeText>
                     </button>
                   </div>
                 );
               })}
             </section>
           ))}
+          </div>
         </AutoHeight>
       </Collapse>
       <datalist id="meta-makes">{MAKES.map(m => <option key={m} value={m} />)}</datalist>
@@ -262,12 +290,6 @@ export default function MetaEditor({ active }) {
       <ActionBar active={active} open={!!item} onClose={clear} closeDisabled={!item} label="Details">
         <button className="bulk-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); reset(); }} disabled={!stats.changed && !stats.removed}>
           reset
-        </button>
-        <button className="bulk-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); removeWhere(f => f.group === 'location' || f.ifd === 'gps'); }} disabled={!hasLocation}>
-          remove location
-        </button>
-        <button className="bulk-btn bulk-delete" onClick={(e) => { if (e.detail) e.currentTarget.blur(); removeWhere(() => true); }} disabled={!stats.filled}>
-          remove all
         </button>
       </ActionBar>
     </div>

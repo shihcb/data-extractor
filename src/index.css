@@ -1396,41 +1396,43 @@ body.has-bar .feature-toast {
   --box-room: 466px;
 }
 
-/* The photo's box: its picture pops in over the middle, the hint centred
-   in the outer box (whose height eases) */
-.meta-box-outer {
-  position: relative;
+/* The photo's box: the converter's, its one card centred both ways */
+.meta-drop > .pdf-drop-inner.full {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
 }
-.meta-box {
-  flex-direction: column;
-  min-height: 220px;
-  position: static;
-}
-.meta-box > .tool-hint {
+.meta-drop > .pdf-drop-inner > .tool-hint {
   position: absolute;
   left: 0;
   right: 0;
   top: 50%;
   transform: translateY(-50%);
 }
-.meta-pic {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: min(100%, 260px);
+.meta-slot {
+  width: min(100%, 240px);
 }
-.meta-pic img {
-  display: block;
-  max-width: 100%;
-  max-height: 240px;
-  margin: 0 auto;
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+/* (in the converter, an emptied box pins its list to the top: here the
+   card stays centred where it was while it pops out) */
+.meta-drop .pdf-drop-inner:not(.full) > .meta-slot {
+  display: none;
+}
+/* Held while the card leaves: the list keeps its height too (easing to
+   nothing, it clipped the card as it popped out) */
+.meta-slot > .motion-list-box {
+  min-height: inherit;
+}
+.meta-grid.motion-list-grid {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .meta-fields-box {
   overflow: hidden;
+}
+/* The icon in a row's remove button swaps (the text swap) */
+.meta-icon {
+  display: inline-flex;
 }
 .meta-fields {
   display: flex;
