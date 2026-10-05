@@ -73,7 +73,10 @@ function write(el, s, now) {
   if ('opacity' in v) put(el, 'opacity', String(Math.min(1, Math.max(0, v.opacity))));
   // Its own layer while it slides or fades, so the phone moves the drawn
   // pixels instead of repainting it (and what's under it) every frame
-  const layer = [moves && 'transform', 'opacity' in v && 'opacity'].filter(Boolean).join(', ');
+  // (only while it does: a held, settled style kept a layer for good — a
+  // closed panel's content, a hidden word)
+  const going = (name) => !!s.props[name]?.pieces.length;
+  const layer = [(going('tx') || going('ty') || going('scale')) && 'transform', going('opacity') && 'opacity'].filter(Boolean).join(', ');
   put(el, 'willChange', layer);
 }
 
@@ -95,12 +98,17 @@ function step(now) {
   const done = [];
   active.forEach((s, el) => {
     const finished = [];
+    let wasMoving = false;
     for (const name in s.props) {
       const prop = s.props[name];
+      if (prop.pieces.length) wasMoving = true;
       prop.pieces = prop.pieces.filter(p => progress(p, now) < 1);
       // A property at rest (no pieces, back at its resting value) is let go
       if (!prop.pieces.length && !prop.keep && (PROPS[name].rest === null || prop.target === PROPS[name].rest)) finished.push(name);
     }
+    // Held still (kept sizes, nothing moving, nothing to let go): already
+    // written as it stands
+    if (!wasMoving && !finished.length && !s.settle.length) return;
     write(el, s, now);
     if (finished.length) clear(el, s, finished);
     const moving = Object.values(s.props).some(p => p.pieces.length);
@@ -117,11 +125,12 @@ function step(now) {
   if (moving && frame === null) frame = requestAnimationFrame(step);
 }
 
-function kick() {
+function kick(el) {
   if (frame === null) frame = requestAnimationFrame(step);
   // Written now too, so the first frame already shows the starting point
-  const now = performance.now();
-  active.forEach((s, el) => write(el, s, now));
+  // (just the element that changed: the others are written as they stand)
+  const s = active.get(el);
+  if (s) write(el, s, performance.now());
 }
 
 // Too small a change to bother moving: half a pixel for sizes and slides,
@@ -150,7 +159,7 @@ export function animateTo(el, name, target, { from, duration = MOTION_MS, onSett
       s.props[name] = { target, keep, pieces: [] };
     }
     if (onSettle) s.settle.push(onSettle);
-    kick();
+    kick(el);
     return;
   }
   if (prop) {
@@ -162,7 +171,7 @@ export function animateTo(el, name, target, { from, duration = MOTION_MS, onSett
     s.props[name] = { target, keep, pieces: [{ offset: drawn - target, start: now, duration }] };
   }
   if (onSettle) s.settle.push(onSettle);
-  kick();
+  kick(el);
 }
 
 // Adds a shift on top of whatever's moving (FLIP): the element is drawn
@@ -174,7 +183,7 @@ export function shift(el, name, offset, { duration = MOTION_MS } = {}) {
   const rest = PROPS[name].rest ?? 0;
   if (!s.props[name]) s.props[name] = { target: rest, pieces: [] };
   s.props[name].pieces.push({ offset, start: now, duration });
-  kick();
+  kick(el);
 }
 
 // Where a property is drawn right now (or `fallback` when nothing moves it)
