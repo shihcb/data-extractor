@@ -7,7 +7,6 @@ import { downloadBlob, isImageFile, isPdfFile, keepFocusAfterRemove, shortName, 
 import { MOTION_MS, fadeInOnLoad } from '../motion';
 import { whenStill } from '../engine';
 import { useToast } from '../toastContext';
-import AutoHeight from './AutoHeight';
 import Collapse from './Collapse';
 import Count from './Count';
 import FadeText from './FadeText';
@@ -382,17 +381,21 @@ export default function MetaEditor({ active }) {
 
 
       <Collapse open={!!picked} className="options-collapse">
-        <AutoHeight className="tool-box meta-fields-box" innerClassName="meta-fields-inner">
-          {/* Switching photos, the details swap the way the cards do: the
-              old ones pop out where they are as the new ones pop in */}
-          <MotionList
-            items={picked ? [picked] : []}
-            getKey={it => it.id}
-            variant="grid"
-            className="meta-details-list"
-            renderItem={it => <div className="meta-fields">{renderDetails(it)}</div>}
-          />
-        </AutoHeight>
+        {/* Switching photos, the whole details box swaps the way the cards
+            do: the old box pops out where it is as the new one pops in */}
+        <MotionList
+          items={picked ? [picked] : []}
+          getKey={it => it.id}
+          variant="grid"
+          className="meta-details-list"
+          renderItem={it => (
+            <div className="tool-box meta-fields-box">
+              <div className="meta-fields-inner">
+                <div className="meta-fields">{renderDetails(it)}</div>
+              </div>
+            </div>
+          )}
+        />
       </Collapse>
       {/* Under the details, as in the converter: the details are a box of
           one fixed size that scrolls inside, so opening it slides these down
@@ -412,7 +415,7 @@ export default function MetaEditor({ active }) {
 
       {/* As in the converter: undo · redo, the selected photo's reset, and
           delete (it) last */}
-      <ActionBar active={active} open={items.length > 0 || history.canUndo} label="Details" history={history}>
+      <ActionBar active={active} open={items.length > 0} label="Details" history={history}>
         <button className="bulk-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); reset(); }} disabled={!stats.changed && !stats.removed}>
           reset
         </button>
