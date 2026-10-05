@@ -142,6 +142,12 @@ Rules that keep it smooth (each was a real bug):
 - A motion's target that can change while it runs is followed (a tab
   push's height, a word slide's width, via a ResizeObserver while moving);
   a ghost fades out from the opacity it's drawn at, never from 1.
+- Every motion that can change again mid-way adds a piece on top (the
+  engine; the count and the editor's zoom buttons do the same): restarted
+  from where it's drawn, it stalls at zero speed, then rushes.
+- Heavy work on the page's thread (a thumbnail, a picture's colours) waits
+  for `whenStill()` (engine.js) so it can't stall a frame mid-motion; a
+  list measures everything before it moves anything.
 - Keyboard focus always shows (`:focus-visible`, 2px outline); text fields
   show theirs with their border.
 - The PDF editor's zoom keeps the point under the fingers on the same spot

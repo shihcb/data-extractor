@@ -92,6 +92,15 @@ export default function FlipRow({ className = 'tool-actions', children }) {
       const moving = els.some(el => isMoving(el, 'width') || [...el.querySelectorAll('*')].some(d => isMoving(d, 'width')));
       quiet = moving ? 0 : quiet + 1;
       watching.current = quiet < 3 ? requestAnimationFrame(step) : 0;
+      // Settled: its layout remembered now (forgotten while it eased, the
+      // next label change had nothing to ease from and snapped — "stop
+      // camera" back to "use camera")
+      if (!watching.current && row.getClientRects().length && row.offsetWidth) {
+        const saved = els.map(el => el.style.width);
+        els.forEach((el) => { el.style.width = ''; });
+        last.current = new Map(els.map(el => [el, { left: el.offsetLeft, top: el.offsetTop, width: el.offsetWidth }]));
+        els.forEach((el, i) => { el.style.width = saved[i]; });
+      }
     };
     watching.current = requestAnimationFrame(step);
   };

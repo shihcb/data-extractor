@@ -116,7 +116,9 @@ export default function App() {
       const lock = fits() && window.scrollY < 1 && !glide;
       if (root.classList.contains('page-fits') !== lock) root.classList.toggle('page-fits', lock);
     };
+    let ownScroll = 0;
     const stopGlide = () => {
+      ownScroll = performance.now();
       if (!glide) return;
       cancelAnimationFrame(glide);
       glide = null;
@@ -155,10 +157,16 @@ export default function App() {
         floor = Math.min(floor, window.scrollY + window.innerHeight);
       }
       apply();
-      if (heightStillToCome() < -0.5 && !glide) {
+      if (heightStillToCome() < -0.5 && !glide && target() < 1) {
+        // Easing shut to where it all fits: one glide to the top on the
+        // curve (followed frame by frame it reached the top while the box
+        // was still easing and stopped dead, from 64px a frame to nothing)
+        glideUp();
+      } else if (heightStillToCome() < -0.5 && !glide && performance.now() - ownScroll > 500) {
         // A box easing shut: the page's bottom follows the content's bottom
         // frame by frame, so no blank room ever opens to be scrolled away
-        // afterwards (that late scroll was the jump)
+        // afterwards (that late scroll was the jump) — unless you're
+        // scrolling it yourself
         const to = Math.max(0, natural - window.innerHeight);
         if (window.scrollY > to + 0.5) {
           window.scrollTo(0, to);

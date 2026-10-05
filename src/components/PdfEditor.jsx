@@ -5,6 +5,7 @@ import { agreedReading, readBlock, readLine, readPage, rereadLine } from '../ocr
 import { removeText } from '../pdfText';
 import { baseName, canvasToBlob, downloadBlob, isPdfFile, loadLibrary, shortName, useDoneFlags, usePastedFiles } from '../utils';
 import { MOTION, MOTION_MS, canAnimate, motionEase, prefersReducedMotion } from '../motion';
+import { whenStill } from '../engine';
 import { useToast } from '../toastContext';
 import { cssFont, cssWidthEm, fontInfoOf, originalCanWrite, squeezeFor, standardFontKey, unicodeFontOf } from '../pdfFonts';
 import ActionBar from './ActionBar';
@@ -73,28 +74,38 @@ function colorsIn(source, x, y, w, h) {
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   ctx.drawImage(source, x, y, w, h, 0, 0, w, h);
   const { data } = ctx.getImageData(0, 0, w, h);
-  const px = (i, j) => { const k = (j * w + i) * 4; return [data[k], data[k + 1], data[k + 2]]; };
-  const counts = new Map();
-  const vote = (c) => {
-    const key = c.map(v => v >> 3).join(',');
-    const e = counts.get(key) || { n: 0, c };
-    e.n++;
-    counts.set(key, e);
-  };
-  // Every pixel votes: letters cover far less of their box than the paper
-  // does (its edge alone was a table cell's border, and a grey patch)
-  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) vote(px(i, j));
-  let bg = [255, 255, 255];
-  let best = -1;
-  counts.forEach(({ n, c }) => { if (n > best) { best = n; bg = c; } });
+  canvas.width = canvas.height = 0;
+  // (counted in typed arrays: a string and an array made for every pixel
+  // took most of a second on a long header, on the page's thread)
+  // Every pixel votes (every other one on a big region): letters cover far
+  // less of their box than the paper does (its edge alone was a table
+  // cell's border, and a grey patch)
+  const step = w * h > 250000 ? 2 : 1;
+  const counts = new Uint32Array(32768);
+  const firstAt = new Int32Array(32768).fill(-1);
+  for (let j = 0; j < h; j += step) {
+    for (let i = 0; i < w; i += step) {
+      const k = (j * w + i) * 4;
+      const key = ((data[k] >> 3) << 10) | ((data[k + 1] >> 3) << 5) | (data[k + 2] >> 3);
+      if (firstAt[key] < 0) firstAt[key] = k;
+      counts[key]++;
+    }
+  }
+  let bestKey = -1;
+  for (let key = 0; key < 32768; key++) if (bestKey < 0 || counts[key] > counts[bestKey]) bestKey = key;
+  const at = firstAt[bestKey];
+  const bg = counts[bestKey] && at >= 0 ? [data[at], data[at + 1], data[at + 2]] : [255, 255, 255];
   let ink = bg[0] + bg[1] + bg[2] > 382 ? [0, 0, 0] : [255, 255, 255];
+  // How far each inner pixel is from the paper
+  const iw = Math.max(0, w - 4);
+  const ih = Math.max(0, h - 4);
+  const dist = new Float32Array(iw * ih);
   let far = -1;
-  const inner = [];
-  for (let j = 2; j < h - 2; j++) {
-    for (let i = 2; i < w - 2; i++) {
-      const c = px(i, j);
-      const d = (c[0] - bg[0]) ** 2 + (c[1] - bg[1]) ** 2 + (c[2] - bg[2]) ** 2;
-      inner.push([d, c]);
+  for (let j = 0; j < ih; j++) {
+    for (let i = 0; i < iw; i++) {
+      const k = ((j + 2) * w + i + 2) * 4;
+      const d = (data[k] - bg[0]) ** 2 + (data[k + 1] - bg[1]) ** 2 + (data[k + 2] - bg[2]) ** 2;
+      dist[j * iw + i] = d;
       if (d > far) far = d;
     }
   }
@@ -102,8 +113,12 @@ function colorsIn(source, x, y, w, h) {
   // The ink: a solid stroke's colour, not the one pixel furthest from the
   // paper (on a scan, a speck far darker than the faded print around it):
   // of the clearly inked pixels, one three quarters of the way to the darkest
-  const inked = inner.filter(([d]) => d >= far * 0.5).sort((p, q) => p[0] - q[0]);
-  ink = inked[Math.floor((inked.length - 1) * 0.75)][1];
+  const inked = [];
+  for (let n = 0; n < dist.length; n++) if (dist[n] >= far * 0.5) inked.push(n);
+  inked.sort((p, q) => dist[p] - dist[q]);
+  const n = inked[Math.floor((inked.length - 1) * 0.75)];
+  const k = ((Math.floor(n / iw) + 2) * w + (n % iw) + 2) * 4;
+  ink = [data[k], data[k + 1], data[k + 2]];
   return { bg, ink };
 }
 
@@ -430,6 +445,7 @@ function TextItem({ edited, editStyle, plainStyle, content, className, ...rest }
   const anims = useRef([]);
   const was = useRef(edited);
   const [leaving, setLeaving] = useState(false);
+  const [, bump] = useState(0);
   if (edited) kept.current = { style: editStyle, content };
   const stopAll = () => {
     anims.current.forEach(x => x.cancel());
@@ -442,6 +458,7 @@ function TextItem({ edited, editStyle, plainStyle, content, className, ...rest }
     stopAll();
     if (!canAnimate(el)) {
       setLeaving(false);
+      bump(n => n + 1); // (drawn as it is now, not as it was)
       return;
     }
     const patch = (from, to, opts) => el.animate([
@@ -471,15 +488,19 @@ function TextItem({ edited, editStyle, plainStyle, content, className, ...rest }
     wasLeaving.current = leaving;
     if (ended && !was.current && anims.current.length) stopAll();
   }, [leaving]);
-  const showing = edited || leaving;
+  // Going from this very render on (its effect hasn't run yet): the words
+  // stay so their fade-out has something to fade (rendered empty first,
+  // they came back at full strength and vanished at the end instead)
+  const going = !edited && (leaving || (was.current && !!kept.current));
+  const showing = edited || going;
   return (
     <button
       ref={ref}
       className={`${className} ${showing ? 'edited' : ''}`}
-      style={edited ? editStyle : leaving ? kept.current.style : plainStyle}
+      style={edited ? editStyle : going ? kept.current.style : plainStyle}
       {...rest}
     >
-      {edited ? content : leaving ? kept.current.content : ''}
+      {edited ? content : going ? kept.current.content : ''}
     </button>
   );
 }
@@ -595,6 +616,7 @@ export default function PdfEditor({ active }) {
   // Where it's headed: the buttons step from here (the zoom state lags a
   // ctrl + scroll by 150ms, and a button pressed then stepped from before it)
   const zoomAim = useRef(1);
+  const zoomRun = useRef(null); // a button's zoom in flight: { target, ax, ay, pieces }
   const zooming = useRef(false);
   const zoomAnim = useRef(null);
   const applyZoom = (z, ax, ay) => {
@@ -648,21 +670,37 @@ export default function PdfEditor({ active }) {
     target = clampZoom(target);
     zoomAim.current = target;
     if (ax === undefined) { ax = sc.clientWidth / 2; ay = sc.clientHeight / 2; }
-    cancelAnimationFrame(zoomAnim.current);
     setZoomState(target);
     zooming.current = true;
-    const from = zoomNow.current;
     if (prefersReducedMotion()) {
+      cancelAnimationFrame(zoomAnim.current);
+      zoomRun.current = null;
       applyZoom(target, ax, ay);
       settleZoom();
       return;
     }
-    const t0 = performance.now();
+    // A press while it's still zooming adds on top of that zoom (the
+    // engine's pieces): started over from where it was, at zero speed, it
+    // stalled mid-zoom for a frame or two
+    const now0 = performance.now();
+    const run = zoomRun.current;
+    if (run) {
+      run.pieces.push({ offset: run.target - target, start: now0 });
+      run.target = target;
+      run.ax = ax;
+      run.ay = ay;
+      return;
+    }
+    const r = { target, ax, ay, pieces: [{ offset: zoomNow.current - target, start: now0 }] };
+    zoomRun.current = r;
     const step = (now) => {
-      const t = Math.min(1, (now - t0) / MOTION_MS);
-      applyZoom(from + (target - from) * motionEase(t), ax, ay);
-      if (t < 1) zoomAnim.current = requestAnimationFrame(step);
-      else settleZoom();
+      if (zoomRun.current !== r) return;
+      r.pieces = r.pieces.filter(p => now - p.start < MOTION_MS);
+      let z = r.target;
+      for (const p of r.pieces) z += p.offset * (1 - motionEase(Math.max(0, (now - p.start) / MOTION_MS)));
+      applyZoom(z, r.ax, r.ay);
+      if (r.pieces.length) zoomAnim.current = requestAnimationFrame(step);
+      else { zoomRun.current = null; settleZoom(); }
     };
     zoomAnim.current = requestAnimationFrame(step);
   };
@@ -670,6 +708,7 @@ export default function PdfEditor({ active }) {
   // opened where the last one was scrolled to, on its fourth page)
   const resetZoom = () => {
     cancelAnimationFrame(zoomAnim.current);
+    zoomRun.current = null;
     zooming.current = false;
     zoomNow.current = 1;
     zoomAim.current = 1;
@@ -695,6 +734,7 @@ export default function PdfEditor({ active }) {
       if (e.touches.length !== 2 || !docRef.current) return;
       const [a, b] = e.touches;
       cancelAnimationFrame(zoomAnim.current);
+      zoomRun.current = null;
       zooming.current = true;
       pinch = { dist: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY), zoom: zoomNow.current };
     };
@@ -718,6 +758,7 @@ export default function PdfEditor({ active }) {
       if (!e.ctrlKey || !docRef.current) return;
       e.preventDefault();
       cancelAnimationFrame(zoomAnim.current);
+      zoomRun.current = null;
       zooming.current = true;
       const [ax, ay] = spot(e.clientX, e.clientY);
       // In pixels (a mouse wheel can count in lines or pages), a notch at a
@@ -1041,6 +1082,9 @@ export default function PdfEditor({ active }) {
     return reading.current.get(key);
   };
   const readPictureNow = async (item, { quiet = false } = {}) => {
+    // (drawn and read once nothing moves: reading the pictures as find
+    // opened stalled the panel's opening)
+    await whenStill();
     const canvas = await pictureCanvas(item);
     if (!canvas) return;
     // Its lines (a header's value can run onto a second line); one line
@@ -1079,6 +1123,7 @@ export default function PdfEditor({ active }) {
       const bottom = i < lines.length - 1 ? (l.y0 + (lines[i + 1].y0 - lines[i + 1].cap)) / 2 : canvas.height - pad;
       return [Math.max(pad, top), Math.min(canvas.height - pad, bottom)];
     });
+    await whenStill(); // (the colours are read on the page's thread)
     const reads = lines.map((l, i) => {
       // Its baseline from start to end, and how tall its letters stand
       const [sx, sy] = toPdf(l.x0, l.y0);

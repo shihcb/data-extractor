@@ -38,8 +38,18 @@ export async function makeThumb(img) {
   canvas.height = Math.max(1, Math.round(img.naturalHeight * s));
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  // Scaled down by the browser off the page's thread where it can (a big
+  // photo shrunk on it took ~25ms each, as other cards popped in)
+  let small = null;
+  try {
+    small = await createImageBitmap(img, { resizeWidth: canvas.width, resizeHeight: canvas.height, resizeQuality: 'high' });
+  } catch {
+    small = null;
+  }
+  ctx.drawImage(small || img, 0, 0, canvas.width, canvas.height);
+  small?.close();
   const blob = await canvasToBlob(canvas, 'image/png');
+  canvas.width = canvas.height = 0;
   return URL.createObjectURL(blob);
 }
 

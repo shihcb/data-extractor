@@ -214,3 +214,23 @@ export function naturalSize(el, name) {
   el.style[name] = saved;
   return v;
 }
+
+// Resolves once nothing on the page is moving (the engine, and the
+// browser's own finite animations), or after `maxWait` ms at most: heavy
+// work on the page's thread (drawing a thumbnail, reading a picture's
+// colours) waits for it, so it can't stall a frame mid-motion
+export function whenStill(maxWait = 1500) {
+  return new Promise((resolve) => {
+    const t0 = performance.now();
+    const check = () => {
+      const busy = frame !== null || (document.getAnimations?.() || []).some((a) => {
+        if (a.playState !== 'running') return false;
+        const timing = a.effect?.getComputedTiming?.();
+        return !timing || timing.iterations !== Infinity;
+      });
+      if (!busy || document.hidden || performance.now() - t0 > maxWait) resolve();
+      else requestAnimationFrame(check);
+    };
+    check();
+  });
+}

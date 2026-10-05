@@ -136,8 +136,14 @@ export default function TabSwitcher({ tabs, active, onChange, className = '' }) 
       cancelAnimationFrame(scrollRaf.current);
       bar.scrollLeft = Math.max(0, Math.min(max, bar.scrollLeft + e.deltaY));
     };
+    // A finger on the bar takes over from the glide too (it pulled a swipe back)
+    const onTouch = () => cancelAnimationFrame(scrollRaf.current);
     bar.addEventListener('wheel', onWheel, { passive: false });
-    return () => bar.removeEventListener('wheel', onWheel);
+    bar.addEventListener('touchstart', onTouch, { passive: true });
+    return () => {
+      bar.removeEventListener('wheel', onWheel);
+      bar.removeEventListener('touchstart', onTouch);
+    };
   }, []);
 
   return (

@@ -11,6 +11,7 @@ import FadeText from './FadeText';
 import FlipRow from './FlipRow';
 import SlideText from './SlideText';
 import BulkBar from './BulkBar';
+import { whenStill } from '../engine';
 
 const THUMB_CSS_WIDTH = 160;
 const IMAGE_SCALE = 2; // pages to images: 144 dpi
@@ -91,6 +92,10 @@ export default function PdfTools({ active }) {
         added = count;
         for (let i = 0; i < count; i++) {
           if (removed.current.has(ids[i])) continue; // deleted before its picture was drawn
+          // Drawn while nothing moves: drawn as the cards popped in, a page's
+          // picture held up frames and the cards jumped
+          await whenStill();
+          if (removed.current.has(ids[i])) continue;
           const page = await view.getPage(i + 1);
           const { canvas } = await renderPage(page, { cssWidth: THUMB_CSS_WIDTH });
           const thumb = URL.createObjectURL(await canvasToBlob(canvas, 'image/jpeg', 0.8));
@@ -406,13 +411,15 @@ export default function PdfTools({ active }) {
         active={active}
         total={pages.length}
         selected={selected.size}
-        disabled={none}
+        // (not while pictures are still being drawn: the pages are all there
+        // already, and the buttons blinked dim on every file added)
+        disabled={!pages.length}
         onSelectAll={(all) => setSelected(all ? new Set(pages.map(p => p.id)) : new Set())}
         onDelete={() => removePages(new Set(selected))}
         onClear={clearAll}
       >
         {/* The selected pages, as a PDF of their own */}
-        <button className="bulk-btn" onClick={saveSelected} disabled={none || !selected.size || !!busy}>
+        <button className="bulk-btn" onClick={saveSelected} disabled={!pages.length || !selected.size || !!busy}>
           save
         </button>
       </BulkBar>

@@ -56,11 +56,19 @@ export default function MotionList({ items, getKey, renderItem, variant = 'rows'
     // A key that came back while its copy was still leaving
     keys.forEach(key => exiting.current.delete(key));
 
-    // Everyone else: from where they were drawn to where they are now
+    // Everyone else: from where they were drawn to where they are now.
+    // All measured first, then all set moving: measured one by one between
+    // the writes, each read laid the page out again (clearing 20 cards was
+    // a 100ms+ stall right as they started to go)
+    const nowAt = new Map();
+    keys.forEach((key) => {
+      const el = nodes.current.get(key);
+      if (el) nowAt.set(key, measure(el));
+    });
     keys.forEach(key => {
       const el = nodes.current.get(key);
       if (!el) return;
-      const now = measure(el);
+      const now = nowAt.get(key);
       const before = positions.current.get(key);
       if (!animate) return;
       if (!before) {
@@ -82,10 +90,8 @@ export default function MotionList({ items, getKey, renderItem, variant = 'rows'
       shift(el, 'ty', before.top - now.top);
     });
 
-    positions.current = new Map(keys.map(key => {
-      const el = nodes.current.get(key);
-      return [key, el ? measure(el) : null];
-    }).filter(([, p]) => p));
+    // (slides and fades don't move the layout: the spots just measured stand)
+    positions.current = new Map(keys.map(key => [key, nowAt.get(key)]).filter(([, p]) => p));
     prevKeys.current = keys;
     prevItems.current = new Map(items.map(item => [getKey(item), item]));
 
@@ -124,7 +130,9 @@ export default function MotionList({ items, getKey, renderItem, variant = 'rows'
   const playExit = (key, el) => {
     if (!el || el._exitStarted) return;
     el._exitStarted = true;
-    const h = el.offsetHeight;
+    // Its height from when it was last measured (read here, between the
+    // other leaving items' writes, it laid the page out again for each)
+    const h = exiting.current.get(key)?.pos?.height ?? el.offsetHeight;
     const done = () => {
       // Hidden first: dropping its slide styles makes it fully visible again,
       // and the page can draw a frame before React removes it (on iPhone the
