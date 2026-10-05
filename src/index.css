@@ -1396,6 +1396,11 @@ body.has-bar .feature-toast {
   --box-room: 466px;
 }
 
+/* The details are one item in a list (they pop like the cards) */
+.meta-details-list.motion-list-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
 .meta-fields-box {
   overflow: hidden;
 }

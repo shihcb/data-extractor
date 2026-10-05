@@ -4,7 +4,7 @@ import { zipSync } from 'fflate';
 import { GROUPS, applyFields, readFields, readMeta, sizeText, writeMeta, writeTiff } from '../exif';
 import { loadImage, makeThumb } from '../imageConvert';
 import { downloadBlob, isImageFile, isPdfFile, keepFocusAfterRemove, shortName, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
-import { MOTION_MS, fadeIn, fadeInOnLoad } from '../motion';
+import { MOTION_MS, fadeInOnLoad } from '../motion';
 import { whenStill } from '../engine';
 import { useToast } from '../toastContext';
 import AutoHeight from './AutoHeight';
@@ -34,8 +34,8 @@ function extraFields(meta) {
   return out;
 }
 
-function FieldInput({ f, value, onChange }) {
-  const common = { id: `meta-${f.id}`, className: 'text-input meta-input', value, onChange: (e) => onChange(e.target.value) };
+function FieldInput({ f, value, onChange, id }) {
+  const common = { id, className: 'text-input meta-input', value, onChange: (e) => onChange(e.target.value) };
   if (f.kind === 'raw') {
     return <input {...common} readOnly placeholder="removed" title="kept as it is, or removed" />;
   }
@@ -99,7 +99,6 @@ export default function MetaEditor({ active }) {
   const [done, flagDone] = useDoneFlags();
   const inputRef = useRef(null);
   const boxRef = useRef(null);
-  const fieldsRef = useRef(null);
   const toast = useToast();
   const itemsRef = useRef(items);
   itemsRef.current = items;
@@ -118,12 +117,6 @@ export default function MetaEditor({ active }) {
   useEffect(() => () => clearTimeout(holdTimer.current), []);
 
   const picked = items.find(i => i.id === pickedId) || null;
-  // What the fields show: the selected photo, or the last one while the
-  // panel closes
-  const [shownId, setShownId] = useState(null);
-  const lastShown = useRef(null);
-  if (picked) lastShown.current = picked;
-  const shown = picked || (shownId !== null ? lastShown.current : null);
 
   const release = (list) => setTimeout(() => list.forEach(it => URL.revokeObjectURL(it.thumb)), MOTION_MS + 300);
   useEffect(() => () => seen.current.forEach(it => URL.revokeObjectURL(it.thumb)), []);
@@ -131,9 +124,7 @@ export default function MetaEditor({ active }) {
   // Another photo's details fade in where the last one's were
   const select = (id) => {
     if (id === pickedId) return;
-    if (pickedId !== null) requestAnimationFrame(() => fadeIn(fieldsRef.current));
     setPickedId(id);
-    setShownId(id);
   };
 
   const addFiles = useCallback(async (fileList) => {
@@ -182,7 +173,6 @@ export default function MetaEditor({ active }) {
     setItems(prev => [...prev, ...ok]);
     // Nothing selected yet: the first new photo is
     setPickedId(id => id ?? ok[0].id);
-    setShownId(id => id ?? ok[0].id);
   }, [toast, setItems]);
 
   usePastedFiles(active, isImageFile, addFiles);
@@ -192,7 +182,6 @@ export default function MetaEditor({ active }) {
   useEffect(() => {
     if (items.length && !items.some(i => i.id === pickedId)) {
       setPickedId(items[0].id);
-      setShownId(items[0].id);
     } else if (!items.length && pickedId !== null) {
       holdWhileLeaving();
       setPickedId(null);
@@ -288,11 +277,40 @@ export default function MetaEditor({ active }) {
     if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false);
   };
 
-  const fields = shown?.fields || [];
-  const values = shown?.values || {};
-  const groups = GROUPS
-    .map(([key, title]) => [key, title, fields.filter(f => f.group === key)])
-    .filter(([, , list]) => list.length);
+  // One photo's details (the one leaving keeps its own while it goes)
+  const renderDetails = (it) => GROUPS
+    .map(([key, title]) => [key, title, it.fields.filter(f => f.group === key)])
+    .filter(([, , list]) => list.length)
+    .map(([key, title, list]) => (
+      <section key={key} className="meta-group">
+        <h3 className="meta-group-title">{title}</h3>
+        {list.map((f) => {
+          const now = it.values[f.id] ?? '';
+          const changed = now !== f.value;
+          const id = `meta-${it.id}-${f.id}`;
+          return (
+            <div key={f.id} className={`meta-row ${changed ? 'changed' : ''}`}>
+              <label className="meta-label" htmlFor={id}>{f.label}</label>
+              <FieldInput f={f} id={id} value={now} onChange={v => setValue(f.id, v)} />
+              {/* Only a box with something in it has a remove button: it
+                  slides open as you type (the word slide, as "px wide"
+                  does) and shut when the box empties */}
+              <SlideText show={!!now}>
+                <button
+                  className="btn btn-sm btn-icon meta-remove"
+                  onClick={(e) => { if (e.detail) e.currentTarget.blur(); setValue(f.id, ''); }}
+                  tabIndex={now ? undefined : -1}
+                  title={`Remove ${f.label}`}
+                  aria-label={`Remove ${f.label}`}
+                >
+                  <X size={12} />
+                </button>
+              </SlideText>
+            </div>
+          );
+        })}
+      </section>
+    ));
 
   return (
     <div className="tool">
@@ -364,37 +382,15 @@ export default function MetaEditor({ active }) {
 
       <Collapse open={!!picked} className="options-collapse">
         <AutoHeight className="tool-box meta-fields-box" innerClassName="meta-fields-inner">
-          <div ref={fieldsRef} className="meta-fields">
-            {groups.map(([key, title, list]) => (
-              <section key={`${shown?.id}-${key}`} className="meta-group">
-                <h3 className="meta-group-title">{title}</h3>
-                {list.map((f) => {
-                  const now = values[f.id] ?? '';
-                  const changed = now !== f.value;
-                  return (
-                    <div key={f.id} className={`meta-row ${changed ? 'changed' : ''}`}>
-                      <label className="meta-label" htmlFor={`meta-${f.id}`}>{f.label}</label>
-                      <FieldInput f={f} value={now} onChange={v => setValue(f.id, v)} />
-                      {/* Only a box with something in it has a remove button: it
-                          slides open as you type (the word slide, as "px
-                          wide" does) and shut when the box empties */}
-                      <SlideText show={!!now}>
-                        <button
-                          className="btn btn-sm btn-icon meta-remove"
-                          onClick={(e) => { if (e.detail) e.currentTarget.blur(); setValue(f.id, ''); }}
-                          tabIndex={now ? undefined : -1}
-                          title={`Remove ${f.label}`}
-                          aria-label={`Remove ${f.label}`}
-                        >
-                          <X size={12} />
-                        </button>
-                      </SlideText>
-                    </div>
-                  );
-                })}
-              </section>
-            ))}
-          </div>
+          {/* Switching photos, the details swap the way the cards do: the
+              old ones pop out where they are as the new ones pop in */}
+          <MotionList
+            items={picked ? [picked] : []}
+            getKey={it => it.id}
+            variant="grid"
+            className="meta-details-list"
+            renderItem={it => <div className="meta-fields">{renderDetails(it)}</div>}
+          />
         </AutoHeight>
       </Collapse>
       {/* Under the details, as in the converter: the details are a box of

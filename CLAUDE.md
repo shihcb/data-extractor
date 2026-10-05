@@ -48,7 +48,10 @@ switcher the converter's box leaves 466px (`--box-room` on `.image-panes`).
 The metadata editor uses the converter's box, grid and cards (several
 photos; picture, label row, ‹ › ×), popping in and out and clearing the same
 way. One photo is selected at a time (tap its card): the details below are
-its own, kept per photo while you switch (the new one's fade in). Save
+its own, kept per photo while you switch: the details are one item in a
+`MotionList`, so they swap the way the cards do (the old pop out in place as
+the new pop in; a fade alone snapped and flashed). Their ids carry the
+photo's id (both are on screen mid-swap). Save
 writes every photo with its own changes (one as itself, several in a zip);
 one that can't be saved is selected and named. Its add / save buttons sit under the details,
 as in the converter; the details are one fixed-size box that scrolls inside
