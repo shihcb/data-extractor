@@ -16,10 +16,11 @@ export default function BulkBar({ active, total, selected, disabled, onSelectAll
   return (
     <ActionBar active={active} open={total > 0} label="Selection" history={history}>
       <span className="bulk-count"><Count value={selected} /><span className="bulk-count-word">{' selected'}</span></span>
-      <button className="bulk-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); onSelectAll(!all); }} disabled={disabled}>
+      <button className="bulk-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); onSelectAll(!all); }} disabled={disabled} aria-label={all ? 'select none' : 'select all'}>
         {/* "select" stays; only "all" ↔ "none" swaps (the word swap, as "%" ↔
-            "px wide"); the button's gap is the space between them */}
-        select<SlideSwap text={all ? 'none' : 'all'} />
+            "px wide"); the button's gap is the space between them. On a
+            narrow screen "select" goes, so the bar fits (index.css) */}
+        <span className="bulk-select-word">select</span><SlideSwap text={all ? 'none' : 'all'} />
       </button>
       {children}
       <button className="bulk-btn bulk-delete" onClick={(e) => { if (e.detail) e.currentTarget.blur(); onDelete(); }} disabled={disabled || !selected}>

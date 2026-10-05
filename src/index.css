@@ -1004,7 +1004,7 @@ body.has-bar .feature-toast {
 }
 
 /* A phone's width: a little tighter, so a full bar fits */
-@media (max-width: 420px) {
+@media (max-width: 440px) {
   .bulk-btn,
   .bulk-count {
     padding: 0 8px;
@@ -1012,16 +1012,39 @@ body.has-bar .feature-toast {
   }
 }
 
-/* The narrowest phones: the count drops its word, so "clear" stays on screen */
+/* The narrowest phones: smaller still */
 @media (max-width: 380px) {
   .bulk-btn,
   .bulk-count {
     padding: 0 6px;
     font-size: 0.72rem;
   }
+}
 
+/* Narrower screens: the count drops its word, then "select" goes (leaving
+   "all" / "none"), so the whole bar, delete at its end, stays on screen
+   (undo / redo are words) */
+@media (max-width: 560px) {
   .bulk-count-word {
     display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .bulk-select-word {
+    display: none;
+  }
+}
+
+/* The narrowest phones: a little tighter still (the gaps stay 6px) */
+@media (max-width: 340px) {
+  .bulk-dock {
+    padding: 0 8px;
+  }
+
+  .bulk-btn,
+  .bulk-count {
+    padding: 0 4px;
   }
 }
 
