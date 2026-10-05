@@ -50,7 +50,9 @@ photos; picture, label row, ‹ › ×), popping in and out and clearing the sam
 way. One photo is selected at a time (tap its card): the details below are
 its own, kept per photo while you switch (the new one's fade in). Save
 writes every photo with its own changes (one as itself, several in a zip);
-one that can't be saved is selected and named. Its thumbnails wait for `whenStill()`. A row's
+one that can't be saved is selected and named. Its add / save buttons sit under the stats
+line, above the details (under them, the details opening — a page of rows —
+threw the buttons ~1000px in 450ms, far faster than anything else moves). Its thumbnails wait for `whenStill()`. A row's
 remove button shows only while its box has something in it: it slides open as
 you type and shut when the box empties (the word slide, `SlideText`, with its
 own 6px gap so an empty box reaches the row's end); reset puts values back.

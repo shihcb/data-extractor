@@ -341,6 +341,20 @@ export default function MetaEditor({ active }) {
         images <Count value={items.length} /> · details <Count value={stats.filled} /> · changed <Count value={stats.changed} /> · removed <Count value={stats.removed} />
       </div>
 
+      {/* Above the details, not under them: under them, the details opening
+          (a whole page of rows) threw the buttons ~1000px down in the one
+          450ms motion, far faster than anything else moves. Here they stay
+          put and the details ease open below */}
+      <FlipRow>
+        <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Add photos" aria-label="Add photos">
+          <ImageUp size={14} />
+        </button>
+        <button className={`btn btn-primary ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!items.length || busy}>
+          <Download size={14} />
+          save
+        </button>
+      </FlipRow>
+
       <Collapse open={!!picked} className="options-collapse">
         <AutoHeight className="tool-box meta-fields-box" innerClassName="meta-fields-inner">
           <div ref={fieldsRef} className="meta-fields">
@@ -379,15 +393,6 @@ export default function MetaEditor({ active }) {
       <datalist id="meta-makes">{MAKES.map(m => <option key={m} value={m} />)}</datalist>
       <datalist id="meta-models">{MODELS.map(m => <option key={m} value={m} />)}</datalist>
 
-      <FlipRow>
-        <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Add photos" aria-label="Add photos">
-          <ImageUp size={14} />
-        </button>
-        <button className={`btn btn-primary ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!items.length || busy}>
-          <Download size={14} />
-          save
-        </button>
-      </FlipRow>
 
       <ActionBar active={active} open={items.length > 0} onClose={clearAll} closeDisabled={!items.length} label="Details">
         <button className="bulk-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); reset(); }} disabled={!stats.changed && !stats.removed}>
