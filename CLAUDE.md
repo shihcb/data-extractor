@@ -21,7 +21,7 @@ of restarting it. When the user names one of these, this is what they mean:
 | **the word swap** | the word slide's swap form: one word changing to another inside a line ("%" ↔ "px wide") — both share one spot, the old fading out as the new fades in, while the space eases from one word's width to the other's | `SlideSwap` |
 | **the text swap** | text that changes: the old words fade out exactly where they were while the new ones fade in (the source repo's empty-text fade) | `FadeText` |
 | **the box ease** | a box whose content changes size eases to its new height; nested boxes: only the outermost moves | `AutoHeight`, `heightMotion.js` |
-| **the bottom bar** | every tab's "what's open" actions, the instagram repo's bulk bar (count outlined, plain buttons, delete red, a switched-on one outlined), floating at the bottom of the screen (18px up), centered; it pops in like the pages while its tab is showing and there's something to act on. Every bar is laid out the same: **undo · redo** first (icons; `history` from `useHistory`), then the tab's own items, and the button that ends it — **clear** or **close** — always last, on the right (it also ends the history). Case converter: undo · redo · clear. Image converter: undo · redo · count · select all ("all" ↔ "none" the word swap, "select" staying) · delete · clear; its metadata editor: undo · redo · reset · clear. PDF tools: undo · redo · count · select all · save (the selection) · delete · clear. PDF editor: undo · redo · add text · find · close. QR make: undo · redo · clear (scan has none). Text diff: undo · redo · swap · clear. Toasts sit above it (`body.has-bar`); the page keeps room under its end for it | `ActionBar`, `BulkBar` |
+| **the bottom bar** | every tab's "what's open" actions, the instagram repo's bulk bar (count outlined, plain buttons, delete red, a switched-on one outlined), floating at the bottom of the screen (18px up), centered; it pops in like the pages while its tab is showing and there's something to act on. Every bar is laid out the same: **undo · redo** first (icons; `history` from `useHistory`), then the tab's own items, and the button that ends it always last, on the right: **delete** in the tabs with cards (no clear: with everything selected it reads "delete all", " all" the word slide, and empties the box — an undoable step, the bar staying while there's something to undo), **clear** / **close** in the others (they also end the history). Case converter: undo · redo · clear. Image converter: undo · redo · count · select all ("all" ↔ "none" the word swap, "select" staying) · delete; its metadata editor: undo · redo · reset · delete (the selected photo). PDF tools: undo · redo · count · select all · save (the selection) · delete. PDF editor: undo · redo · add text · find · close. QR make: undo · redo · clear (scan has none). Text diff: undo · redo · swap · clear. Toasts sit above it (`body.has-bar`); the page keeps room under its end for it | `ActionBar`, `BulkBar` |
 | **the panel open** | a panel opens from nothing / closes to nothing: height eases, content fades in from 10px up at 96% (the quality slider, image options) | `Collapse` |
 | **the row slide** | a list row slides in from under the row above / out under it, the rows around it shifting (the source repo's list 3 rows / username boxes); grid items (the PDF pages, the image cards) pop instead | `MotionList` |
 | **the button glide** | a row of buttons/controls never snaps: a button whose label changes eases its width, the others slide along | `FlipRow` |
@@ -162,9 +162,26 @@ kept as whole snapshots; typing in one box is one step per burst (same
 group within 1s); Ctrl + Z / Ctrl + Shift + Z (or Ctrl + Y) while the tab is
 open (`useUndoKeys`; text tabs take them in their boxes too, the browser's
 own undo broke on text set by a conversion). What an undo can bring back
-(an image, a page's file and picture) is let go only on clear. PDF tools
+(an image, a page's file and picture) is let go only once no undo or redo
+can reach it. PDF tools
 keeps page pictures apart from the pages (id → url), so a snapshot taken
 before a picture was drawn still shows it.
+
+The buttons under a tab's box always start with its input button, an icon
+(add images / PDFs, paste), then the main action (filled), then the rest:
+case converter, QR make and text diff paste; the image tools, PDF tools and
+the PDF editor add. Text diff's description ("paste two texts to compare")
+sits above its boxes like every tab's; its stats line is always there
+("added 0 · removed 0").
+
+A tab switch starts one glide of the page on the curve from its first
+frame (`tabGlide` in App.jsx), to where the page belongs once the new tab's
+height lands; followed frame by frame from the resizes, it jittered on
+iPhone and seemed to scroll up before the tabs moved.
+
+The selected outline is the instagram repo's selected row: 1px border and
+a 1px ring in the text colour (pure white in the dark), easing in and out
+over 450ms.
 
 Every stats line in the app is label first ("characters 3 · words 1", "added 2 ·
 removed 1") so only the numbers change, counting.

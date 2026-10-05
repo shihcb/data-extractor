@@ -196,16 +196,16 @@ function ConvertImages({ active }) {
     return next;
   });
 
-  const clearAll = () => {
-    const old = [...seen.current];
-    seen.current = new Set();
-    holdWhileLeaving();
-    history.reset([]);
-    setPicked(new Set());
-    setWidthPx('');
-    // After their cards have left (they still show the picture until then)
-    setTimeout(() => old.forEach(releaseItem), MOTION_MS + 300);
-  };
+  // Images no undo or redo can reach any more are let go (after their
+  // cards have left: they show the picture until then)
+  useEffect(() => {
+    const live = new Set(history.reachable().flat());
+    const gone = [...seen.current].filter(it => !live.has(it));
+    if (!gone.length) return;
+    gone.forEach(it => seen.current.delete(it));
+    setTimeout(() => gone.forEach(releaseItem), MOTION_MS + 300);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items]);
 
   useEffect(() => () => seen.current.forEach(releaseItem), []);
 
@@ -490,7 +490,6 @@ function ConvertImages({ active }) {
         disabled={!items.length}
         onSelectAll={(all) => setPicked(all ? new Set(items.map(i => i.id)) : new Set())}
         onDelete={() => removeItems(new Set(picked))}
-        onClear={clearAll}
         history={history}
       />
     </div>

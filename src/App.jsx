@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Keyboard } from 'lucide-react';
 import CaseConverter from './components/CaseConverter';
 import ImageConverter from './components/ImageConverter';
@@ -67,6 +67,7 @@ export default function App() {
   // scroll, and iPhone's growing view as its toolbar hides made it add blank
   // space without end).
   const shellRef = useRef(null);
+  const tabGlide = useRef(null);
   useEffect(() => {
     const shell = shellRef.current;
     const content = shell.firstElementChild;
@@ -178,6 +179,17 @@ export default function App() {
       }
       updateLock();
     };
+    // A tab switch: one glide on the curve from the first frame, to where
+    // the page belongs once the new tab's height has landed. Followed frame
+    // by frame from the resizes instead, the page's scrolling was driven by
+    // the box's every step (on iPhone it jittered and seemed to scroll up
+    // before the tabs moved)
+    tabGlide.current = () => {
+      natural = naturalHeight();
+      stopGlide();
+      ownScroll = 0;
+      glideUp();
+    };
     natural = naturalHeight();
     onScroll();
     const ro = new ResizeObserver(onResize);
@@ -198,6 +210,13 @@ export default function App() {
       root.classList.remove('page-fits');
     };
   }, []);
+
+  // (after the panes have started their push, so the height still to come is known)
+  const firstTab = useRef(true);
+  useLayoutEffect(() => {
+    if (firstTab.current) { firstTab.current = false; return; }
+    tabGlide.current?.();
+  }, [activeTab]);
 
   // Shift+1..6 switch tabs, ? shows the shortcuts (not while typing)
   useEffect(() => {

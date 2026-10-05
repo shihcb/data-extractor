@@ -12,7 +12,8 @@ import { workHeld } from '../utils';
 // its tab is showing and there's something to act on, and pops out the
 // same way. Every tab's bar is laid out the same: undo and redo first
 // (`history`, from useHistory), then the tab's own buttons, and the button
-// that ends it all — clear or close — always last, on the right.
+// that ends it all — clear, close, or (with a selection) delete — always
+// last, on the right.
 const openBars = new Set();
 const markBody = () => document.body.classList.toggle('has-bar', openBars.size > 0);
 
@@ -101,9 +102,11 @@ export default function ActionBar({ active, open: wanted, children, closeLabel =
           </>
         )}
         {children}
-        <button className="bulk-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); onClose(); }} disabled={closeDisabled}>
-          {closeLabel}
-        </button>
+        {onClose && (
+          <button className="bulk-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); onClose(); }} disabled={closeDisabled}>
+            {closeLabel}
+          </button>
+        )}
       </div>
     </div>,
     document.body,

@@ -166,21 +166,28 @@ export default function PdfTools({ active }) {
     setSelected(sel => new Set([...sel].filter(id => !ids.has(id))));
   };
 
-  const clearAll = () => {
-    history.reachable().flat().forEach(p => removed.current.add(p.id));
-    holdWhileLeaving();
-    pagesBefore.current = 0;
-    history.reset([]);
-    setSelected(new Set());
-    // (the leaving cards show their pictures until they're gone)
-    const old = thumbsRef.current;
-    setTimeout(() => {
-      old.forEach(url => URL.revokeObjectURL(url));
-      setThumbs(m => new Map([...m].filter(([id]) => !old.has(id))));
-      labels.current.clear();
-    }, MOTION_MS + 300);
-    if (!loading && !busy) dropUnusedSources([]);
-  };
+  // Pages no undo or redo can reach any more: their pictures (once their
+  // cards have left) and their files are let go
+  useEffect(() => {
+    const live = new Set(history.reachable().flat().map(p => p.id));
+    const gone = [...thumbsRef.current.keys()].filter(id => !live.has(id));
+    if (gone.length) {
+      setTimeout(() => {
+        setThumbs((m) => {
+          const next = new Map(m);
+          gone.forEach((id) => {
+            if (live.has(id)) return;
+            URL.revokeObjectURL(next.get(id));
+            next.delete(id);
+            labels.current.delete(id);
+          });
+          return next;
+        });
+      }, MOTION_MS + 300);
+    }
+    if (!loading && !busy) dropUnusedSources(history.reachable().flat());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pages]);
 
   // Pages deleted while files were still loading, or while a save, split or
   // export was reading them: their documents are let go once that's done
@@ -433,7 +440,6 @@ export default function PdfTools({ active }) {
         disabled={!pages.length}
         onSelectAll={(all) => setSelected(all ? new Set(pages.map(p => p.id)) : new Set())}
         onDelete={() => removePages(new Set(selected))}
-        onClear={clearAll}
         history={history}
       >
         {/* The selected pages, as a PDF of their own */}

@@ -1,6 +1,8 @@
 import React, { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { fadeIn } from '../motion';
-import { ArrowLeftRight } from 'lucide-react';
+import { ArrowLeftRight, ClipboardPaste } from 'lucide-react';
+import { useDoneFlags } from '../utils';
+import { useToast } from '../toastContext';
 import { diffChars, diffLines, diffWordsWithSpace } from 'diff';
 import TabSwitcher from './TabSwitcher';
 import Count from './Count';
@@ -106,6 +108,23 @@ export default function TextDiff({ active }) {
   const setLeft = (v) => setTexts(t => ({ ...t, left: v }), 'left');
   const setRight = (v) => setTexts(t => ({ ...t, right: v }), 'right');
   const [mode, setMode] = useState('lines');
+  const [done, flagDone] = useDoneFlags();
+  const toast = useToast();
+  const leftRef = useRef(null);
+  // Paste: into the original box while it's empty, else the changed one
+  const paste = async (e) => {
+    if (e.detail) e.currentTarget.blur();
+    try {
+      const clip = await navigator.clipboard.readText();
+      if (!clip) return;
+      setTexts(t => (!t.left ? { ...t, left: clip } : { ...t, right: clip }));
+      flagDone('paste');
+    } catch {
+      // Not allowed to read the clipboard: the cursor goes in the box to fill
+      (left ? leftRef.current?.nextElementSibling : leftRef.current)?.focus();
+      toast('paste with ctrl+v or a long-press in the box');
+    }
+  };
   // Huge texts are compared once typing pauses (each key ran a whole
   // comparison, up to a second on 50,000 lines); small ones at once
   const big = left.length + right.length > 200000;
@@ -140,8 +159,10 @@ export default function TextDiff({ active }) {
 
   return (
     <div className="tool">
+      <p className="tool-desc">paste two texts to compare</p>
       <div className="diff-inputs">
         <textarea
+          ref={leftRef}
           className="tool-textarea short mono"
           value={left}
           onChange={(e) => setLeft(e.target.value)}
@@ -159,7 +180,11 @@ export default function TextDiff({ active }) {
         />
       </div>
 
+      {/* As in every tab: the box's input button first (paste), then the rest */}
       <FlipRow>
+        <button className={`btn btn-icon ${done.paste ? 'btn-done' : ''}`} onClick={paste} title="Paste from clipboard" aria-label="Paste from clipboard">
+          <ClipboardPaste size={14} />
+        </button>
         <TabSwitcher className="tab-switcher-sm" tabs={MODES} active={mode} onChange={setMode} />
       </FlipRow>
       {/* Swapping and clearing: in the bottom bar, like every tab */}
@@ -170,15 +195,14 @@ export default function TextDiff({ active }) {
       </ActionBar>
 
       <AutoHeight className="tool-meta" aria-live="polite">
-        <FadeText k={status}>
-          {status === 'empty' && 'paste two texts to compare'}
+        <FadeText k={status === 'empty' ? 'diff' : status}>
           {status === 'slow' && (mode === 'lines' ? 'too long to compare' : 'too different to compare this way — try lines')}
           {status === 'space' && 'only spaces or line breaks differ'}
           {status === 'same' && 'no differences'}
-          {status === 'diff' && (
+          {(status === 'diff' || status === 'empty') && (
             <>
               {/* Label first, so only the numbers change (they count) */}
-              added <span className="diff-count-add"><Count value={result.added} /></span> · removed <span className="diff-count-del"><Count value={result.removed} /></span>
+              added <span className="diff-count-add"><Count value={result?.added || 0} /></span> · removed <span className="diff-count-del"><Count value={result?.removed || 0} /></span>
             </>
           )}
         </FadeText>

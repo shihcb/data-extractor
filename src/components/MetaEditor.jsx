@@ -205,14 +205,15 @@ export default function MetaEditor({ active }) {
     }
   };
 
-  const clearAll = () => {
-    if (!items.length) return;
-    holdWhileLeaving();
-    release([...seen.current]);
-    seen.current = new Set();
-    history.reset([]);
-    setPickedId(null);
-  };
+  // Photos no undo or redo can reach any more are let go
+  useEffect(() => {
+    const live = new Set(history.reachable().flat().map(it => it.id));
+    const gone = [...seen.current].filter(it => !live.has(it.id));
+    if (!gone.length) return;
+    gone.forEach(it => seen.current.delete(it));
+    release(gone);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items]);
 
   const move = (id, by) => setItems(prev => {
     const i = prev.findIndex(p => p.id === id);
@@ -409,9 +410,14 @@ export default function MetaEditor({ active }) {
       <datalist id="meta-models">{MODELS.map(m => <option key={m} value={m} />)}</datalist>
 
 
-      <ActionBar active={active} open={items.length > 0} onClose={clearAll} closeDisabled={!items.length} label="Details" history={history}>
+      {/* As in the converter: undo · redo, the selected photo's reset, and
+          delete (it) last */}
+      <ActionBar active={active} open={items.length > 0 || history.canUndo} label="Details" history={history}>
         <button className="bulk-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); reset(); }} disabled={!stats.changed && !stats.removed}>
           reset
+        </button>
+        <button className="bulk-btn bulk-delete" onClick={(e) => { if (e.detail) e.currentTarget.blur(); if (picked) removeItems(new Set([picked.id])); }} disabled={!picked}>
+          delete
         </button>
       </ActionBar>
     </div>

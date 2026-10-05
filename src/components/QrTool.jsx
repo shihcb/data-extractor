@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Camera, Copy, Download, ExternalLink, ImageUp } from 'lucide-react';
+import { Camera, ClipboardPaste, Copy, Download, ExternalLink, ImageUp } from 'lucide-react';
 import QRCode from 'qrcode';
 import jsQR from 'jsqr';
 import { copyImageBlob, copyText, downloadBlob, isImageFile, shortName, useDoneFlags, usePastedFiles } from '../utils';
@@ -91,6 +91,21 @@ function MakeQr({ active }) {
     return () => { cancelled = true; };
   }, [text, level]);
 
+  const textRef = useRef(null);
+  const paste = async (e) => {
+    if (e.detail) e.currentTarget.blur();
+    try {
+      const clip = await navigator.clipboard.readText();
+      if (clip) {
+        setText(clip);
+        flagDone('paste');
+      }
+    } catch {
+      textRef.current?.focus();
+      toast('paste with ctrl+v or a long-press in the box');
+    }
+  };
+
   const pngBlob = () => new Promise((resolve, reject) => {
     canvasRef.current.toBlob(b => (b ? resolve(b) : reject(new Error('no image'))), 'image/png');
   });
@@ -121,6 +136,7 @@ function MakeQr({ active }) {
   return (
     <div className="tool">
       <textarea
+        ref={textRef}
         className="tool-textarea short"
         value={text}
         onChange={(e) => setText(e.target.value, 'type')}
@@ -128,7 +144,11 @@ function MakeQr({ active }) {
         spellCheck={false}
         aria-label="Text for the QR code"
       />
+      {/* As in every tab: the box's input button first (paste), then the rest */}
       <FlipRow>
+        <button className={`btn btn-icon ${done.paste ? 'btn-done' : ''}`} onClick={paste} title="Paste from clipboard" aria-label="Paste from clipboard">
+          <ClipboardPaste size={14} />
+        </button>
         <TabSwitcher className="tab-switcher-sm" tabs={LEVELS} active={level} onChange={setLevel} />
       </FlipRow>
       <AutoHeight className="tool-meta" >
