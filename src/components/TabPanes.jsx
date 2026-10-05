@@ -53,14 +53,11 @@ export default function TabPanes({ tabs, active, children }) {
 
     const w = container.clientWidth;
     const dir = order(active) > order(oldKey) ? 1 : -1;
-    // Shorter trips (an interrupted slide) take proportionally less time
-    const timing = (dist) => ({
-      duration: Math.round(MOTION_MS * Math.min(1, Math.max(0.35, Math.abs(dist) / w))),
-      easing: MOTION_EASING,
-    });
+    // Every trip, an interrupted one too, takes the one motion's 450ms
+    const timing = () => ({ duration: MOTION_MS, easing: MOTION_EASING });
 
     const from = at.get(newPane) || { x: dir * w, o: 0.35 };
-    const tIn = timing(from.x);
+    const tIn = timing();
     let longest = tIn.duration;
     newPane.animate([
       { transform: `translateX(${from.x}px)`, opacity: from.o },
@@ -70,7 +67,7 @@ export default function TabPanes({ tabs, active, children }) {
     shown.filter(([, p]) => p !== newPane).forEach(([key, p]) => {
       const f = at.get(p) || { x: 0, o: 1 };
       const to = order(key) < order(active) ? -w : w; // carousel order
-      const t = timing(to - f.x);
+      const t = timing();
       longest = Math.max(longest, t.duration);
       p.animate([
         { transform: `translateX(${f.x}px)`, opacity: f.o },

@@ -26,7 +26,7 @@ of restarting it. When the user names one of these, this is what they mean:
 | **the row slide** | a list row slides in from under the row above / out under it, the rows around it shifting (the source repo's list 3 rows / username boxes); grid items (the PDF pages, the image cards) pop instead | `MotionList` |
 | **the button glide** | a row of buttons/controls never snaps: a button whose label changes eases its width, the others slide along | `FlipRow` |
 | **the count** | numbers count to their new value (and up from 0 when they appear), their width easing | `Count` |
-| **the tab push** | switching tabs: the old pane slides out sideways as the new one slides in, the area easing to the new height; the tab outline slides along | `TabPanes`, `TabSwitcher` |
+| **the tab push** | switching tabs: the old pane slides out sideways as the new one slides in (always 450ms, an interrupted slide too), the area easing to the new height; the tab outline slides along | `TabPanes`, `TabSwitcher` |
 | **the pop** | pop-ups and toasts come in from 14px down at 95% scale and leave the same way; so do the PDF pages, the image cards, the bulk bar, the QR code and the camera picture | `Modal`, `Toast`, `MotionList`, `usePop` |
 | **the glide to top** | a box easing shut: the page's bottom follows the content's bottom frame by frame, so no blank room opens below (a sudden shrink glides up instead); when everything fits on screen again it glides back to the top and stops scrolling until it needs to | `App.jsx` |
 | **the clear** | the last PDF pages / images leaving (or the PDF editor closing its PDF, or the metadata editor its photo): they pop out in place while the box's content holds its height, then the box goes back to empty | `PdfTools.jsx`, `ImageConverter.jsx`, `PdfEditor.jsx` |
@@ -111,7 +111,7 @@ Editing in the PDF editor:
   undo; open, it reads the pictures of text too).
 - A change appears and goes through a blank (`TextItem`): the patch fades in
   over the old words, then the new words fade in on it (reversed as it
-  goes) — never old and new words at once (a cross-fade, or the patch's
+  goes; each step the full 450ms, not halves) — never old and new words at once (a cross-fade, or the patch's
   colour easing alone, jumbled them on undo / replace all). Browser
   animations, not the engine (it clears a settled element's transform).
   The patch reaches 0.06em past its box; its colour is the most common in

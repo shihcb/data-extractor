@@ -438,7 +438,6 @@ let nextAdded = 1;
 // jumbled over each other (an undo or a replace all, most of all). The
 // browser's own animations, not the motion engine: that one clears a
 // settled element's transform, which turns the line with its text.
-const HALF = { duration: MOTION.duration / 2, easing: MOTION.easing };
 function TextItem({ edited, editStyle, plainStyle, content, className, ...rest }) {
   const ref = useRef(null);
   const kept = useRef(null);
@@ -469,13 +468,13 @@ function TextItem({ edited, editStyle, plainStyle, content, className, ...rest }
     if (edited) {
       setLeaving(false);
       anims.current = [
-        patch(false, true, { ...HALF, fill: 'backwards' }),
-        words(0, 1, { ...HALF, delay: HALF.duration, fill: 'backwards' }),
+        patch(false, true, { ...MOTION, fill: 'backwards' }),
+        words(0, 1, { ...MOTION, delay: MOTION.duration, fill: 'backwards' }),
       ].filter(Boolean);
     } else {
       setLeaving(true);
-      const last = patch(true, false, { ...HALF, delay: HALF.duration, fill: 'forwards' });
-      anims.current = [words(1, 0, { ...HALF, fill: 'forwards' }), last].filter(Boolean);
+      const last = patch(true, false, { ...MOTION, delay: MOTION.duration, fill: 'forwards' });
+      anims.current = [words(1, 0, { ...MOTION, fill: 'forwards' }), last].filter(Boolean);
       last.finished.then(() => { if (!was.current && anims.current.includes(last)) setLeaving(false); }, () => {});
     }
   }, [edited]);
@@ -522,7 +521,7 @@ function PicCover({ show, rect, bg }) {
     if (show) { setLeaving(false); return; }
     if (!el || !canAnimate(el)) { setLeaving(false); return; }
     setLeaving(true);
-    const a = el.animate([{ opacity: 1 }, { opacity: 0 }], { ...HALF, delay: HALF.duration, fill: 'forwards' });
+    const a = el.animate([{ opacity: 1 }, { opacity: 0 }], { ...MOTION, delay: MOTION.duration, fill: 'forwards' });
     a.finished.then(() => { if (!was.current) setLeaving(false); }, () => {});
   }, [show]);
   if (!show && !leaving) return null;
