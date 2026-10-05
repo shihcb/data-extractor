@@ -1,6 +1,6 @@
 import React, { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { fadeIn } from '../motion';
-import { ArrowLeftRight, ClipboardPaste } from 'lucide-react';
+import { ClipboardPaste } from 'lucide-react';
 import { useDoneFlags } from '../utils';
 import { useToast } from '../toastContext';
 import { diffChars, diffLines, diffWordsWithSpace } from 'diff';
@@ -180,17 +180,26 @@ export default function TextDiff({ active }) {
         />
       </div>
 
+      {/* What to compare by: a setting, so in the options panel (as the
+          image converter's), opening once there's text */}
+      <Collapse open={!empty} className="options-collapse">
+        <div className="options-panel">
+          <FlipRow className="field-grid">
+            <TabSwitcher className="tab-switcher-sm" tabs={MODES} active={mode} onChange={setMode} />
+          </FlipRow>
+        </div>
+      </Collapse>
+
       {/* As in every tab: the box's input button first (paste), then the rest */}
       <FlipRow>
         <button className={`btn btn-icon ${done.paste ? 'btn-done' : ''}`} onClick={paste} title="Paste from clipboard" aria-label="Paste from clipboard">
           <ClipboardPaste size={14} />
         </button>
-        <TabSwitcher className="tab-switcher-sm" tabs={MODES} active={mode} onChange={setMode} />
       </FlipRow>
       {/* Swapping and clearing: in the bottom bar, like every tab */}
       <ActionBar active={active} open={!empty} onClose={() => history.reset({ left: '', right: '' })} label="Texts" history={history}>
         <button className="bulk-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); setTexts(t => ({ left: t.right, right: t.left })); }} title="Swap the two texts">
-          <ArrowLeftRight size={13} /> swap
+          swap
         </button>
       </ActionBar>
 
