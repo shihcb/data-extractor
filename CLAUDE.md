@@ -51,7 +51,11 @@ way. One photo is selected at a time (tap its card): the details below are
 its own, kept per photo while you switch: the whole details box (border and
 all, each with its own scroller) is one item in a `MotionList`, so it swaps
 the way the cards do (the old box pops out in place as the new pops in; a
-fade alone snapped and flashed). Their ids carry the
+fade alone snapped and flashed). The last photo gone, the details do the clear:
+the box pops out in place while its space holds (its height remembered from
+the last frame it was there: by then the list measures nothing), then the
+panel eases shut, and only then is the space let go (shut at once it cut the
+box off, 309px to 20 in a frame; let go as it started, it jumped first). Their ids carry the
 photo's id (both are on screen mid-swap). Save
 writes every photo with its own changes (one as itself, several in a zip);
 one that can't be saved is selected and named. Its add / save buttons sit under the details,

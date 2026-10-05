@@ -1405,6 +1405,10 @@ body.has-bar .feature-toast {
 }
 
 /* The details are one item in a list (they pop like the cards) */
+/* (held, the list keeps its height too, as the photos' box does) */
+.options-collapse div[style*="min-height"] > .motion-list-box {
+  min-height: inherit;
+}
 .meta-details-list.motion-list-grid {
   grid-template-columns: minmax(0, 1fr);
   gap: 0;

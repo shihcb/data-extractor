@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Download, ImageUp, X } from 'lucide-react';
 import { zipSync } from 'fflate';
 import { GROUPS, applyFields, readFields, readMeta, sizeText, writeMeta, writeTiff } from '../exif';
@@ -116,6 +116,38 @@ export default function MetaEditor({ active }) {
   useEffect(() => () => clearTimeout(holdTimer.current), []);
 
   const picked = items.find(i => i.id === pickedId) || null;
+
+  // The details' clear, as the photos' box does it: the last photo gone,
+  // its details box pops out where it is while its space holds, and only
+  // then does the panel ease shut (shut at once, it cut the box off: 309px
+  // to 20 in a frame)
+  const detailsRef = useRef(null);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [detailsHold, setDetailsHold] = useState(0);
+  const detailsTimer = useRef(null);
+  const hasPicked = !!picked;
+  useLayoutEffect(() => {
+    clearTimeout(detailsTimer.current);
+    if (hasPicked) {
+      setDetailsHold(0);
+      setPanelOpen(true);
+      return;
+    }
+    // (as tall as it was drawn last: by now the leaving box is out of the
+    // flow and the list measures nothing)
+    setDetailsHold(detailsHeight.current);
+    // (the space let go once the panel has eased shut over it: let go as it
+    // started, the panel jumped from the box's height to nothing first)
+    detailsTimer.current = setTimeout(() => {
+      setPanelOpen(false);
+      detailsTimer.current = setTimeout(() => setDetailsHold(0), MOTION_MS + 100);
+    }, MOTION_MS);
+  }, [hasPicked]);
+  useEffect(() => () => clearTimeout(detailsTimer.current), []);
+  const detailsHeight = useRef(0);
+  useLayoutEffect(() => {
+    if (hasPicked && detailsRef.current) detailsHeight.current = detailsRef.current.offsetHeight;
+  });
 
   const release = (list) => setTimeout(() => list.forEach(it => URL.revokeObjectURL(it.thumb)), MOTION_MS + 300);
   useEffect(() => () => seen.current.forEach(it => URL.revokeObjectURL(it.thumb)), []);
@@ -380,9 +412,10 @@ export default function MetaEditor({ active }) {
       </div>
 
 
-      <Collapse open={!!picked} className="options-collapse">
+      <Collapse open={panelOpen} className="options-collapse">
         {/* Switching photos, the whole details box swaps the way the cards
             do: the old box pops out where it is as the new one pops in */}
+        <div ref={detailsRef} style={detailsHold ? { minHeight: `${detailsHold}px` } : undefined}>
         <MotionList
           items={picked ? [picked] : []}
           getKey={it => it.id}
@@ -396,6 +429,7 @@ export default function MetaEditor({ active }) {
             </div>
           )}
         />
+        </div>
       </Collapse>
       {/* Under the details, as in the converter: the details are a box of
           one fixed size that scrolls inside, so opening it slides these down
