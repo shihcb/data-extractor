@@ -21,7 +21,7 @@ of restarting it. When the user names one of these, this is what they mean:
 | **the word swap** | the word slide's swap form: one word changing to another inside a line ("%" ↔ "px wide") — both share one spot, the old fading out as the new fades in, while the space eases from one word's width to the other's | `SlideSwap` |
 | **the text swap** | text that changes: the old words fade out exactly where they were while the new ones fade in (the source repo's empty-text fade) | `FadeText` |
 | **the box ease** | a box whose content changes size eases to its new height; nested boxes: only the outermost moves | `AutoHeight`, `heightMotion.js` |
-| **the bottom bar** | every tab's "what's open" actions, the instagram repo's bulk bar (count outlined, plain buttons, delete red, a switched-on one outlined), floating at the bottom of the screen (18px up), centered; it pops in like the pages while its tab is showing and there's something to act on. The button that ends it — **clear** or **close** — is always last, on the right. Case converter: clear. Image converter: count · select all ("all" ↔ "none" the word swap, "select" staying) · delete · clear. PDF tools: count · select all · save (the selection) · delete · clear. PDF editor: undo · redo · add text · find · close. QR make: clear (scan has none). Text diff: swap · clear. Toasts sit above it (`body.has-bar`); the page keeps room under its end for it | `ActionBar`, `BulkBar` |
+| **the bottom bar** | every tab's "what's open" actions, the instagram repo's bulk bar (count outlined, plain buttons, delete red, a switched-on one outlined), floating at the bottom of the screen (18px up), centered; it pops in like the pages while its tab is showing and there's something to act on. The button that ends it — **clear** or **close** — is always last, on the right. Case converter: clear. Image converter: count · select all ("all" ↔ "none" the word swap, "select" staying) · delete · clear; its metadata editor: reset · remove location · remove all · clear. PDF tools: count · select all · save (the selection) · delete · clear. PDF editor: undo · redo · add text · find · close. QR make: clear (scan has none). Text diff: swap · clear. Toasts sit above it (`body.has-bar`); the page keeps room under its end for it | `ActionBar`, `BulkBar` |
 | **the panel open** | a panel opens from nothing / closes to nothing: height eases, content fades in from 10px up at 96% (the quality slider, image options) | `Collapse` |
 | **the row slide** | a list row slides in from under the row above / out under it, the rows around it shifting (the source repo's list 3 rows / username boxes); grid items (the PDF pages, the image cards) pop instead | `MotionList` |
 | **the button glide** | a row of buttons/controls never snaps: a button whose label changes eases its width, the others slide along | `FlipRow` |
@@ -30,6 +30,21 @@ of restarting it. When the user names one of these, this is what they mean:
 | **the pop** | pop-ups and toasts come in from 14px down at 95% scale and leave the same way; so do the PDF pages, the image cards, the bulk bar, the QR code and the camera picture | `Modal`, `Toast`, `MotionList`, `usePop` |
 | **the glide to top** | a box easing shut: the page's bottom follows the content's bottom frame by frame, so no blank room opens below (a sudden shrink glides up instead); when everything fits on screen again it glides back to the top and stops scrolling until it needs to | `App.jsx` |
 | **the clear** | the last PDF pages / images leaving (or the PDF editor closing its PDF): they pop out in place while the box's content holds its height, then the box goes back to empty | `PdfTools.jsx`, `ImageConverter.jsx`, `PdfEditor.jsx` |
+
+The image converter holds two tools under its own small switcher (like the QR
+tab's make / scan, the tab push): **converter** and **metadata editor**. The
+metadata editor changes a photo's details (EXIF) in the file itself
+(`src/exif.js`, JPG / PNG / WEBP): the picture's bytes are copied untouched,
+and every tag is kept as its raw bytes, so whatever isn't changed goes back
+exactly as it was (Apple's maker notes, tags it doesn't know, the preview).
+Nothing of ours is ever stamped in (no Software tag, no new dates): a photo
+from an iPhone still says that iPhone took it. Fields shown: the usual ones
+always (ready to fill in), the rest only when the photo has them; emptied
+means removed; XMP / IPTC can be dropped whole. The converter carries the
+original's details into its JPG / PNG / WEBP copies ("keep details", on by
+default; redrawn, a copy had none and looked saved from the web), the turn
+reset to upright, the size the new one, the old preview left out. Under the
+switcher the converter's box leaves 466px (`--box-room` on `.image-panes`).
 
 PDF tools and the image converter are the same layout (and the PDF editor
 shares their box, its pages popping in and out the same way): one box size (the

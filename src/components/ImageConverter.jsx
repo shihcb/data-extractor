@@ -3,9 +3,12 @@ import { ChevronLeft, ChevronRight, Copy, Download, ImageUp, X } from 'lucide-re
 import { zipSync } from 'fflate';
 import { IMAGE_FORMATS, encodeImage, estimateImage, jpegsToPdf, loadImage, makeThumb, targetSize } from '../imageConvert';
 import { baseName, copyImageBlob, downloadBlob, isImageFile, isPdfFile, keepFocusAfterRemove, shortName, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
+import { carryOver, readMeta, writeMeta } from '../exif';
 import { MOTION_MS, fadeInOnLoad } from '../motion';
 import { useToast } from '../toastContext';
 import TabSwitcher from './TabSwitcher';
+import TabPanes from './TabPanes';
+import MetaEditor from './MetaEditor';
 import MotionList from './MotionList';
 import Collapse from './Collapse';
 import Count from './Count';
@@ -13,6 +16,11 @@ import FadeText from './FadeText';
 import FlipRow from './FlipRow';
 import BulkBar from './BulkBar';
 import SlideSwap from './SlideSwap';
+
+const MODES = [
+  { key: 'convert', label: 'converter' },
+  { key: 'meta', label: 'metadata editor' },
+];
 
 const RESIZE_MODES = [
   { key: 'percent', label: 'scale %' },
@@ -32,14 +40,57 @@ function releaseItem(item) {
   item._bitmap?.then(b => b.close(), () => {});
 }
 
+// A photo's details (the camera, when, where) read from its file, so a
+// converted copy can carry them: drawn again, the picture comes out with
+// none, and looks like it was saved from the web, not taken on a phone
+async function readDetails(file) {
+  try {
+    const tiff = readMeta(new Uint8Array(await file.arrayBuffer())).tiff;
+    // (its size in a converted copy, for the size line)
+    return { tiff, detailsSize: tiff ? (carryOver(tiff, 1, 1)?.length || 0) + 12 : 0 };
+  } catch {
+    return { tiff: null, detailsSize: 0 };
+  }
+}
+
+// The converted copy with the original's details put back in (JPG, PNG and
+// WEBP; a PDF's pages don't hold them)
+async function withDetails(item, out) {
+  if (!item.tiff) return out.blob;
+  try {
+    const tiff = carryOver(item.tiff, out.width, out.height);
+    const bytes = writeMeta(new Uint8Array(await out.blob.arrayBuffer()), tiff, { size: out });
+    return new Blob([bytes], { type: out.blob.type });
+  } catch {
+    return out.blob;
+  }
+}
+
+// Two tools in one tab: converting, and changing a photo's details
 export default function ImageConverter({ active }) {
-  const [items, setItems] = useState([]); // { id, file, url, img, w, h }
+  const [mode, setMode] = useState('convert');
+  return (
+    <div className="tool">
+      <TabSwitcher className="tab-switcher-sm" tabs={MODES} active={mode} onChange={setMode} />
+      <div className="image-panes">
+        <TabPanes tabs={MODES} active={mode}>
+          <ConvertImages active={active && mode === 'convert'} />
+          <MetaEditor active={active && mode === 'meta'} />
+        </TabPanes>
+      </div>
+    </div>
+  );
+}
+
+function ConvertImages({ active }) {
+  const [items, setItems] = useState([]); // { id, file, url, img, w, h, tiff }
   const [picked, setPicked] = useState(() => new Set()); // ids of the selected cards
   const [format, setFormat] = useState('png');
   const [resizeMode, setResizeMode] = useState('percent');
   const [percent, setPercent] = useState('100');
   const [widthPx, setWidthPx] = useState('');
   const [quality, setQuality] = useState(90);
+  const [keepDetails, setKeepDetails] = useState(true);
   const [estimate, setEstimate] = useState(null); // { width, height, size, ext, fellBack }
   const [busy, setBusy] = useState('');
   const [dragging, setDragging] = useState(false);
@@ -88,7 +139,8 @@ export default function ImageConverter({ active }) {
       try {
         const img = await loadImage(url);
         const thumb = await makeThumb(img);
-        return { id: nextId++, file, url, thumb, img, w: img.naturalWidth, h: img.naturalHeight };
+        const details = await readDetails(file);
+        return { id: nextId++, file, url, thumb, img, w: img.naturalWidth, h: img.naturalHeight, ...details };
       } catch {
         URL.revokeObjectURL(url);
         failed.push(file);
@@ -207,7 +259,7 @@ export default function ImageConverter({ active }) {
       } else if (list.length === 1) {
         setBusy('on');
         const out = await encodeImage(list[0].img, settings);
-        blob = out.blob;
+        blob = keepDetails ? await withDetails(list[0], out) : out.blob;
         fellBack = out.fellBack;
         clamped = out.clamped;
         name = `${baseName(list[0].file.name)}.${out.ext}`;
@@ -219,7 +271,8 @@ export default function ImageConverter({ active }) {
           const out = await encodeImage(list[i].img, settings);
           fellBack = fellBack || out.fellBack;
           clamped = clamped || out.clamped;
-          files[unique(`${baseName(list[i].file.name)}.${out.ext}`)] = new Uint8Array(await out.blob.arrayBuffer());
+          const b = keepDetails ? await withDetails(list[i], out) : out.blob;
+          files[unique(`${baseName(list[i].file.name)}.${out.ext}`)] = new Uint8Array(await b.arrayBuffer());
         }
         // Images are already compressed: store them as they are
         blob = new Blob([zipSync(files, { level: 0 })], { type: 'application/zip' });
@@ -263,6 +316,8 @@ export default function ImageConverter({ active }) {
     : estimate?.id === selected.id
       ? estimate
       : { ...targetSize(selected.w, selected.h, resize), size: estimate?.size || 0 };
+  // (with the details it carries)
+  const outSize = out.size && keepDetails && format !== 'pdf' && selected ? out.size + selected.detailsSize : out.size;
 
   return (
     <div className="tool">
@@ -335,7 +390,7 @@ export default function ImageConverter({ active }) {
       {/* The stats: always there, only the numbers change (counting from 0).
           "out" is what the selected image (or the first) comes out as. */}
       <div className="tool-meta tool-stats" aria-live="polite">
-        images <Count value={items.length} /> · selected <Count value={picked.size} /> · out <Count value={out.width} format={String} /> × <Count value={out.height} format={String} /> · <Count value={out.size} format={kb} />
+        images <Count value={items.length} /> · selected <Count value={picked.size} /> · out <Count value={out.width} format={String} /> × <Count value={out.height} format={String} /> · <Count value={outSize} format={kb} />
       </div>
 
       <Collapse open={items.length > 0} className="options-collapse">
@@ -357,6 +412,16 @@ export default function ImageConverter({ active }) {
               />
               <SlideSwap text={resizeMode === 'percent' ? '%' : 'px wide'} />
             </label>
+            {/* The camera, date and place go with the copy (on by default) */}
+            <button
+              className={`btn btn-sm keep-details ${keepDetails && format !== 'pdf' ? 'btn-on' : ''}`}
+              onClick={(e) => { if (e.detail) e.currentTarget.blur(); setKeepDetails(k => !k); }}
+              disabled={format === 'pdf'}
+              aria-pressed={keepDetails && format !== 'pdf'}
+              title="Keep the photo's details (camera, date, place) in the copy"
+            >
+              keep details
+            </button>
           </FlipRow>
           <Collapse open={fmt.lossy}>
             <div className="field-grid quality-row">
