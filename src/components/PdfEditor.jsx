@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Download, FileUp, ZoomIn, ZoomOut } from 'lucide-react';
+import { ZoomIn, ZoomOut } from 'lucide-react';
 import { closePdf, loadPdfLib, loadPdfjs, openPdf, renderPage, isPasswordError, refusedWords, whyRefused } from '../pdf';
 import { agreedReading, readBlock, readLine, readPage, rereadLine } from '../ocr';
 import { removeText } from '../pdfText';
@@ -1997,11 +1997,11 @@ export default function PdfEditor({ active }) {
       </Collapse>
 
       <FlipRow>
-        <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Open a PDF" aria-label="Open a PDF">
-          <FileUp size={14} />
+        <button className="btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }}>
+          open pdf
         </button>
         <button className={`btn btn-primary ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!doc || !editCount || busy}>
-          <Download size={14} /> save pdf
+          save pdf
         </button>
       </FlipRow>
       {/* Undo / redo (one change at a time), adding text, find and replace,
