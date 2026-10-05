@@ -246,8 +246,8 @@ const ORIENTATION = [
   [6, 'turned right'], [8, 'turned left'], [5, 'turned left, mirrored'], [7, 'turned right, mirrored'],
 ];
 export const FIELDS = [
-  { id: 'make', ifd: 'ifd0', tag: 0x010F, type: ASCII, kind: 'text', group: 'camera', label: 'make', always: true, hint: 'Apple' },
-  { id: 'model', ifd: 'ifd0', tag: 0x0110, type: ASCII, kind: 'text', group: 'camera', label: 'model', always: true, hint: 'iPhone 17 Pro Max' },
+  { id: 'make', ifd: 'ifd0', tag: 0x010F, type: ASCII, kind: 'text', group: 'camera', label: 'make', always: true },
+  { id: 'model', ifd: 'ifd0', tag: 0x0110, type: ASCII, kind: 'text', group: 'camera', label: 'model', always: true },
   { id: 'lensMake', ifd: 'exif', tag: 0xA433, type: ASCII, kind: 'text', group: 'camera', label: 'lens make', always: true },
   { id: 'lensModel', ifd: 'exif', tag: 0xA434, type: ASCII, kind: 'text', group: 'camera', label: 'lens', always: true },
   { id: 'software', ifd: 'ifd0', tag: 0x0131, type: ASCII, kind: 'text', group: 'camera', label: 'software', always: true },
@@ -260,15 +260,15 @@ export const FIELDS = [
   { id: 'taken', ifd: 'exif', tag: 0x9003, type: ASCII, kind: 'date', group: 'date', label: 'taken', always: true },
   { id: 'digitized', ifd: 'exif', tag: 0x9004, type: ASCII, kind: 'date', group: 'date', label: 'digitized', always: true },
   { id: 'modified', ifd: 'ifd0', tag: 0x0132, type: ASCII, kind: 'date', group: 'date', label: 'modified', always: true },
-  { id: 'tzTaken', ifd: 'exif', tag: 0x9011, type: ASCII, kind: 'text', group: 'date', label: 'time zone', always: true, hint: '+01:00' },
+  { id: 'tzTaken', ifd: 'exif', tag: 0x9011, type: ASCII, kind: 'text', group: 'date', label: 'time zone', always: true },
   { id: 'tzDigitized', ifd: 'exif', tag: 0x9012, type: ASCII, kind: 'text', group: 'date', label: 'zone digitized' },
   { id: 'tzModified', ifd: 'exif', tag: 0x9010, type: ASCII, kind: 'text', group: 'date', label: 'zone modified' },
   { id: 'subsec', ifd: 'exif', tag: 0x9290, type: ASCII, kind: 'text', group: 'date', label: 'subseconds' },
   { id: 'subsecTaken', ifd: 'exif', tag: 0x9291, type: ASCII, kind: 'text', group: 'date', label: 'subsec taken' },
   { id: 'subsecDigitized', ifd: 'exif', tag: 0x9292, type: ASCII, kind: 'text', group: 'date', label: 'subsec digitized' },
 
-  { id: 'lat', ifd: 'gps', kind: 'lat', group: 'location', label: 'latitude', always: true, hint: '51.5007' },
-  { id: 'lon', ifd: 'gps', kind: 'lon', group: 'location', label: 'longitude', always: true, hint: '-0.1246' },
+  { id: 'lat', ifd: 'gps', kind: 'lat', group: 'location', label: 'latitude', always: true },
+  { id: 'lon', ifd: 'gps', kind: 'lon', group: 'location', label: 'longitude', always: true },
   { id: 'alt', ifd: 'gps', kind: 'alt', group: 'location', label: 'altitude m', always: true },
 
   { id: 'artist', ifd: 'ifd0', tag: 0x013B, type: ASCII, kind: 'text', group: 'people', label: 'artist', always: true },

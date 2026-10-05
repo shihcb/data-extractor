@@ -111,7 +111,10 @@ Editing in the PDF editor:
 - Scanned / photographed pages (one picture over most of the page, no text
   of its own) are read in the background once open (`readPage` in
   `src/ocr.js`): drawn ~5000px on the long side, made black on white
-  (`src/inkWorker.js`, local threshold, off the page's thread), read whole;
+  (`src/inkWorker.js`, Sauvola's local threshold — the average and spread
+  around each pixel, window ~1% of the page — off the page's thread; the old
+  "darker than the average by 10" turned a noisy page's paper into specks:
+  58% of words read on test scans, now 99.5%), read whole;
   lines split at gaps of ~5 letters (columns), junk dropped (words Tesseract
   isn't sure of unless long letter/number runs), and pieces whose words
   span several close rows re-found from the ink and re-read line by line.
@@ -158,6 +161,16 @@ Buttons are always `--button-gap` (6px, the instagram repo's) apart: button
 rows, the settings row, the bulk bar, card buttons, the zoom controls.
 
 Rules that keep it smooth (each was a real bug):
+- The page coming back into view (another app, the tab switcher) draws with
+  transitions off for two frames, and so does a light / dark change (the
+  inline script in `index.html`): iOS flips the scheme to snapshot the app,
+  and every colour eased back as you returned — a flash. Fonts are served
+  from the service worker's cache first (a reloaded page drew the stand-in
+  font, then swapped).
+- The metadata editor's rows are all one size: its value boxes are drawn by
+  us (`appearance: none`), not iPhone's own date / choice boxes, and a
+  remove button with nothing to remove is inert, not faded. No example
+  placeholders (grey "Apple" read as the photo's own value).
 - A row/box measures positions against itself (`position: relative`), never
   against something that moves with the boxes above it.
 - Nothing is measured while hidden (a closed panel measures 0px).

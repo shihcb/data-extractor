@@ -50,6 +50,20 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
+  // The app's fonts: from the cache first (a page iOS had discarded and
+  // reloaded drew in the stand-in font, then swapped: a flash), refreshed
+  // in the background
+  if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
+    event.respondWith(caches.open(RUNTIME).then(cache => cache.match(req).then((hit) => {
+      const fresh = fetch(req).then((res) => {
+        if (res.ok || res.type === 'opaque') cache.put(req, res.clone());
+        return res;
+      });
+      if (hit) { fresh.catch(() => {}); return hit; }
+      return fresh;
+    })));
+    return;
+  }
   if (url.origin !== self.location.origin) return;
   const saved = () => caches.match(req, { ignoreSearch: true });
 

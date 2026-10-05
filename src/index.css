@@ -1456,7 +1456,7 @@ body.has-bar .feature-toast {
 /* label | value | remove */
 .meta-row {
   display: grid;
-  grid-template-columns: 7.5rem minmax(0, 1fr) auto;
+  grid-template-columns: 7.5rem minmax(0, 1fr) 34px;
   align-items: center;
   gap: var(--button-gap);
 }
@@ -1473,9 +1473,44 @@ body.has-bar .feature-toast {
   color: var(--text-main);
 }
 .meta-input {
+  /* Every value box the same size and look, whatever it holds: iPhone
+     drew its date and choice boxes its own way (taller, wider than the row,
+     over the remove button) */
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  box-sizing: border-box;
   width: 100%;
   min-width: 0;
+  max-width: 100%;
   height: 34px;
+  margin: 0;
+  padding: 0 10px;
+  line-height: 32px;
+  font-size: 0.85rem;
+  text-align: left;
+  color: var(--text-main);
+  background-color: var(--bg-card);
+}
+.meta-input::-webkit-date-and-time-value {
+  text-align: left;
+  margin: 0;
+  min-height: 0;
+  line-height: 32px;
+}
+.meta-input::-webkit-datetime-edit {
+  padding: 0;
+  line-height: 32px;
+}
+.meta-input::-webkit-calendar-picker-indicator {
+  margin: 0;
+  opacity: 0.55;
+}
+select.meta-input {
+  padding-right: 30px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
 }
 .meta-input[readonly] {
   color: var(--text-muted);
@@ -1485,11 +1520,21 @@ body.has-bar .feature-toast {
   text-decoration: line-through;
 }
 .meta-remove {
+  width: 34px;
   height: 34px;
+  padding: 0;
+  flex-shrink: 0;
+}
+/* Every remove button looks the same: with nothing to remove it's just
+   inert, not faded (the rows looked mismatched) */
+.meta-remove:disabled {
+  opacity: 1;
+  box-shadow: var(--shadow-btn);
+  cursor: default;
 }
 @media (max-width: 420px) {
   .meta-row {
-    grid-template-columns: 5.5rem minmax(0, 1fr) auto;
+    grid-template-columns: 5.5rem minmax(0, 1fr) 34px;
   }
   .meta-fields {
     padding: 14px;

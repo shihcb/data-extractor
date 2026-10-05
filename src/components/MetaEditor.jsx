@@ -53,7 +53,6 @@ function FieldInput({ f, value, onChange }) {
       {...common}
       type="text"
       inputMode={NUMERIC.has(f.kind) ? 'decimal' : undefined}
-      placeholder={f.hint || ''}
       list={f.id === 'make' ? 'meta-makes' : f.id === 'model' ? 'meta-models' : undefined}
       spellCheck={false}
       autoComplete="off"

@@ -21,9 +21,25 @@
       (function () {
         var root = document.documentElement;
         var media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+        // Transitions off for a couple of frames (the .preload class): while
+        // the page first draws, and whenever it comes back into view. iOS
+        // flips light/dark while an app goes to the background (to take its
+        // switcher snapshots); with transitions on, every colour then eased
+        // back over 450ms as you returned, and the page seemed to flash.
+        var still = 0;
+        var quiet = function () {
+          root.classList.add('preload');
+          var mine = ++still;
+          requestAnimationFrame(function () {
+            requestAnimationFrame(function () { if (mine === still) root.classList.remove('preload'); });
+          });
+        };
         var apply = function () {
           var dark = !!(media && media.matches);
-          root.setAttribute('data-theme', dark ? 'dark' : 'light');
+          var theme = dark ? 'dark' : 'light';
+          if (root.getAttribute('data-theme') === theme) return;
+          if (root.hasAttribute('data-theme')) quiet();
+          root.setAttribute('data-theme', theme);
           var meta = document.querySelector('meta[name="theme-color"]');
           if (meta) meta.setAttribute('content', dark ? '#09090b' : '#faf9f6');
         };
@@ -32,11 +48,11 @@
           if (media.addEventListener) media.addEventListener('change', apply);
           else if (media.addListener) media.addListener(apply);
         }
-        window.addEventListener('load', function () {
-          requestAnimationFrame(function () {
-            requestAnimationFrame(function () { root.classList.remove('preload'); });
-          });
+        document.addEventListener('visibilitychange', function () {
+          if (document.visibilityState === 'visible') { quiet(); apply(); }
         });
+        window.addEventListener('pageshow', function (e) { if (e.persisted) { quiet(); apply(); } });
+        window.addEventListener('load', quiet);
       })();
     </script>
 
