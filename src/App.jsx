@@ -271,11 +271,11 @@ export default function App() {
             <kbd>Tab</kbd>
           </li>
           <li>
-            <span>pdf editor: undo</span>
+            <span>undo (any tab)</span>
             <kbd>Ctrl + Z</kbd>
           </li>
           <li>
-            <span>pdf editor: redo</span>
+            <span>redo (any tab)</span>
             <kbd>Ctrl + Shift + Z</kbd>
           </li>
           <li>

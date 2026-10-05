@@ -1399,6 +1399,14 @@ body.has-bar .feature-toast {
 .meta-fields-box {
   overflow: hidden;
 }
+/* The details: one fixed size, scrolling inside (like the photos' box), so
+   the page stays still and the buttons under it slide a box's height */
+.meta-fields-inner {
+  height: clamp(220px, 34dvh, 300px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
 /* The icon in a row's remove button swaps (the text swap) */
 
 .meta-fields {

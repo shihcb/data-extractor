@@ -14,6 +14,7 @@ import FadeText from './FadeText';
 import FlipRow from './FlipRow';
 import usePop from './usePop';
 import ActionBar from './ActionBar';
+import useHistory, { useUndoKeys } from '../useHistory';
 
 const MODES = [
   { key: 'make', label: 'make' },
@@ -60,7 +61,9 @@ const asWebLink = (text) => {
 };
 
 function MakeQr({ active }) {
-  const [text, setText] = useState('');
+  // Undo / redo, as in every tab: typing is a step per burst
+  const [text, setText, history] = useHistory('');
+  useUndoKeys(active, history, { inFields: true });
   const [level, setLevel] = useState('M');
   const [error, setError] = useState('');
   const [done, flagDone] = useDoneFlags();
@@ -120,7 +123,7 @@ function MakeQr({ active }) {
       <textarea
         className="tool-textarea short"
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => setText(e.target.value, 'type')}
         placeholder="text or a link"
         spellCheck={false}
         aria-label="Text for the QR code"
@@ -148,7 +151,7 @@ function MakeQr({ active }) {
           <Copy size={14} /> copy
         </button>
       </FlipRow>
-      <ActionBar active={active} open={!!text} onClose={() => setText('')} label="QR code" />
+      <ActionBar active={active} open={!!text} onClose={() => history.reset('')} label="QR code" history={history} />
     </div>
   );
 }

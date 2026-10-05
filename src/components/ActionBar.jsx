@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { Redo2, Undo2 } from 'lucide-react';
 import { canAnimate } from '../motion';
 import { animateTo, drawnValue, stop } from '../engine';
 import { workHeld } from '../utils';
@@ -9,12 +10,13 @@ import { workHeld } from '../utils';
 // at the bottom of the screen, centered (out of the page, so nothing moves
 // when it comes). It pops in like the cards (from 14px down at 95%) while
 // its tab is showing and there's something to act on, and pops out the
-// same way. Whatever the tab, the button that ends it all — clear or
-// close — is always the last one, on the right.
+// same way. Every tab's bar is laid out the same: undo and redo first
+// (`history`, from useHistory), then the tab's own buttons, and the button
+// that ends it all — clear or close — always last, on the right.
 const openBars = new Set();
 const markBody = () => document.body.classList.toggle('has-bar', openBars.size > 0);
 
-export default function ActionBar({ active, open: wanted, children, closeLabel = 'clear', onClose, closeDisabled, label }) {
+export default function ActionBar({ active, open: wanted, children, closeLabel = 'clear', onClose, closeDisabled, label, history }) {
   const ref = useRef(null);
   const id = useRef({});
   const open = !!active && !!wanted;
@@ -88,6 +90,16 @@ export default function ActionBar({ active, open: wanted, children, closeLabel =
         aria-hidden={!open}
         inert={open ? undefined : true}
       >
+        {history && (
+          <>
+            <button className="bulk-btn bulk-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); history.undo(); }} disabled={!history.canUndo} title="Undo (Ctrl + Z)" aria-label="Undo">
+              <Undo2 size={14} />
+            </button>
+            <button className="bulk-btn bulk-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); history.redo(); }} disabled={!history.canRedo} title="Redo (Ctrl + Shift + Z)" aria-label="Redo">
+              <Redo2 size={14} />
+            </button>
+          </>
+        )}
         {children}
         <button className="bulk-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); onClose(); }} disabled={closeDisabled}>
           {closeLabel}

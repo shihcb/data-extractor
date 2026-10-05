@@ -16,6 +16,7 @@ import FadeText from './FadeText';
 import FlipRow from './FlipRow';
 import BulkBar from './BulkBar';
 import SlideSwap from './SlideSwap';
+import useHistory, { useUndoKeys } from '../useHistory';
 
 const MODES = [
   { key: 'convert', label: 'converter' },
@@ -83,7 +84,13 @@ export default function ImageConverter({ active }) {
 }
 
 function ConvertImages({ active }) {
-  const [items, setItems] = useState([]); // { id, file, url, img, w, h, tiff }
+  // The images, with undo / redo as in every tab (adding, deleting and
+  // moving are steps; clear ends it all, history too)
+  const [items, setItems, history] = useHistory([]); // { id, file, url, img, w, h, tiff }
+  useUndoKeys(active, history);
+  // Every image ever added since the last clear: an undone delete brings
+  // one back, so what it holds is only let go on clear
+  const seen = useRef(new Set());
   const [picked, setPicked] = useState(() => new Set()); // ids of the selected cards
   const [format, setFormat] = useState('png');
   const [resizeMode, setResizeMode] = useState('percent');
@@ -109,8 +116,6 @@ function ConvertImages({ active }) {
     holdTimer.current = setTimeout(() => setHold(0), MOTION_MS + 100);
   };
   useEffect(() => () => clearTimeout(holdTimer.current), []);
-  const itemsRef = useRef(items);
-  itemsRef.current = items;
   const toast = useToast();
 
   // The image the size line and copy are about: the first selected one
@@ -153,10 +158,11 @@ function ConvertImages({ active }) {
     if (!ok.length) return;
     clearTimeout(holdTimer.current);
     setHold(0);
+    ok.forEach(it => seen.current.add(it));
     setItems(prev => [...prev, ...ok]);
     // A width to start from: the first image's own
     setWidthPx(w => w || String(ok[0].w));
-  }, [toast]);
+  }, [toast, setItems]);
 
   usePastedFiles(active, isImageFile, addFiles);
 
@@ -167,10 +173,12 @@ function ConvertImages({ active }) {
     if (!rest.length) holdWhileLeaving();
     setItems(rest);
     setPicked(sel => new Set([...sel].filter(id => !ids.has(id))));
-    if (!rest.length) setWidthPx('');
-    // After their cards have left (they still show the picture until then)
-    setTimeout(() => gone.forEach(releaseItem), MOTION_MS + 300);
   };
+
+  // An undo can take the selected images away (and bring others back)
+  useEffect(() => {
+    setPicked(sel => (([...sel].every(id => items.some(i => i.id === id))) ? sel : new Set([...sel].filter(id => items.some(i => i.id === id)))));
+  }, [items]);
 
   const move = (id, by) => setItems(prev => {
     const i = prev.findIndex(p => p.id === id);
@@ -189,15 +197,17 @@ function ConvertImages({ active }) {
   });
 
   const clearAll = () => {
-    const old = items;
+    const old = [...seen.current];
+    seen.current = new Set();
     holdWhileLeaving();
-    setItems([]);
+    history.reset([]);
     setPicked(new Set());
     setWidthPx('');
+    // After their cards have left (they still show the picture until then)
     setTimeout(() => old.forEach(releaseItem), MOTION_MS + 300);
   };
 
-  useEffect(() => () => itemsRef.current.forEach(releaseItem), []);
+  useEffect(() => () => seen.current.forEach(releaseItem), []);
 
   // What the selected image comes out as with these settings (encoded for
   // real, a moment after the last change). A newly picked image waits until
@@ -481,6 +491,7 @@ function ConvertImages({ active }) {
         onSelectAll={(all) => setPicked(all ? new Set(items.map(i => i.id)) : new Set())}
         onDelete={() => removeItems(new Set(picked))}
         onClear={clearAll}
+        history={history}
       />
     </div>
   );

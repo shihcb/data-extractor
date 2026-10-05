@@ -21,7 +21,7 @@ of restarting it. When the user names one of these, this is what they mean:
 | **the word swap** | the word slide's swap form: one word changing to another inside a line ("%" ↔ "px wide") — both share one spot, the old fading out as the new fades in, while the space eases from one word's width to the other's | `SlideSwap` |
 | **the text swap** | text that changes: the old words fade out exactly where they were while the new ones fade in (the source repo's empty-text fade) | `FadeText` |
 | **the box ease** | a box whose content changes size eases to its new height; nested boxes: only the outermost moves | `AutoHeight`, `heightMotion.js` |
-| **the bottom bar** | every tab's "what's open" actions, the instagram repo's bulk bar (count outlined, plain buttons, delete red, a switched-on one outlined), floating at the bottom of the screen (18px up), centered; it pops in like the pages while its tab is showing and there's something to act on. The button that ends it — **clear** or **close** — is always last, on the right. Case converter: clear. Image converter: count · select all ("all" ↔ "none" the word swap, "select" staying) · delete · clear; its metadata editor: reset · clear. PDF tools: count · select all · save (the selection) · delete · clear. PDF editor: undo · redo · add text · find · close. QR make: clear (scan has none). Text diff: swap · clear. Toasts sit above it (`body.has-bar`); the page keeps room under its end for it | `ActionBar`, `BulkBar` |
+| **the bottom bar** | every tab's "what's open" actions, the instagram repo's bulk bar (count outlined, plain buttons, delete red, a switched-on one outlined), floating at the bottom of the screen (18px up), centered; it pops in like the pages while its tab is showing and there's something to act on. Every bar is laid out the same: **undo · redo** first (icons; `history` from `useHistory`), then the tab's own items, and the button that ends it — **clear** or **close** — always last, on the right (it also ends the history). Case converter: undo · redo · clear. Image converter: undo · redo · count · select all ("all" ↔ "none" the word swap, "select" staying) · delete · clear; its metadata editor: undo · redo · reset · clear. PDF tools: undo · redo · count · select all · save (the selection) · delete · clear. PDF editor: undo · redo · add text · find · close. QR make: undo · redo · clear (scan has none). Text diff: undo · redo · swap · clear. Toasts sit above it (`body.has-bar`); the page keeps room under its end for it | `ActionBar`, `BulkBar` |
 | **the panel open** | a panel opens from nothing / closes to nothing: height eases, content fades in from 10px up at 96% (the quality slider, image options) | `Collapse` |
 | **the row slide** | a list row slides in from under the row above / out under it, the rows around it shifting (the source repo's list 3 rows / username boxes); grid items (the PDF pages, the image cards) pop instead | `MotionList` |
 | **the button glide** | a row of buttons/controls never snaps: a button whose label changes eases its width, the others slide along | `FlipRow` |
@@ -50,9 +50,10 @@ photos; picture, label row, ‹ › ×), popping in and out and clearing the sam
 way. One photo is selected at a time (tap its card): the details below are
 its own, kept per photo while you switch (the new one's fade in). Save
 writes every photo with its own changes (one as itself, several in a zip);
-one that can't be saved is selected and named. Its add / save buttons sit under the stats
-line, above the details (under them, the details opening — a page of rows —
-threw the buttons ~1000px in 450ms, far faster than anything else moves). Its thumbnails wait for `whenStill()`. A row's
+one that can't be saved is selected and named. Its add / save buttons sit under the details,
+as in the converter; the details are one fixed-size box that scrolls inside
+(`.meta-fields-inner`), so opening it slides the buttons a box's height (a
+page of rows threw them ~1000px in 450ms). Its thumbnails wait for `whenStill()`. A row's
 remove button shows only while its box has something in it: it slides open as
 you type and shut when the box empties (the word slide, `SlideText`, with its
 own 6px gap so an empty box reaches the row's end); reset puts values back.
@@ -152,6 +153,15 @@ Editing in the PDF editor:
   space placed on its own carries the line on (wide word spacing).
 - Right-to-left lines (Hebrew) are written in drawn order (`visualOrder`),
   keeping their right end; Arabic needs shaping and isn't handled.
+
+Undo / redo, the same in every tab (`src/useHistory.js`): the tab's state
+kept as whole snapshots; typing in one box is one step per burst (same
+group within 1s); Ctrl + Z / Ctrl + Shift + Z (or Ctrl + Y) while the tab is
+open (`useUndoKeys`; text tabs take them in their boxes too, the browser's
+own undo broke on text set by a conversion). What an undo can bring back
+(an image, a page's file and picture) is let go only on clear. PDF tools
+keeps page pictures apart from the pages (id → url), so a snapshot taken
+before a picture was drawn still shows it.
 
 Every stats line in the app is label first ("characters 3 · words 1", "added 2 ·
 removed 1") so only the numbers change, counting.

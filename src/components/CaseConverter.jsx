@@ -1,4 +1,4 @@
-import React, { useDeferredValue, useMemo, useRef, useState } from 'react';
+import React, { useDeferredValue, useMemo, useRef } from 'react';
 import { ClipboardPaste } from 'lucide-react';
 import { CASES, textStats } from '../textCase';
 import { copyText, useDoneFlags } from '../utils';
@@ -8,18 +8,20 @@ import Count from './Count';
 import AutoHeight from './AutoHeight';
 import FlipRow from './FlipRow';
 import ActionBar from './ActionBar';
+import useHistory, { useUndoKeys } from '../useHistory';
 
 export default function CaseConverter({ active }) {
-  const [text, setText] = useState('');
+  // Every change can be undone (the bottom bar, Ctrl + Z): typing is a step
+  // per burst; a paste or a conversion is a step of its own
+  const [text, setTextStep, history] = useHistory('');
+  const setText = (v, group) => setTextStep(v, group);
+  useUndoKeys(active, history, { inFields: true });
   const [done, flagDone] = useDoneFlags();
   const textareaRef = useRef(null);
   const toast = useToast();
   // (counted a beat behind on huge text: every key waited on the count)
   const counted = useDeferredValue(text);
   const stats = useMemo(() => textStats(counted), [counted]);
-  // A conversion replaces the box's text, and the browser's own undo with
-  // it: Ctrl + Z right after puts the text back as it was
-  const lastConvert = useRef(null);
 
   const handlePaste = async (e) => {
     if (e.detail) e.currentTarget.blur();
@@ -41,7 +43,6 @@ export default function CaseConverter({ active }) {
   const handleConvert = async (e, c) => {
     if (e.detail) e.currentTarget.blur();
     const converted = c.fn(text);
-    if (converted !== text) lastConvert.current = { from: text, to: converted };
     setText(converted);
     flashOutline(textareaRef.current);
     if (await copyText(converted)) {
@@ -57,15 +58,7 @@ export default function CaseConverter({ active }) {
         ref={textareaRef}
         className="tool-textarea"
         value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          const last = lastConvert.current;
-          if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z' && last && last.to === text) {
-            e.preventDefault();
-            lastConvert.current = null;
-            setText(last.from);
-          }
-        }}
+        onChange={(e) => setText(e.target.value, 'type')}
         placeholder="type or paste text"
         spellCheck={false}
         autoComplete="off"
@@ -100,7 +93,7 @@ export default function CaseConverter({ active }) {
           </button>
         ))}
       </FlipRow>
-      <ActionBar active={active} open={!!text} onClose={() => setText('')} label="Text" />
+      <ActionBar active={active} open={!!text} onClose={() => history.reset('')} label="Text" history={history} />
     </div>
   );
 }

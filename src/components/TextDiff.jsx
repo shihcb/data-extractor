@@ -9,6 +9,7 @@ import Collapse from './Collapse';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
 import ActionBar from './ActionBar';
+import useHistory, { useUndoKeys } from '../useHistory';
 
 const MODES = [
   { key: 'lines', label: 'lines' },
@@ -97,8 +98,13 @@ function useSettled(value, wait) {
 }
 
 export default function TextDiff({ active }) {
-  const [left, setLeft] = useState('');
-  const [right, setRight] = useState('');
+  // Both texts, with undo / redo as in every tab (typing in one box is a
+  // step per burst; a swap is a step of its own)
+  const [texts, setTexts, history] = useHistory({ left: '', right: '' });
+  useUndoKeys(active, history, { inFields: true });
+  const { left, right } = texts;
+  const setLeft = (v) => setTexts(t => ({ ...t, left: v }), 'left');
+  const setRight = (v) => setTexts(t => ({ ...t, right: v }), 'right');
   const [mode, setMode] = useState('lines');
   // Huge texts are compared once typing pauses (each key ran a whole
   // comparison, up to a second on 50,000 lines); small ones at once
@@ -157,8 +163,8 @@ export default function TextDiff({ active }) {
         <TabSwitcher className="tab-switcher-sm" tabs={MODES} active={mode} onChange={setMode} />
       </FlipRow>
       {/* Swapping and clearing: in the bottom bar, like every tab */}
-      <ActionBar active={active} open={!empty} onClose={() => { setLeft(''); setRight(''); }} label="Texts">
-        <button className="bulk-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); setLeft(right); setRight(left); }} title="Swap the two texts">
+      <ActionBar active={active} open={!empty} onClose={() => history.reset({ left: '', right: '' })} label="Texts" history={history}>
+        <button className="bulk-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); setTexts(t => ({ left: t.right, right: t.left })); }} title="Swap the two texts">
           <ArrowLeftRight size={13} /> swap
         </button>
       </ActionBar>

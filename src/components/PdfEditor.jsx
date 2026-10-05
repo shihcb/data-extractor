@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Download, FileUp, Redo2, Undo2, ZoomIn, ZoomOut } from 'lucide-react';
+import { Download, FileUp, ZoomIn, ZoomOut } from 'lucide-react';
 import { closePdf, loadPdfLib, loadPdfjs, openPdf, renderPage, isPasswordError, refusedWords, whyRefused } from '../pdf';
 import { agreedReading, readBlock, readLine, readPage, rereadLine } from '../ocr';
 import { removeText } from '../pdfText';
@@ -2007,13 +2007,7 @@ export default function PdfEditor({ active }) {
       </FlipRow>
       {/* Undo / redo (one change at a time), adding text, find and replace,
           and close: the bottom bar, like every tab */}
-      <ActionBar active={active} open={!!doc} closeLabel="close" onClose={close} label="Editing">
-        <button className="bulk-btn bulk-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); undo(); }} disabled={!history.past.length} title="Undo (Ctrl + Z)" aria-label="Undo">
-          <Undo2 size={14} />
-        </button>
-        <button className="bulk-btn bulk-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); redo(); }} disabled={!history.future.length} title="Redo (Ctrl + Shift + Z)" aria-label="Redo">
-          <Redo2 size={14} />
-        </button>
+      <ActionBar active={active} open={!!doc} closeLabel="close" onClose={close} label="Editing" history={{ undo, redo, canUndo: history.past.length > 0, canRedo: history.future.length > 0 }}>
         <button
           className={`bulk-btn ${adding ? 'on' : ''}`}
           onClick={(e) => { if (e.detail) e.currentTarget.blur(); setAdding(a => !a); }}

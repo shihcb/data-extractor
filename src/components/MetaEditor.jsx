@@ -15,6 +15,7 @@ import FlipRow from './FlipRow';
 import ActionBar from './ActionBar';
 import MotionList from './MotionList';
 import SlideText from './SlideText';
+import useHistory, { useUndoKeys } from '../useHistory';
 
 const MAKES = ['Apple', 'samsung', 'Google', 'Sony', 'Canon', 'NIKON CORPORATION', 'FUJIFILM', 'OLYMPUS', 'Panasonic', 'Xiaomi', 'OnePlus', 'HUAWEI'];
 const MODELS = [
@@ -86,7 +87,12 @@ function edited(it) {
 // sit in the converter's box as the same cards; the one selected (one at
 // a time) is the one whose details show below.
 export default function MetaEditor({ active }) {
-  const [items, setItems] = useState([]); // { id, file, bytes, meta, fields, values, thumb, w, h }
+  // The photos and every change to their details, with undo / redo as in
+  // every tab (typing in one box is a step per burst; clear ends it all)
+  const [items, setItems, history] = useHistory([]); // { id, file, bytes, meta, fields, values, thumb, w, h }
+  useUndoKeys(active, history, { inFields: true });
+  // Every photo since the last clear (an undone delete brings one back)
+  const seen = useRef(new Set());
   const [pickedId, setPickedId] = useState(null);
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -120,7 +126,7 @@ export default function MetaEditor({ active }) {
   const shown = picked || (shownId !== null ? lastShown.current : null);
 
   const release = (list) => setTimeout(() => list.forEach(it => URL.revokeObjectURL(it.thumb)), MOTION_MS + 300);
-  useEffect(() => () => itemsRef.current.forEach(it => URL.revokeObjectURL(it.thumb)), []);
+  useEffect(() => () => seen.current.forEach(it => URL.revokeObjectURL(it.thumb)), []);
 
   // Another photo's details fade in where the last one's were
   const select = (id) => {
@@ -172,13 +178,27 @@ export default function MetaEditor({ active }) {
     if (!ok.length) return;
     clearTimeout(holdTimer.current);
     setHold(0);
+    ok.forEach(it => seen.current.add(it));
     setItems(prev => [...prev, ...ok]);
     // Nothing selected yet: the first new photo is
     setPickedId(id => id ?? ok[0].id);
     setShownId(id => id ?? ok[0].id);
-  }, [toast]);
+  }, [toast, setItems]);
 
   usePastedFiles(active, isImageFile, addFiles);
+
+  // An undo took the selected photo away (or brought photos back with none
+  // selected): the first one is
+  useEffect(() => {
+    if (items.length && !items.some(i => i.id === pickedId)) {
+      setPickedId(items[0].id);
+      setShownId(items[0].id);
+    } else if (!items.length && pickedId !== null) {
+      holdWhileLeaving();
+      setPickedId(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items]);
 
   const removeItems = (ids) => {
     const gone = items.filter(i => ids.has(i.id));
@@ -194,14 +214,14 @@ export default function MetaEditor({ active }) {
     } else if (!rest.length) {
       setPickedId(null);
     }
-    release(gone);
   };
 
   const clearAll = () => {
     if (!items.length) return;
     holdWhileLeaving();
-    release(items);
-    setItems([]);
+    release([...seen.current]);
+    seen.current = new Set();
+    history.reset([]);
     setPickedId(null);
   };
 
@@ -214,7 +234,7 @@ export default function MetaEditor({ active }) {
     return next;
   });
 
-  const setValue = (fieldId, v) => setItems(prev => prev.map(it => (it.id === pickedId ? { ...it, values: { ...it.values, [fieldId]: v } } : it)));
+  const setValue = (fieldId, v) => setItems(prev => prev.map(it => (it.id === pickedId ? { ...it, values: { ...it.values, [fieldId]: v } } : it)), `${pickedId}:${fieldId}`);
   const reset = () => setItems(prev => prev.map(it => (it.id === pickedId ? { ...it, values: startValues(it.fields) } : it)));
 
   const stats = useMemo(() => {
@@ -341,19 +361,6 @@ export default function MetaEditor({ active }) {
         images <Count value={items.length} /> · details <Count value={stats.filled} /> · changed <Count value={stats.changed} /> · removed <Count value={stats.removed} />
       </div>
 
-      {/* Above the details, not under them: under them, the details opening
-          (a whole page of rows) threw the buttons ~1000px down in the one
-          450ms motion, far faster than anything else moves. Here they stay
-          put and the details ease open below */}
-      <FlipRow>
-        <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Add photos" aria-label="Add photos">
-          <ImageUp size={14} />
-        </button>
-        <button className={`btn btn-primary ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!items.length || busy}>
-          <Download size={14} />
-          save
-        </button>
-      </FlipRow>
 
       <Collapse open={!!picked} className="options-collapse">
         <AutoHeight className="tool-box meta-fields-box" innerClassName="meta-fields-inner">
@@ -390,11 +397,23 @@ export default function MetaEditor({ active }) {
           </div>
         </AutoHeight>
       </Collapse>
+      {/* Under the details, as in the converter: the details are a box of
+          one fixed size that scrolls inside, so opening it slides these down
+          a box's height on the shared curve, not a whole page of rows */}
+      <FlipRow>
+        <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Add photos" aria-label="Add photos">
+          <ImageUp size={14} />
+        </button>
+        <button className={`btn btn-primary ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!items.length || busy}>
+          <Download size={14} />
+          save
+        </button>
+      </FlipRow>
       <datalist id="meta-makes">{MAKES.map(m => <option key={m} value={m} />)}</datalist>
       <datalist id="meta-models">{MODELS.map(m => <option key={m} value={m} />)}</datalist>
 
 
-      <ActionBar active={active} open={items.length > 0} onClose={clearAll} closeDisabled={!items.length} label="Details">
+      <ActionBar active={active} open={items.length > 0} onClose={clearAll} closeDisabled={!items.length} label="Details" history={history}>
         <button className="bulk-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); reset(); }} disabled={!stats.changed && !stats.removed}>
           reset
         </button>

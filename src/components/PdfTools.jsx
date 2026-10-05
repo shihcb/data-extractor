@@ -11,6 +11,7 @@ import FadeText from './FadeText';
 import FlipRow from './FlipRow';
 import SlideText from './SlideText';
 import BulkBar from './BulkBar';
+import useHistory, { useUndoKeys } from '../useHistory';
 import { whenStill } from '../engine';
 
 const THUMB_CSS_WIDTH = 160;
@@ -20,8 +21,15 @@ let nextPageId = 1;
 let nextSourceId = 1;
 
 export default function PdfTools({ active }) {
-  // A page: { id, srcId, index, rotation (degrees, any multiple of 90), thumb (url), num }
-  const [pages, setPages] = useState([]);
+  // A page: { id, srcId, index, rotation (degrees, any multiple of 90) },
+  // with undo / redo as in every tab (adding, deleting, turning and moving
+  // are steps; clear ends it all, history too). Its picture is kept apart
+  // (page id -> url), so an undone delete comes back with its picture.
+  const [pages, setPages, history] = useHistory([]);
+  useUndoKeys(active, history);
+  const [thumbs, setThumbs] = useState(() => new Map());
+  const thumbsRef = useRef(thumbs);
+  thumbsRef.current = thumbs;
   const [selected, setSelected] = useState(() => new Set());
   const [loading, setLoading] = useState('');
   const loadingCount = useRef(0);
@@ -31,7 +39,7 @@ export default function PdfTools({ active }) {
   const sources = useRef(new Map()); // srcId -> { name, bytes, view (pdf.js), lib (pdf-lib) }
   const inputRef = useRef(null);
   const labels = useRef(new Map()); // page id -> { num, name } as last shown (a leaving card keeps its own)
-  const removed = useRef(new Set()); // ids of pages deleted (a picture still being drawn is thrown away)
+  const removed = useRef(new Set()); // ids of pages cleared (a picture still being drawn is thrown away)
   // The last pages leaving: the box holds its height while they fade out
   // where they are (the way they came in, reversed), then eases shut
   const dropBox = useRef(null);
@@ -49,8 +57,6 @@ export default function PdfTools({ active }) {
     setHold(0);
   };
   useEffect(() => () => clearTimeout(holdTimer.current), []);
-  const pagesRef = useRef(pages);
-  pagesRef.current = pages;
   const toast = useToast();
 
   const addFiles = useCallback(async (fileList) => {
@@ -88,10 +94,10 @@ export default function PdfTools({ active }) {
         // to its final height (one by one, it shrank to a row, then grew);
         // the pictures fill in as they're drawn
         const ids = Array.from({ length: count }, () => nextPageId++);
-        setPages(prev => [...prev, ...ids.map((id, i) => ({ id, srcId, index: i, rotation: 0, thumb: null }))]);
+        setPages(prev => [...prev, ...ids.map((id, i) => ({ id, srcId, index: i, rotation: 0 }))]);
         added = count;
         for (let i = 0; i < count; i++) {
-          if (removed.current.has(ids[i])) continue; // deleted before its picture was drawn
+          if (removed.current.has(ids[i])) continue; // cleared before its picture was drawn
           // Drawn while nothing moves: drawn as the cards popped in, a page's
           // picture held up frames and the cards jumped
           await whenStill();
@@ -105,7 +111,7 @@ export default function PdfTools({ active }) {
             URL.revokeObjectURL(thumb);
             continue;
           }
-          setPages(prev => prev.map(p => (p.id === ids[i] ? { ...p, thumb } : p)));
+          setThumbs(m => new Map(m).set(ids[i], thumb));
         }
       } catch (err) {
         // Pages already added keep their document; otherwise let it go
@@ -125,9 +131,19 @@ export default function PdfTools({ active }) {
     if (failed.length) toast(failed.length === 1 ? failed[0] : `couldn't open ${failed.length} of the files`, { warn: true });
     loadingCount.current -= 1;
     if (!loadingCount.current) setLoading('');
-  }, [toast]);
+  }, [toast, setPages]);
 
   usePastedFiles(active, isPdfFile, addFiles);
+
+  // An undo can take selected pages away
+  useEffect(() => {
+    setSelected(sel => ([...sel].every(id => pages.some(p => p.id === id)) ? sel : new Set([...sel].filter(id => pages.some(p => p.id === id)))));
+    // Undone back to nothing: the box goes back to empty the same way
+    if (!pages.length && pagesBefore.current) holdWhileLeaving();
+    pagesBefore.current = pages.length;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pages]);
+  const pagesBefore = useRef(0);
 
   // Sources no page uses any more are let go
   const dropUnusedSources = (remaining) => {
@@ -140,28 +156,29 @@ export default function PdfTools({ active }) {
     });
   };
 
-  const releaseThumbs = (list) => setTimeout(() => list.forEach(p => {
-    if (p.thumb) URL.revokeObjectURL(p.thumb);
-    labels.current.delete(p.id);
-  }), MOTION_MS + 300);
-
+  // Deleted pages keep their file and picture until clear: an undo can
+  // bring them back
   const removePages = (ids) => {
-    const gone = pages.filter(p => ids.has(p.id));
     const rest = pages.filter(p => !ids.has(p.id));
-    ids.forEach(id => removed.current.add(id));
     if (!rest.length) holdWhileLeaving();
+    pagesBefore.current = rest.length;
     setPages(rest);
     setSelected(sel => new Set([...sel].filter(id => !ids.has(id))));
-    releaseThumbs(gone);
-    if (!loading && !busy) dropUnusedSources(rest);
   };
 
   const clearAll = () => {
-    releaseThumbs(pages);
-    pages.forEach(p => removed.current.add(p.id));
+    history.reachable().flat().forEach(p => removed.current.add(p.id));
     holdWhileLeaving();
-    setPages([]);
+    pagesBefore.current = 0;
+    history.reset([]);
     setSelected(new Set());
+    // (the leaving cards show their pictures until they're gone)
+    const old = thumbsRef.current;
+    setTimeout(() => {
+      old.forEach(url => URL.revokeObjectURL(url));
+      setThumbs(m => new Map([...m].filter(([id]) => !old.has(id))));
+      labels.current.clear();
+    }, MOTION_MS + 300);
     if (!loading && !busy) dropUnusedSources([]);
   };
 
@@ -169,12 +186,12 @@ export default function PdfTools({ active }) {
   // export was reading them: their documents are let go once that's done
   // (closing one mid-way broke the file being drawn or made)
   useEffect(() => {
-    if (!loading && !busy) dropUnusedSources(pagesRef.current);
+    if (!loading && !busy) dropUnusedSources(history.reachable().flat());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, busy]);
 
   useEffect(() => () => {
-    pagesRef.current.forEach(p => p.thumb && URL.revokeObjectURL(p.thumb));
+    thumbsRef.current.forEach(url => URL.revokeObjectURL(url));
     sources.current.forEach(src => closePdf(src.view));
   }, []);
 
@@ -355,7 +372,7 @@ export default function PdfTools({ active }) {
                   aria-pressed={isSel}
                   title={isSel ? 'Unselect page' : 'Select page'}
                 >
-                  {p.thumb && <img src={p.thumb} alt={`Page ${label.num}`} style={{ transform: `rotate(${p.rotation}deg)` }} draggable={false} onLoad={fadeInOnLoad} />}
+                  {thumbs.get(p.id) && <img src={thumbs.get(p.id)} alt={`Page ${label.num}`} style={{ transform: `rotate(${p.rotation}deg)` }} draggable={false} onLoad={fadeInOnLoad} />}
                 </button>
                 <div className="page-label">
                   <span>{label.num}</span>
@@ -417,6 +434,7 @@ export default function PdfTools({ active }) {
         onSelectAll={(all) => setSelected(all ? new Set(pages.map(p => p.id)) : new Set())}
         onDelete={() => removePages(new Set(selected))}
         onClear={clearAll}
+        history={history}
       >
         {/* The selected pages, as a PDF of their own */}
         <button className="bulk-btn" onClick={saveSelected} disabled={!pages.length || !selected.size || !!busy}>
