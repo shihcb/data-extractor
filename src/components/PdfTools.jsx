@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Download, FilePlus, RotateCcw, RotateCw, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCcw, RotateCw, X } from 'lucide-react';
 import { zipSync } from 'fflate';
 import { closePdf, loadPdfLib, openPdf, renderPage, isPasswordError, refusedWords, whyRefused } from '../pdf';
 import { baseName, canvasToBlob, downloadBlob, isImageFile, isPdfFile, keepFocusAfterRemove, shortName, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
@@ -414,11 +414,10 @@ export default function PdfTools({ active }) {
       </div>
 
       <FlipRow>
-        <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Add PDFs" aria-label="Add PDFs">
-          <FilePlus size={14} />
+        <button className="btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }}>
+          add pdfs
         </button>
         <button className={`btn btn-primary ${done.save ? 'btn-done' : ''}`} onClick={saveAll} disabled={none || !!busy}>
-          <Download size={14} />{' '}
           {/* "merged" comes and goes with the word slide (a cross-fade of the
               whole label inside a button easing its width was choppy) */}
           <span className="btn-label">save<SlideText show={fileCount > 1}>{'\u00a0merged'}</SlideText> pdf</span>
@@ -427,7 +426,7 @@ export default function PdfTools({ active }) {
           split
         </button>
         <button className={`btn ${done.images ? 'btn-done' : ''}`} onClick={toImages} disabled={none || !!busy}>
-          to PNG
+          save as PNG
         </button>
       </FlipRow>
       {/* Selecting, deleting, clearing: the bulk bar (shared with the image converter) */}
