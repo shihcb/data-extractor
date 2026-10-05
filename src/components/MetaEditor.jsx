@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Download, ImageUp, Undo2, X } from 'lucide-react';
 import { GROUPS, applyFields, readFields, readMeta, sizeText, writeMeta, writeTiff } from '../exif';
 import { loadImage, makeThumb } from '../imageConvert';
@@ -81,6 +81,15 @@ export default function MetaEditor({ active }) {
   const [hold, setHold] = useState(0);
   const holdTimer = useRef(null);
   useEffect(() => () => clearTimeout(holdTimer.current), []);
+  // The card is centred, so the list around it mustn't ease its height: as
+  // it grew from nothing the centre moved, and the card slid up 130px while
+  // it popped in. It takes its size at once (as the PDF editor's boxes do
+  // while zooming); the card pops in where it stays, as in the converter.
+  useLayoutEffect(() => {
+    const slot = slotRef.current;
+    slot._heightMotion = { running: () => true, animatesChanges: () => false };
+    return () => { slot._heightMotion = null; };
+  }, []);
 
   const release = (it) => { if (it) setTimeout(() => URL.revokeObjectURL(it.thumb), MOTION_MS + 300); };
 

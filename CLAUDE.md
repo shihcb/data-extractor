@@ -49,7 +49,9 @@ The metadata editor uses the converter's box too: its photo is one card
 centred both ways, popping in and out like the converter's (a new photo:
 the old card pops out as the new pops in, the fields fading in; cleared:
 the card's spot and list hold their height while it pops out, or the list
-easing shut clipped it). Its thumbnail waits for `whenStill()`; a row's
+easing shut clipped it). Its list never eases its height (`_heightMotion` on `.meta-slot`): the card
+is centred, so a list growing from nothing moved the centre and the card slid
+up 130px as it popped in. Its thumbnail waits for `whenStill()`; a row's
 remove ↔ put back icon is the text swap.
 
 PDF tools and the image converter are the same layout (and the PDF editor
