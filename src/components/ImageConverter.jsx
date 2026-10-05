@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Copy, Download, ImageUp, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, X } from 'lucide-react';
 import { zipSync } from 'fflate';
 import { IMAGE_FORMATS, encodeImage, estimateImage, jpegsToPdf, loadImage, makeThumb, targetSize } from '../imageConvert';
 import { baseName, copyImageBlob, downloadBlob, isImageFile, isPdfFile, keepFocusAfterRemove, shortName, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
@@ -247,10 +247,10 @@ function ConvertImages({ active }) {
     return () => { cancelled = true; clearTimeout(t); };
   }, [selected, settings]);
 
-  const handleDownload = async (e) => {
+  // Every image (the button under the box), or just the selected ones (the bar's)
+  const save = async (e, list) => {
     if (e.detail) e.currentTarget.blur();
-    if (!items.length || busy) return;
-    const list = items;
+    if (!list.length || busy) return;
     try {
       let blob;
       let name;
@@ -289,7 +289,7 @@ function ConvertImages({ active }) {
         name = 'images.zip';
       }
       downloadBlob(blob, name);
-      flagDone('download');
+      if (list === items) flagDone('save');
       if (fellBack) toast(`this browser can't make ${fmt.label}, so it saved PNG`, { warn: true });
       // (it said nothing: an 8000 × 6000 photo came out smaller at 100%)
       else if (clamped) toast('made smaller: that size is more than this browser can draw', { warn: true });
@@ -456,30 +456,27 @@ function ConvertImages({ active }) {
 
       <FlipRow>
         <button
-          className="btn btn-icon"
+          className="btn"
           onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }}
-          title="Add images"
-          aria-label="Add images"
         >
-          <ImageUp size={14} />
+          add images
         </button>
         <button
-          className={`btn btn-primary ${done.download ? 'btn-done' : ''}`}
-          onClick={handleDownload}
+          className={`btn btn-primary ${done.save ? 'btn-done' : ''}`}
+          onClick={(e) => save(e, items)}
           disabled={!items.length || !!busy}
         >
-          {/* Always just "download": no working text while it converts */}
-          <Download size={14} />
-          download
+          {/* Always just "save": no working text while it converts */}
+          save
         </button>
         <button
-          className={`btn ${done.copy ? 'btn-done' : ''}`}
+          className={`btn btn-icon ${done.copy ? 'btn-done' : ''}`}
           onClick={handleCopy}
           disabled={!selected}
           title="Copy the selected image (or the first one) as PNG"
+          aria-label="Copy the selected image as PNG"
         >
           <Copy size={14} />
-          copy
         </button>
       </FlipRow>
       {/* Selecting, deleting, clearing: the bulk bar (as in PDF tools) */}
@@ -491,7 +488,12 @@ function ConvertImages({ active }) {
         onSelectAll={(all) => setPicked(all ? new Set(items.map(i => i.id)) : new Set())}
         onDelete={() => removeItems(new Set(picked))}
         history={history}
-      />
+      >
+        {/* The selected images only (as PDF tools' save) */}
+        <button className="bulk-btn" onClick={(e) => save(e, items.filter(i => picked.has(i.id)))} disabled={!picked.size || !!busy}>
+          save
+        </button>
+      </BulkBar>
     </div>
   );
 }
