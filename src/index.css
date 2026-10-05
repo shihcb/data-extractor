@@ -1400,9 +1400,7 @@ body.has-bar .feature-toast {
   overflow: hidden;
 }
 /* The icon in a row's remove button swaps (the text swap) */
-.meta-icon {
-  display: inline-flex;
-}
+
 .meta-fields {
   display: flex;
   flex-direction: column;
@@ -1425,7 +1423,7 @@ body.has-bar .feature-toast {
 /* label | value | remove */
 .meta-row {
   display: grid;
-  grid-template-columns: 7.5rem minmax(0, 1fr) 34px;
+  grid-template-columns: 7.5rem minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--button-gap);
 }
@@ -1494,16 +1492,25 @@ select.meta-input {
   padding: 0;
   flex-shrink: 0;
 }
-/* Every remove button looks the same: with nothing to remove it's just
-   inert, not faded (the rows looked mismatched) */
-.meta-remove:disabled {
-  opacity: 1;
-  box-shadow: var(--shadow-btn);
-  cursor: default;
+/* The remove button's slide: it brings its own gap, so with it shut the
+   box reaches the row's end (the grid's gap is taken back by the margin) */
+.meta-row > .slide-text {
+  display: flex;
+  margin-left: calc(-1 * var(--button-gap));
+  /* (clipped only while it slides: settled, its focus ring shows whole) */
+  overflow: visible;
+}
+.meta-row > .slide-text[aria-hidden="true"] {
+  overflow: hidden;
+  pointer-events: none;
+}
+.meta-row > .slide-text > .slide-text-inner {
+  display: flex;
+  padding-left: var(--button-gap);
 }
 @media (max-width: 420px) {
   .meta-row {
-    grid-template-columns: 5.5rem minmax(0, 1fr) 34px;
+    grid-template-columns: 5.5rem minmax(0, 1fr) auto;
   }
   .meta-fields {
     padding: 14px;

@@ -50,8 +50,10 @@ photos; picture, label row, ‹ › ×), popping in and out and clearing the sam
 way. One photo is selected at a time (tap its card): the details below are
 its own, kept per photo while you switch (the new one's fade in). Save
 writes every photo with its own changes (one as itself, several in a zip);
-one that can't be saved is selected and named. Its thumbnail waits for `whenStill()`; a row's
-remove ↔ put back icon is the text swap.
+one that can't be saved is selected and named. Its thumbnails wait for `whenStill()`. A row's
+remove button shows only while its box has something in it: it slides open as
+you type and shut when the box empties (the word slide, `SlideText`, with its
+own 6px gap so an empty box reaches the row's end); reset puts values back.
 
 PDF tools and the image converter are the same layout (and the PDF editor
 shares their box, its pages popping in and out the same way): one box size (the
@@ -167,8 +169,8 @@ Rules that keep it smooth (each was a real bug):
   from the service worker's cache first (a reloaded page drew the stand-in
   font, then swapped).
 - The metadata editor's rows are all one size: its value boxes are drawn by
-  us (`appearance: none`), not iPhone's own date / choice boxes, and a
-  remove button with nothing to remove is inert, not faded. No example
+  us (`appearance: none`), not iPhone's own date / choice boxes, and an
+  empty box has no remove button at all (it slides in as you type). No example
   placeholders (grey "Apple" read as the photo's own value).
 - A row/box measures positions against itself (`position: relative`), never
   against something that moves with the boxes above it.

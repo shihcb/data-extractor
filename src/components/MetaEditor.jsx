@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Download, ImageUp, Undo2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, ImageUp, X } from 'lucide-react';
 import { zipSync } from 'fflate';
 import { GROUPS, applyFields, readFields, readMeta, sizeText, writeMeta, writeTiff } from '../exif';
 import { loadImage, makeThumb } from '../imageConvert';
@@ -14,6 +14,7 @@ import FadeText from './FadeText';
 import FlipRow from './FlipRow';
 import ActionBar from './ActionBar';
 import MotionList from './MotionList';
+import SlideText from './SlideText';
 
 const MAKES = ['Apple', 'samsung', 'Google', 'Sony', 'Canon', 'NIKON CORPORATION', 'FUJIFILM', 'OLYMPUS', 'Panasonic', 'Xiaomi', 'OnePlus', 'HUAWEI'];
 const MODELS = [
@@ -353,16 +354,20 @@ export default function MetaEditor({ active }) {
                     <div key={f.id} className={`meta-row ${changed ? 'changed' : ''}`}>
                       <label className="meta-label" htmlFor={`meta-${f.id}`}>{f.label}</label>
                       <FieldInput f={f} value={now} onChange={v => setValue(f.id, v)} />
-                      <button
-                        className="btn btn-sm btn-icon meta-remove"
-                        onClick={(e) => { if (e.detail) e.currentTarget.blur(); setValue(f.id, changed && !now ? f.value : ''); }}
-                        disabled={!now && !changed}
-                        title={!now && changed ? `Put back ${f.label}` : `Remove ${f.label}`}
-                        aria-label={!now && changed ? `Put back ${f.label}` : `Remove ${f.label}`}
-                      >
-                        {/* The icons swap (the text swap) */}
-                        <FadeText k={!now && changed ? 'undo' : 'x'} className="meta-icon">{!now && changed ? <Undo2 size={12} /> : <X size={12} />}</FadeText>
-                      </button>
+                      {/* Only a box with something in it has a remove button: it
+                          slides open as you type (the word slide, as "px
+                          wide" does) and shut when the box empties */}
+                      <SlideText show={!!now}>
+                        <button
+                          className="btn btn-sm btn-icon meta-remove"
+                          onClick={(e) => { if (e.detail) e.currentTarget.blur(); setValue(f.id, ''); }}
+                          tabIndex={now ? undefined : -1}
+                          title={`Remove ${f.label}`}
+                          aria-label={`Remove ${f.label}`}
+                        >
+                          <X size={12} />
+                        </button>
+                      </SlideText>
                     </div>
                   );
                 })}
