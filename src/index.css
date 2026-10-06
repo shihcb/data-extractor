@@ -1837,11 +1837,16 @@ html.page-fits body {
   align-items: center;
   gap: var(--button-gap);
   width: 100%;
+  /* One height in every tab: room for the stats on two lines (on a phone
+     some tabs' stats wrap and some don't, and the rows came out 26 and
+     37px tall, everything under them shifting) */
+  min-height: 37px;
   margin-top: -10px;
 }
 
 .box-row-side {
   display: flex;
+  align-items: center;
   gap: var(--button-gap);
   /* Both sides as wide as undo · redo, so the stats sit in the middle */
   min-width: 70px;
@@ -1873,6 +1878,14 @@ html.page-fits body {
 
 .box-row-mid .tool-meta {
   margin-top: 0;
+}
+
+/* Every button in the row one height, icon or word (the metadata editor's
+   reset made its row 11px taller than the others, even while hidden) */
+.box-row .btn {
+  height: 26px;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 /* Delete in red, as the bar's was */
