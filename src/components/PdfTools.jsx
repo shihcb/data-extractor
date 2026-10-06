@@ -11,6 +11,7 @@ import FadeText from './FadeText';
 import FlipRow from './FlipRow';
 import SlideText from './SlideText';
 import BulkBar from './BulkBar';
+import BoxRow from './BoxRow';
 import useHistory, { useUndoKeys } from '../useHistory';
 import { whenStill } from '../engine';
 
@@ -409,9 +410,17 @@ export default function PdfTools({ active }) {
       </div>
 
       {/* The stats: always there, only the numbers change (counting from 0) */}
-      <div className="tool-meta tool-stats" aria-live="polite">
-        pages <Count value={pages.length} /> · files <Count value={fileCount} /> · selected <Count value={selected.size} />
-      </div>
+      {/* Undo · redo | the stats | delete (the selection, or every page) */}
+      <BoxRow
+        history={history}
+        onTrash={() => removePages(selected.size ? new Set(selected) : new Set(pages.map(p => p.id)))}
+        trashDisabled={!pages.length}
+        trashTitle={selected.size && selected.size < pages.length ? 'Delete the selected pages' : 'Delete all pages'}
+      >
+        <div className="tool-meta tool-stats" aria-live="polite">
+          pages <Count value={pages.length} /> · files <Count value={fileCount} /> · selected <Count value={selected.size} />
+        </div>
+      </BoxRow>
 
       <FlipRow>
         <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Add PDFs" aria-label="Add PDFs">
@@ -429,7 +438,7 @@ export default function PdfTools({ active }) {
           save as PNG
         </button>
       </FlipRow>
-      {/* Selecting, deleting, clearing: the bulk bar (shared with the image converter) */}
+      {/* Selecting: the bulk bar (shared with the image converter) */}
       <BulkBar
         active={active}
         total={pages.length}
@@ -438,8 +447,6 @@ export default function PdfTools({ active }) {
         // already, and the buttons blinked dim on every file added)
         disabled={!pages.length}
         onSelectAll={(all) => setSelected(all ? new Set(pages.map(p => p.id)) : new Set())}
-        onDelete={() => removePages(new Set(selected))}
-        history={history}
       >
         {/* The selected pages, as a PDF of their own */}
         <button className="bulk-btn" onClick={saveSelected} disabled={!pages.length || !selected.size || !!busy}>

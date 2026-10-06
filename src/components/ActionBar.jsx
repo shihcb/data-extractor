@@ -1,6 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Redo2, Undo2 } from 'lucide-react';
 import { canAnimate } from '../motion';
 import { animateTo, drawnValue, stop } from '../engine';
 import { workHeld } from '../utils';
@@ -10,14 +9,13 @@ import { workHeld } from '../utils';
 // at the bottom of the screen, centered (out of the page, so nothing moves
 // when it comes). It pops in like the cards (from 14px down at 95%) while
 // its tab is showing and there's something to act on, and pops out the
-// same way. Every tab's bar is laid out the same: undo and redo first
-// (`history`, from useHistory), then the tab's own buttons, and the button
-// that ends it all — clear, close, or (with a selection) delete — always
-// last, on the right.
+// same way. Undo, redo and the trash aren't in it: they sit in the row
+// under the box (BoxRow); the bar holds what works on what's there (the
+// selection, tools switched on and off).
 const openBars = new Set();
 const markBody = () => document.body.classList.toggle('has-bar', openBars.size > 0);
 
-export default function ActionBar({ active, open: wanted, children, closeLabel = 'clear', onClose, closeDisabled, label, history }) {
+export default function ActionBar({ active, open: wanted, children, label }) {
   const ref = useRef(null);
   const id = useRef({});
   const open = !!active && !!wanted;
@@ -29,7 +27,7 @@ export default function ActionBar({ active, open: wanted, children, closeLabel =
     const el = ref.current;
     if (was.current === open) return;
     was.current = open;
-    // Closing with the keys on one of its buttons (clear, delete the last):
+    // Closing with the keys on one of its buttons:
     // they go to the tab's first button, not dropped to the top of the page
     if (!open && el.contains(document.activeElement)) {
       document.querySelector('.tab-pane.active:not(.tab-pane .tab-pane) .btn:not(:disabled)')?.focus({ preventScroll: true });
@@ -91,22 +89,7 @@ export default function ActionBar({ active, open: wanted, children, closeLabel =
         aria-hidden={!open}
         inert={open ? undefined : true}
       >
-        {history && (
-          <>
-            <button className="bulk-btn bulk-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); history.undo(); }} disabled={!history.canUndo} title="Undo (Ctrl + Z)" aria-label="Undo">
-              <Undo2 size={14} />
-            </button>
-            <button className="bulk-btn bulk-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); history.redo(); }} disabled={!history.canRedo} title="Redo (Ctrl + Shift + Z)" aria-label="Redo">
-              <Redo2 size={14} />
-            </button>
-          </>
-        )}
         {children}
-        {onClose && (
-          <button className="bulk-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); onClose(); }} disabled={closeDisabled}>
-            {closeLabel}
-          </button>
-        )}
       </div>
     </div>,
     document.body,

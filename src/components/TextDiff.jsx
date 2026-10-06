@@ -11,6 +11,7 @@ import Collapse from './Collapse';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
 import ActionBar from './ActionBar';
+import BoxRow from './BoxRow';
 import useHistory, { useUndoKeys } from '../useHistory';
 
 const MODES = [
@@ -179,6 +180,22 @@ export default function TextDiff({ active }) {
           aria-label="Changed text"
         />
       </div>
+      {/* Undo · redo | the stats | clear */}
+      <BoxRow history={history} onTrash={() => history.reset({ left: '', right: '' })} trashDisabled={empty} held={!empty}>
+        <AutoHeight className="tool-meta" aria-live="polite">
+          <FadeText k={status === 'empty' ? 'diff' : status}>
+            {status === 'slow' && (mode === 'lines' ? 'too long to compare' : 'too different to compare this way — try lines')}
+            {status === 'space' && 'only spaces or line breaks differ'}
+            {status === 'same' && 'no differences'}
+            {(status === 'diff' || status === 'empty') && (
+              <>
+                {/* Label first, so only the numbers change (they count) */}
+                added <span className="diff-count-add"><Count value={result?.added || 0} /></span> · removed <span className="diff-count-del"><Count value={result?.removed || 0} /></span>
+              </>
+            )}
+          </FadeText>
+        </AutoHeight>
+      </BoxRow>
 
       {/* What to compare by: a setting, so in the options panel (as the
           image converter's), opening once there's text */}
@@ -196,26 +213,13 @@ export default function TextDiff({ active }) {
           <ClipboardPaste size={14} />
         </button>
       </FlipRow>
-      {/* Swapping and clearing: in the bottom bar, like every tab */}
-      <ActionBar active={active} open={!empty} onClose={() => history.reset({ left: '', right: '' })} label="Texts" history={history}>
+      {/* Swapping: in the bottom bar */}
+      <ActionBar active={active} open={!empty} label="Texts">
         <button className="bulk-btn bulk-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); setTexts(t => ({ left: t.right, right: t.left })); }} title="Swap the two texts" aria-label="Swap the two texts">
           <ArrowLeftRight size={14} />
         </button>
       </ActionBar>
 
-      <AutoHeight className="tool-meta" aria-live="polite">
-        <FadeText k={status === 'empty' ? 'diff' : status}>
-          {status === 'slow' && (mode === 'lines' ? 'too long to compare' : 'too different to compare this way — try lines')}
-          {status === 'space' && 'only spaces or line breaks differ'}
-          {status === 'same' && 'no differences'}
-          {(status === 'diff' || status === 'empty') && (
-            <>
-              {/* Label first, so only the numbers change (they count) */}
-              added <span className="diff-count-add"><Count value={result?.added || 0} /></span> · removed <span className="diff-count-del"><Count value={result?.removed || 0} /></span>
-            </>
-          )}
-        </FadeText>
-      </AutoHeight>
 
       {/* Grows in from nothing, eases to each new size, and keeps showing
           the last comparison while it closes */}

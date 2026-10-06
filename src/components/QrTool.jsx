@@ -13,7 +13,7 @@ import Collapse from './Collapse';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
 import usePop from './usePop';
-import ActionBar from './ActionBar';
+import BoxRow from './BoxRow';
 import useHistory, { useUndoKeys } from '../useHistory';
 
 const MODES = [
@@ -144,6 +144,8 @@ function MakeQr({ active }) {
         spellCheck={false}
         aria-label="Text for the QR code"
       />
+      {/* Undo · redo | clear */}
+      <BoxRow history={history} onTrash={() => history.reset('')} trashDisabled={!text} held={!!text} />
       {/* The error level: a setting, so in the options panel (as the image
           converter's), opening once there's text */}
       <Collapse open={!!text} className="options-collapse">
@@ -179,7 +181,6 @@ function MakeQr({ active }) {
           <Copy size={14} />
         </button>
       </FlipRow>
-      <ActionBar active={active} open={!!text} onClose={() => history.reset('')} label="QR code" history={history} />
     </div>
   );
 }

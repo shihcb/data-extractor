@@ -9,6 +9,7 @@ import { whenStill } from '../engine';
 import { useToast } from '../toastContext';
 import { capHeightOf, cssFont, cssWidthEm, fitWidth, fontInfoOf, originalCanWrite, standardFontKey, unicodeFontOf } from '../pdfFonts';
 import ActionBar from './ActionBar';
+import BoxRow from './BoxRow';
 import Collapse from './Collapse';
 import Count from './Count';
 import SlideText from './SlideText';
@@ -1945,11 +1946,19 @@ export default function PdfEditor({ active }) {
       />
 
       {/* The stats: always there, only the numbers change (counting from 0) */}
-      <div className="tool-meta tool-stats" aria-live="polite">
-        pages <Count value={doc ? doc.pages.length : 0} /> · texts <Count value={textCount} /> · changes <Count value={editCount} />
-        {/* While find is open: how many lines hold the words (the word slide) */}
-        <SlideText show={!!doc && findOpen}>{'\u00a0· matches\u00a0'}<Count value={matches.size} /></SlideText>
-      </div>
+      {/* Undo · redo | the stats | close (the trash) */}
+      <BoxRow
+        history={{ undo, redo, canUndo: history.past.length > 0, canRedo: history.future.length > 0 }}
+        onTrash={close}
+        trashDisabled={!doc}
+        trashTitle="Close the PDF"
+      >
+        <div className="tool-meta tool-stats" aria-live="polite">
+          pages <Count value={doc ? doc.pages.length : 0} /> · texts <Count value={textCount} /> · changes <Count value={editCount} />
+          {/* While find is open: how many lines hold the words (the word slide) */}
+          <SlideText show={!!doc && findOpen}>{'\u00a0· matches\u00a0'}<Count value={matches.size} /></SlideText>
+        </div>
+      </BoxRow>
 
       {/* Find and replace: opens like the image options (the panel open) */}
       <Collapse open={!!doc && findOpen} className="options-collapse">
@@ -2004,9 +2013,9 @@ export default function PdfEditor({ active }) {
           save pdf
         </button>
       </FlipRow>
-      {/* Undo / redo (one change at a time), adding text, find and replace,
-          and close: the bottom bar, like every tab */}
-      <ActionBar active={active} open={!!doc} closeLabel="close" onClose={close} label="Editing" history={{ undo, redo, canUndo: history.past.length > 0, canRedo: history.future.length > 0 }}>
+      {/* Adding text, find and replace: the bottom bar (undo · redo and
+          close: under the box) */}
+      <ActionBar active={active} open={!!doc} label="Editing">
         <button
           className={`bulk-btn ${adding ? 'on' : ''}`}
           onClick={(e) => { if (e.detail) e.currentTarget.blur(); setAdding(a => !a); }}

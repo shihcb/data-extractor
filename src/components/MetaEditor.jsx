@@ -12,6 +12,7 @@ import Count from './Count';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
 import ActionBar from './ActionBar';
+import BoxRow from './BoxRow';
 import MotionList from './MotionList';
 import SlideText from './SlideText';
 import useHistory, { useUndoKeys } from '../useHistory';
@@ -407,9 +408,17 @@ export default function MetaEditor({ active }) {
 
       {/* Label first, only the numbers change: the photos, then the
           selected one's details */}
-      <div className="tool-meta tool-stats" aria-live="polite">
-        images <Count value={items.length} /> · details <Count value={stats.filled} /> · changed <Count value={stats.changed} /> · removed <Count value={stats.removed} />
-      </div>
+      {/* Undo · redo | the stats | delete (the selected photo) */}
+      <BoxRow
+        history={history}
+        onTrash={() => { if (picked) removeItems(new Set([picked.id])); }}
+        trashDisabled={!picked}
+        trashTitle="Delete this photo"
+      >
+        <div className="tool-meta tool-stats" aria-live="polite">
+          images <Count value={items.length} /> · details <Count value={stats.filled} /> · changed <Count value={stats.changed} /> · removed <Count value={stats.removed} />
+        </div>
+      </BoxRow>
 
 
       <Collapse open={panelOpen} className="options-collapse">
@@ -446,14 +455,10 @@ export default function MetaEditor({ active }) {
       <datalist id="meta-models">{MODELS.map(m => <option key={m} value={m} />)}</datalist>
 
 
-      {/* As in the converter: undo · redo, the selected photo's reset, and
-          delete (it) last */}
-      <ActionBar active={active} open={items.length > 0} label="Details" history={history}>
+      {/* The selected photo's reset (undo · redo and delete: under the box) */}
+      <ActionBar active={active} open={items.length > 0} label="Details">
         <button className="bulk-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); reset(); }} disabled={!stats.changed && !stats.removed}>
           reset
-        </button>
-        <button className="bulk-btn bulk-delete" onClick={(e) => { if (e.detail) e.currentTarget.blur(); if (picked) removeItems(new Set([picked.id])); }} disabled={!picked}>
-          delete
         </button>
       </ActionBar>
     </div>

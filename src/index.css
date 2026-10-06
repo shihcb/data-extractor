@@ -969,6 +969,11 @@ body.has-bar .feature-toast {
   border-radius: calc(var(--radius) - 5px);
 }
 
+/* (its word's leading space kept: as a flex item it was trimmed, "2selected") */
+.bulk-count-word {
+  white-space: pre;
+}
+
 .bulk-count {
   padding: 0 11.5px;
   color: var(--text-main);
@@ -1003,7 +1008,7 @@ body.has-bar .feature-toast {
   box-shadow: inset 0 0 0 0.5px var(--text-main);
 }
 
-/* Just an icon (undo, redo, swap, find) */
+/* Just an icon (swap, find) */
 .bulk-btn.bulk-icon {
   padding: 0 9px;
 }
@@ -1028,32 +1033,9 @@ body.has-bar .feature-toast {
     padding: 0 6px;
     font-size: 0.72rem;
   }
-}
 
-/* Narrower screens: the count drops its word, then "select" goes (leaving
-   "all" / "none"), so the whole bar, delete at its end, stays on screen
-   (undo / redo are words) */
-@media (max-width: 490px) {
   .bulk-count-word {
     display: none;
-  }
-}
-
-@media (max-width: 350px) {
-  .bulk-select-word {
-    display: none;
-  }
-}
-
-/* The narrowest phones: a little tighter still (the gaps stay 6px) */
-@media (max-width: 340px) {
-  .bulk-dock {
-    padding: 0 8px;
-  }
-
-  .bulk-btn,
-  .bulk-count {
-    padding: 0 4px;
   }
 }
 
@@ -1063,13 +1045,6 @@ body.has-bar .feature-toast {
 
 .bulk-btn {
   gap: 5px;
-}
-
-.bulk-delete {
-  color: #ef4444;
-  /* " all" brings its own space as it slides in (the button's gap stayed
-     behind it, shut, and doubled it, open) */
-  gap: 0;
 }
 
 @media (hover: hover) {
@@ -1831,4 +1806,38 @@ html.page-fits body {
   left: 0;
   white-space: nowrap;
   pointer-events: none;
+}
+
+/* ── The row under a box: undo · redo | the stats | the trash ──── */
+
+.box-row {
+  display: grid;
+  /* Equal sides, so the stats sit in the middle of the box */
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--button-gap);
+  width: 100%;
+  margin-top: -10px;
+}
+
+.box-row-side {
+  display: flex;
+  gap: var(--button-gap);
+}
+
+.box-row-end {
+  justify-content: flex-end;
+}
+
+.box-row-mid {
+  min-width: 0;
+}
+
+.box-row-mid .tool-meta {
+  margin-top: 0;
+}
+
+/* Delete in red, as the bar's was */
+.btn.box-trash:not(:disabled) {
+  color: #ef4444;
 }

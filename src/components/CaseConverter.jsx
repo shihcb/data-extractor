@@ -7,7 +7,7 @@ import { useToast } from '../toastContext';
 import Count from './Count';
 import AutoHeight from './AutoHeight';
 import FlipRow from './FlipRow';
-import ActionBar from './ActionBar';
+import BoxRow from './BoxRow';
 import useHistory, { useUndoKeys } from '../useHistory';
 
 export default function CaseConverter({ active }) {
@@ -66,12 +66,15 @@ export default function CaseConverter({ active }) {
         autoCapitalize="off"
         aria-label="Text to convert"
       />
-      <AutoHeight className="tool-meta" aria-live="polite">
-        {/* Label first, so only the numbers change (they count) */}
-        <span className="tool-stats">
-          characters <Count value={stats.chars} /> · words <Count value={stats.words} /> · lines <Count value={stats.lines} />
-        </span>
-      </AutoHeight>
+      {/* Undo · redo | the stats | clear */}
+      <BoxRow history={history} onTrash={() => history.reset('')} trashDisabled={!text} held={!!text}>
+        <AutoHeight className="tool-meta" aria-live="polite">
+          {/* Label first, so only the numbers change (they count) */}
+          <span className="tool-stats">
+            characters <Count value={stats.chars} /> · words <Count value={stats.words} /> · lines <Count value={stats.lines} />
+          </span>
+        </AutoHeight>
+      </BoxRow>
       <FlipRow>
         <button
           className={`btn btn-icon ${done.paste ? 'btn-done' : ''}`}
@@ -93,7 +96,6 @@ export default function CaseConverter({ active }) {
           </button>
         ))}
       </FlipRow>
-      <ActionBar active={active} open={!!text} onClose={() => history.reset('')} label="Text" history={history} />
     </div>
   );
 }

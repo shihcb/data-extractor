@@ -15,6 +15,7 @@ import Count from './Count';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
 import BulkBar from './BulkBar';
+import BoxRow from './BoxRow';
 import SlideSwap from './SlideSwap';
 import useHistory, { useUndoKeys } from '../useHistory';
 
@@ -399,9 +400,17 @@ function ConvertImages({ active }) {
 
       {/* The stats: always there, only the numbers change (counting from 0).
           "out" is what the selected image (or the first) comes out as. */}
-      <div className="tool-meta tool-stats" aria-live="polite">
-        images <Count value={items.length} /> · selected <Count value={picked.size} /> · out <Count value={out.width} format={String} /> × <Count value={out.height} format={String} /> · <Count value={outSize} format={kb} />
-      </div>
+      {/* Undo · redo | the stats | delete (the selection, or every image) */}
+      <BoxRow
+        history={history}
+        onTrash={() => removeItems(picked.size ? new Set(picked) : new Set(items.map(i => i.id)))}
+        trashDisabled={!items.length}
+        trashTitle={picked.size && picked.size < items.length ? 'Delete the selected images' : 'Delete all images'}
+      >
+        <div className="tool-meta tool-stats" aria-live="polite">
+          images <Count value={items.length} /> · selected <Count value={picked.size} /> · out <Count value={out.width} format={String} /> × <Count value={out.height} format={String} /> · <Count value={outSize} format={kb} />
+        </div>
+      </BoxRow>
 
       <Collapse open={items.length > 0} className="options-collapse">
         <div className="options-panel">
@@ -481,15 +490,13 @@ function ConvertImages({ active }) {
           <Copy size={14} />
         </button>
       </FlipRow>
-      {/* Selecting, deleting, clearing: the bulk bar (as in PDF tools) */}
+      {/* Selecting: the bulk bar (as in PDF tools) */}
       <BulkBar
         active={active}
         total={items.length}
         selected={picked.size}
         disabled={!items.length}
         onSelectAll={(all) => setPicked(all ? new Set(items.map(i => i.id)) : new Set())}
-        onDelete={() => removeItems(new Set(picked))}
-        history={history}
       >
         {/* The selected images only (as PDF tools' save) */}
         <button className="bulk-btn" onClick={(e) => save(e, items.filter(i => picked.has(i.id)))} disabled={!picked.size || !!busy}>
