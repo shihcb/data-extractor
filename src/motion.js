@@ -10,10 +10,11 @@ export const MOTION = { duration: MOTION_MS, easing: MOTION_EASING };
 export const POP_HIDDEN = { opacity: 0, transform: 'translateY(14px) scale(0.95)' };
 export const POP_SHOWN = { opacity: 1, transform: 'translateY(0) scale(1)' };
 
-export const prefersReducedMotion = () =>
-  typeof window !== 'undefined' &&
-  !!window.matchMedia &&
-  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+// (one query, kept: asked anew on every motion, it showed up in a slowed
+// phone's profile; .matches follows the setting live)
+const reducedQuery = typeof window !== 'undefined' && window.matchMedia
+  ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+export const prefersReducedMotion = () => !!reducedQuery?.matches;
 
 export const canAnimate = (el) =>
   !!el && typeof el.animate === 'function' && !prefersReducedMotion();

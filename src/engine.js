@@ -36,7 +36,12 @@ function stateOf(el) {
   return s;
 }
 
-const progress = (p, now) => Math.min(1, Math.max(0, (now - p.start) / p.duration));
+// A piece's clock starts on the first frame it's drawn in, not when it was
+// asked for: what asks for motion is usually a change that takes the next
+// frame a while to draw (cards added, a page's lines), and timed from the
+// ask, the motion had already run a quarter of its way by the first frame
+// shown — it jumped, then eased
+const progress = (p, now) => (p.start === null ? 0 : Math.min(1, Math.max(0, (now - p.start) / p.duration)));
 
 function valueOf(prop, now) {
   let v = prop.target;
@@ -102,6 +107,7 @@ function step(now) {
     for (const name in s.props) {
       const prop = s.props[name];
       if (prop.pieces.length) wasMoving = true;
+      for (const p of prop.pieces) if (p.start === null) p.start = now;
       prop.pieces = prop.pieces.filter(p => progress(p, now) < 1);
       // A property at rest (no pieces, back at its resting value) is let go
       if (!prop.pieces.length && !prop.keep && (PROPS[name].rest === null || prop.target === PROPS[name].rest)) finished.push(name);
@@ -164,11 +170,11 @@ export function animateTo(el, name, target, { from, duration = MOTION_MS, onSett
   }
   if (prop) {
     // Keep what's in flight; this change rides on top of it
-    prop.pieces.push({ offset: prop.target - target, start: now, duration });
+    prop.pieces.push({ offset: prop.target - target, start: null, duration });
     prop.target = target;
     prop.keep = keep;
   } else {
-    s.props[name] = { target, keep, pieces: [{ offset: drawn - target, start: now, duration }] };
+    s.props[name] = { target, keep, pieces: [{ offset: drawn - target, start: null, duration }] };
   }
   if (onSettle) s.settle.push(onSettle);
   kick(el);
@@ -179,10 +185,9 @@ export function animateTo(el, name, target, { from, duration = MOTION_MS, onSett
 export function shift(el, name, offset, { duration = MOTION_MS } = {}) {
   if (!el || Math.abs(offset) < 0.5 || prefersReducedMotion()) return;
   const s = stateOf(el);
-  const now = performance.now();
   const rest = PROPS[name].rest ?? 0;
   if (!s.props[name]) s.props[name] = { target: rest, pieces: [] };
-  s.props[name].pieces.push({ offset, start: now, duration });
+  s.props[name].pieces.push({ offset, start: null, duration });
   kick(el);
 }
 
@@ -197,6 +202,19 @@ export const isMoving = (el, name) => {
   const prop = active.get(el)?.props[name];
   return !!prop && prop.pieces.length > 0;
 };
+
+// Whether something inside `root` (not `root` itself; with `self`, root
+// too) is easing its width right now. Asked of the few things that are
+// moving, not of every element inside root: a row of buttons asked it of
+// every element in every button on every frame (a switcher's insides
+// too) and that alone took ~90ms of a 450ms slide on a slowed phone.
+export function widthMovingIn(root, self = false) {
+  for (const [el, s] of active) {
+    if (!s.props.width?.pieces.length) continue;
+    if (el === root ? self : root.contains(el)) return true;
+  }
+  return false;
+}
 
 // Drops all motion from an element and the styles it wrote
 export function stop(el) {

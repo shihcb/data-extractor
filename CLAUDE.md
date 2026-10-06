@@ -292,6 +292,22 @@ side still scrolls to reach the buttons); its text scrolls inside its box,
 which goes down to 120px to fit.
 
 Rules that keep it smooth (each was a real bug):
+- A motion's clock starts on the first frame it's drawn in (the engine's
+  pieces start at `null`, set by its next frame), not when it's asked for:
+  the change that asks for it (cards added, a tab's buttons coming in) makes
+  that frame slow, and timed from the ask the motion had run a quarter of
+  its way by the first frame shown — it jumped, then eased.
+- Nothing scans a row's whole insides per frame: "is anything in here
+  easing its width?" asks the engine's few moving things (`widthMovingIn`);
+  `querySelectorAll('*')` on every button every frame took ~90ms of a slide
+  on a phone. A row watching itself rewrap reads its buttons' spots in a
+  ResizeObserver (after layout, free), not each frame after the engine
+  wrote styles (a forced layout per frame); `FlipRow` toggles inline widths
+  to measure only when one is set.
+- No heavy drawing on every keystroke: QR make's code is drawn on screen at
+  4px a square (scaled up crisp), the 1024px PNG only made to save / copy
+  (drawn at 1024px per letter, it took most of a frame as buttons slid in).
+- `prefersReducedMotion` keeps one media query (asked anew every motion).
 - The page coming back into view (another app, the tab switcher) draws with
   transitions off for two frames, and so does a light / dark change (the
   inline script in `index.html`): iOS flips the scheme to snapshot the app,

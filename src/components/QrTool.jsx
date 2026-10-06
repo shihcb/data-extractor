@@ -29,7 +29,11 @@ const LEVELS = [
   { key: 'H', label: 'highest' },
 ];
 
-const QR_PX = 1024; // size of the downloaded PNG
+const QR_PX = 1024; // size of the saved / copied PNG
+// On screen: 4px a square, scaled up crisp (image-rendering: pixelated).
+// Drawn at 1024px on every letter typed, it took most of a frame as the
+// buttons slid in; the full size is made only to save or copy
+const QR_SCREEN_SCALE = 4;
 const qrOptions = (level) => ({ errorCorrectionLevel: level, margin: 2, color: { dark: '#000000', light: '#ffffff' } });
 
 // Reads a QR code from an image or video frame. Big images are scanned at
@@ -80,7 +84,7 @@ function MakeQr({ active }) {
       return;
     }
     let cancelled = false;
-    QRCode.toCanvas(canvasRef.current, text, { ...qrOptions(level), width: QR_PX })
+    QRCode.toCanvas(canvasRef.current, text, { ...qrOptions(level), scale: QR_SCREEN_SCALE })
       .then(() => {
         if (cancelled) return;
         setError('');
@@ -107,9 +111,18 @@ function MakeQr({ active }) {
     }
   };
 
-  const pngBlob = () => new Promise((resolve, reject) => {
-    canvasRef.current.toBlob(b => (b ? resolve(b) : reject(new Error('no image'))), 'image/png');
-  });
+  // The full-size PNG, drawn fresh (the one on screen is small)
+  const pngBlob = async () => {
+    const canvas = document.createElement('canvas');
+    await QRCode.toCanvas(canvas, text, { ...qrOptions(level), width: QR_PX });
+    try {
+      return await new Promise((resolve, reject) => {
+        canvas.toBlob(b => (b ? resolve(b) : reject(new Error('no image'))), 'image/png');
+      });
+    } finally {
+      canvas.width = canvas.height = 0;
+    }
+  };
 
   const downloadPng = async (e) => {
     if (e.detail) e.currentTarget.blur();

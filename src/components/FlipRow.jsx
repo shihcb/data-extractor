@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useRef } from 'react';
-import { canAnimate } from '../motion';
-import { animateTo, isMoving, shift } from '../engine';
+import { MOTION_MS, canAnimate } from '../motion';
+import { animateTo, shift, widthMovingIn } from '../engine';
 
 // A row of buttons that never snaps. When a button's label changes, its
 // width eases to the new one (like the source repo's next button widening
@@ -22,11 +22,13 @@ export default function FlipRow({ className = 'tool-actions', children }) {
       last.current = new Map();
       return;
     }
-    // Natural layout: the engine's inline widths off for a moment
+    // Natural layout: the engine's inline widths off for a moment (only
+    // when one is set: toggling them on every render cost a layout each)
     const saved = els.map(el => el.style.width);
-    els.forEach((el) => { el.style.width = ''; });
+    const held = saved.some(Boolean);
+    if (held) els.forEach((el) => { el.style.width = ''; });
     const now = new Map(els.map(el => [el, { left: el.offsetLeft, top: el.offsetTop, width: el.offsetWidth }]));
-    els.forEach((el, i) => { el.style.width = saved[i]; });
+    if (held) els.forEach((el, i) => { el.style.width = saved[i]; });
 
     if (canAnimate(row)) {
       let widened = false;
@@ -37,7 +39,7 @@ export default function FlipRow({ className = 'tool-actions', children }) {
         // Something inside is already easing its width (the word slide in the
         // resize field, a counting number): that drives this one through
         // layout — easing it here too would fight it and jump
-        if ([...el.querySelectorAll('*')].some(d => isMoving(d, 'width'))) {
+        if (widthMovingIn(el)) {
           widened = true;
           return;
         }
@@ -60,7 +62,7 @@ export default function FlipRow({ className = 'tool-actions', children }) {
     // stale width — the resize field jumped 29px)…
     // …and while any control is still changing width, the others' spots are
     // partway too (the row re-centres as it eases), so nothing is remembered
-    const settling = els.some(el => isMoving(el, 'width') || [...el.querySelectorAll('*')].some(d => isMoving(d, 'width')));
+    const settling = widthMovingIn(row);
     last.current = settling ? new Map() : now;
     if (settling) watchRewrap();
   });
@@ -68,18 +70,19 @@ export default function FlipRow({ className = 'tool-actions', children }) {
   // While a control is easing its width, the row can rewrap partway (a
   // button no longer fits and drops to the next line, the others
   // re-centring) — between renders, so the slide above never sees it and
-  // the buttons jumped. Watched frame by frame: a button whose spot jumps
-  // slides from where it was drawn instead.
-  const watching = useRef(0);
+  // the buttons jumped. Watched as the row and its buttons change size: a
+  // button whose spot jumps slides from where it was drawn instead. (A
+  // ResizeObserver reports after the browser has laid the page out, so
+  // reading the spots there is free; read every frame from a timer, right
+  // after the engine wrote its styles, it forced a layout per frame.)
+  const watching = useRef(null); // { ro, timer }
   const watchRewrap = () => {
-    if (watching.current) return;
+    if (watching.current || typeof ResizeObserver !== 'function') return;
     const row = ref.current;
     const spots = new Map([...row.children].map(el => [el, { left: el.offsetLeft, top: el.offsetTop }]));
-    let quiet = 0;
-    const step = () => {
-      if (!row.isConnected) { watching.current = 0; return; }
-      const els = [...row.children];
-      els.forEach(el => {
+    const check = () => {
+      if (!row.isConnected) return;
+      [...row.children].forEach(el => {
         const n = { left: el.offsetLeft, top: el.offsetTop };
         const p = spots.get(el);
         // An ease moves a spot a few px a frame; a rewrap moves it at once
@@ -89,22 +92,35 @@ export default function FlipRow({ className = 'tool-actions', children }) {
         }
         spots.set(el, n);
       });
-      const moving = els.some(el => isMoving(el, 'width') || [...el.querySelectorAll('*')].some(d => isMoving(d, 'width')));
-      quiet = moving ? 0 : quiet + 1;
-      watching.current = quiet < 3 ? requestAnimationFrame(step) : 0;
+    };
+    const ro = new ResizeObserver(check);
+    ro.observe(row);
+    [...row.children].forEach(el => ro.observe(el));
+    const finish = () => {
+      if (row.isConnected && widthMovingIn(row)) {
+        watching.current.timer = setTimeout(finish, 100);
+        return;
+      }
+      ro.disconnect();
+      watching.current = null;
       // Settled: its layout remembered now (forgotten while it eased, the
       // next label change had nothing to ease from and snapped — "stop
       // camera" back to "use camera")
-      if (!watching.current && row.getClientRects().length && row.offsetWidth) {
+      if (row.isConnected && row.getClientRects().length && row.offsetWidth) {
+        const els = [...row.children];
         const saved = els.map(el => el.style.width);
         els.forEach((el) => { el.style.width = ''; });
         last.current = new Map(els.map(el => [el, { left: el.offsetLeft, top: el.offsetTop, width: el.offsetWidth }]));
         els.forEach((el, i) => { el.style.width = saved[i]; });
       }
     };
-    watching.current = requestAnimationFrame(step);
+    watching.current = { ro, timer: setTimeout(finish, MOTION_MS) };
   };
-  useLayoutEffect(() => () => cancelAnimationFrame(watching.current), []);
+  useLayoutEffect(() => () => {
+    if (!watching.current) return;
+    clearTimeout(watching.current.timer);
+    watching.current.ro.disconnect();
+  }, []);
 
   // Positioned, so its children measure their spots against the row itself:
   // the row moving with the boxes above it (a file row deleted) must not
