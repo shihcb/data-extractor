@@ -344,7 +344,7 @@ export default function MetaEditor({ active }) {
 
   return (
     <div className="tool">
-      <p className="tool-desc">change or remove photos' details — the pictures themselves aren't touched</p>
+      <p className="tool-desc">change or remove photos' details</p>
       {/* The converter's box: the photos as the same cards, popping in and out */}
       <div
         ref={boxRef}
