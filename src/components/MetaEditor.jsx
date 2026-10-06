@@ -11,7 +11,6 @@ import Collapse from './Collapse';
 import Count from './Count';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
-import ActionBar from './ActionBar';
 import BoxRow from './BoxRow';
 import MotionList from './MotionList';
 import SlideText from './SlideText';
@@ -414,6 +413,22 @@ export default function MetaEditor({ active }) {
         onTrash={() => { if (picked) removeItems(new Set([picked.id])); }}
         trashDisabled={!picked}
         trashTitle="Delete this photo"
+        held={items.length > 0}
+        end={
+          // The selected photo's reset: there only while it has something
+          // to put back, sliding open / shut beside the trash (the word
+          // slide, as the rows' remove buttons)
+          <SlideText show={!!(stats.changed || stats.removed)}>
+            <button
+              className="btn btn-sm"
+              onClick={(e) => { if (e.detail) e.currentTarget.blur(); reset(); }}
+              tabIndex={stats.changed || stats.removed ? undefined : -1}
+              title="Put the details back as they were"
+            >
+              reset
+            </button>
+          </SlideText>
+        }
       >
         <div className="tool-meta tool-stats" aria-live="polite">
           images <Count value={items.length} /> · details <Count value={stats.filled} /> · changed <Count value={stats.changed} /> · removed <Count value={stats.removed} />
@@ -455,12 +470,6 @@ export default function MetaEditor({ active }) {
       <datalist id="meta-models">{MODELS.map(m => <option key={m} value={m} />)}</datalist>
 
 
-      {/* The selected photo's reset (undo · redo and delete: under the box) */}
-      <ActionBar active={active} open={items.length > 0} label="Details">
-        <button className="bulk-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); reset(); }} disabled={!stats.changed && !stats.removed}>
-          reset
-        </button>
-      </ActionBar>
     </div>
   );
 }

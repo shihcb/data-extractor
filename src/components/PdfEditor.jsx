@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { FileUp, Search, ZoomIn, ZoomOut } from 'lucide-react';
+import { FileUp, ZoomIn, ZoomOut } from 'lucide-react';
 import { closePdf, loadPdfLib, loadPdfjs, openPdf, renderPage, isPasswordError, refusedWords, whyRefused } from '../pdf';
 import { agreedReading, readBlock, readLine, readPage, rereadLine } from '../ocr';
 import { removeText } from '../pdfText';
@@ -8,7 +8,6 @@ import { MOTION, MOTION_MS, canAnimate, motionEase, prefersReducedMotion } from 
 import { whenStill } from '../engine';
 import { useToast } from '../toastContext';
 import { capHeightOf, cssFont, cssWidthEm, fitWidth, fontInfoOf, originalCanWrite, standardFontKey, unicodeFontOf } from '../pdfFonts';
-import ActionBar from './ActionBar';
 import BoxRow from './BoxRow';
 import Collapse from './Collapse';
 import Count from './Count';
@@ -1952,6 +1951,7 @@ export default function PdfEditor({ active }) {
         onTrash={close}
         trashDisabled={!doc}
         trashTitle="Close the PDF"
+        held={!!doc}
       >
         <div className="tool-meta tool-stats" aria-live="polite">
           pages <Count value={doc ? doc.pages.length : 0} /> · texts <Count value={textCount} /> · changes <Count value={editCount} />
@@ -2005,20 +2005,13 @@ export default function PdfEditor({ active }) {
         </div>
       </Collapse>
 
+      {/* Adding text, find and replace: switched on and off (outlined while
+          on), above open / save */}
       <FlipRow>
-        <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Open a PDF" aria-label="Open a PDF">
-          <FileUp size={14} />
-        </button>
-        <button className={`btn btn-primary ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!doc || !editCount || busy}>
-          save pdf
-        </button>
-      </FlipRow>
-      {/* Adding text, find and replace: the bottom bar (undo · redo and
-          close: under the box) */}
-      <ActionBar active={active} open={!!doc} label="Editing">
         <button
-          className={`bulk-btn ${adding ? 'on' : ''}`}
+          className={`btn ${adding ? 'btn-on' : ''}`}
           onClick={(e) => { if (e.detail) e.currentTarget.blur(); setAdding(a => !a); }}
+          disabled={!doc}
           title="Add text: tap a spot on a page (or double-click one)"
           aria-pressed={adding}
         >
@@ -2026,20 +2019,28 @@ export default function PdfEditor({ active }) {
         </button>
         <button
           ref={findBtnRef}
-          className={`bulk-btn bulk-icon ${findOpen ? 'on' : ''}`}
+          className={`btn ${findOpen ? 'btn-on' : ''}`}
           onClick={(e) => {
             if (e.detail) e.currentTarget.blur();
             const open = !findOpen;
             setFindOpen(open);
             if (open) requestAnimationFrame(() => findRef.current?.focus({ preventScroll: true }));
           }}
+          disabled={!doc}
           title="Find and replace (Ctrl + F)"
-          aria-label="Find and replace"
           aria-pressed={findOpen}
         >
-          <Search size={14} />
+          find text
         </button>
-      </ActionBar>
+      </FlipRow>
+      <FlipRow>
+        <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Open a PDF" aria-label="Open a PDF">
+          <FileUp size={14} />
+        </button>
+        <button className={`btn btn-primary ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!doc || !editCount || busy}>
+          save PDF
+        </button>
+      </FlipRow>
     </div>
   );
 }

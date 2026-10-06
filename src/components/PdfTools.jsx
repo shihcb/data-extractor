@@ -10,7 +10,6 @@ import Count from './Count';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
 import SlideText from './SlideText';
-import BulkBar from './BulkBar';
 import BoxRow from './BoxRow';
 import useHistory, { useUndoKeys } from '../useHistory';
 import { whenStill } from '../engine';
@@ -302,11 +301,6 @@ export default function PdfTools({ active }) {
     downloadBlob(await buildPdf(pages), outName(pages, '-edited.pdf'));
   });
 
-  const saveSelected = (e) => run(e, 'extract', async () => {
-    const chosen = pages.filter(p => selected.has(p.id));
-    downloadBlob(await buildPdf(chosen), outName(chosen, '-selected.pdf'));
-  });
-
   const split = (e) => run(e, 'split', async () => {
     const files = {};
     const unique = uniqueNamer();
@@ -415,7 +409,7 @@ export default function PdfTools({ active }) {
         history={history}
         onTrash={() => removePages(selected.size ? new Set(selected) : new Set(pages.map(p => p.id)))}
         trashDisabled={!pages.length}
-        trashTitle={selected.size && selected.size < pages.length ? 'Delete the selected pages' : 'Delete all pages'}
+        trashTitle={selected.size && selected.size < pages.length ? 'Delete the selected pages' : 'Delete all pages'}        held={pages.length > 0}
       >
         <div className="tool-meta tool-stats" aria-live="polite">
           pages <Count value={pages.length} /> · files <Count value={fileCount} /> · selected <Count value={selected.size} />
@@ -429,7 +423,7 @@ export default function PdfTools({ active }) {
         <button className={`btn btn-primary ${done.save ? 'btn-done' : ''}`} onClick={saveAll} disabled={none || !!busy}>
           {/* "merged" comes and goes with the word slide (a cross-fade of the
               whole label inside a button easing its width was choppy) */}
-          <span className="btn-label">save<SlideText show={fileCount > 1}>{'\u00a0merged'}</SlideText> pdf</span>
+          <span className="btn-label">save<SlideText show={fileCount > 1}>{'\u00a0merged'}</SlideText> PDF</span>
         </button>
         <button className={`btn ${done.split ? 'btn-done' : ''}`} onClick={split} disabled={none || !!busy}>
           split
@@ -438,21 +432,6 @@ export default function PdfTools({ active }) {
           save as PNG
         </button>
       </FlipRow>
-      {/* Selecting: the bulk bar (shared with the image converter) */}
-      <BulkBar
-        active={active}
-        total={pages.length}
-        selected={selected.size}
-        // (not while pictures are still being drawn: the pages are all there
-        // already, and the buttons blinked dim on every file added)
-        disabled={!pages.length}
-        onSelectAll={(all) => setSelected(all ? new Set(pages.map(p => p.id)) : new Set())}
-      >
-        {/* The selected pages, as a PDF of their own */}
-        <button className="bulk-btn" onClick={saveSelected} disabled={!pages.length || !selected.size || !!busy}>
-          save
-        </button>
-      </BulkBar>
     </div>
   );
 }

@@ -146,6 +146,12 @@ function MakeQr({ active }) {
       />
       {/* Undo · redo | clear */}
       <BoxRow history={history} onTrash={() => history.reset('')} trashDisabled={!text} held={!!text} />
+      {/* As in every tab: the box's input button first (paste), then the rest */}
+      <FlipRow>
+        <button className={`btn btn-icon ${done.paste ? 'btn-done' : ''}`} onClick={paste} title="Paste from clipboard" aria-label="Paste from clipboard">
+          <ClipboardPaste size={14} />
+        </button>
+      </FlipRow>
       {/* The error level: a setting, so in the options panel (as the image
           converter's), opening once there's text */}
       <Collapse open={!!text} className="options-collapse">
@@ -155,12 +161,6 @@ function MakeQr({ active }) {
           </FlipRow>
         </div>
       </Collapse>
-      {/* As in every tab: the box's input button first (paste), then the rest */}
-      <FlipRow>
-        <button className={`btn btn-icon ${done.paste ? 'btn-done' : ''}`} onClick={paste} title="Paste from clipboard" aria-label="Paste from clipboard">
-          <ClipboardPaste size={14} />
-        </button>
-      </FlipRow>
       <AutoHeight className="tool-meta" >
         <FadeText k={error ? 'error' : text ? 'level' : 'empty'}>
         {error || (text ? 'higher levels still scan when part of the code is covered or damaged' : 'the code updates as you type')}

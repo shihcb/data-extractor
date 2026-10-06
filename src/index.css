@@ -1812,8 +1812,10 @@ html.page-fits body {
 
 .box-row {
   display: grid;
-  /* Equal sides, so the stats sit in the middle of the box */
-  grid-template-columns: 1fr auto 1fr;
+  /* The middle a fixed share of the row, never sized to its words: sized to
+     them, the row re-centred on every change and the stats' text swap
+     ("added 0 · removed 0" ↔ "no differences") jumped instead of fading */
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--button-gap);
   width: 100%;
@@ -1823,6 +1825,24 @@ html.page-fits body {
 .box-row-side {
   display: flex;
   gap: var(--button-gap);
+  /* Both sides as wide as undo · redo, so the stats sit in the middle */
+  min-width: 70px;
+}
+
+/* A button sliding in by the trash (the word slide) brings its own gap,
+   so with it shut there's none (as the metadata rows' remove button) */
+.box-row-end > .slide-text {
+  display: flex;
+  margin-right: calc(-1 * var(--button-gap));
+  overflow: visible;
+}
+.box-row-end > .slide-text[aria-hidden="true"] {
+  overflow: hidden;
+  pointer-events: none;
+}
+.box-row-end > .slide-text > .slide-text-inner {
+  display: flex;
+  padding-right: var(--button-gap);
 }
 
 .box-row-end {
