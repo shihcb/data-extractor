@@ -1542,7 +1542,7 @@ select.meta-input {
 .qr-box {
   /* The code's size: smaller on short screens, so it fits with the text
      box and buttons */
-  --qr-size: clamp(160px, calc(100dvh - 600px), 280px);
+  --qr-size: clamp(160px, calc(100dvh - 610px), 280px);
   display: flex;
   align-items: center;
   justify-content: center;

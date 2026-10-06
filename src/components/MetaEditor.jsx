@@ -456,15 +456,20 @@ export default function MetaEditor({ active }) {
       {/* Under the details, as in the converter: the details are a box of
           one fixed size that scrolls inside, so opening it slides these down
           a box's height on the shared curve, not a whole page of rows */}
-      <FlipRow>
-        <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Add photos" aria-label="Add photos">
-          <ImageUp size={14} />
-        </button>
-        <button className={`btn ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!items.length || busy}>
-          {/* (each photo in its own format: "save" and what it saves) */}
-          save photos
-        </button>
-      </FlipRow>
+      <div className="button-rows">
+        <FlipRow>
+          <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Add photos" aria-label="Add photos">
+            <ImageUp size={14} />
+          </button>
+        </FlipRow>
+        <FlipRow>
+          <button className={`btn ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!items.length || busy}>
+            {/* (each photo in its own format: "save" and what it saves; "s"
+                slides in from the second photo, the button easing wider) */}
+            <span className="btn-label">save photo<SlideText show={items.length > 1}>s</SlideText></span>
+          </button>
+        </FlipRow>
+      </div>
       <datalist id="meta-makes">{MAKES.map(m => <option key={m} value={m} />)}</datalist>
       <datalist id="meta-models">{MODELS.map(m => <option key={m} value={m} />)}</datalist>
 

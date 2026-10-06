@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { FileUp, ZoomIn, ZoomOut } from 'lucide-react';
+import { FileUp, Search, TextCursorInput, ZoomIn, ZoomOut } from 'lucide-react';
 import { closePdf, loadPdfLib, loadPdfjs, openPdf, renderPage, isPasswordError, refusedWords, whyRefused } from '../pdf';
 import { agreedReading, readBlock, readLine, readPage, rereadLine } from '../ocr';
 import { removeText } from '../pdfText';
@@ -2005,22 +2005,26 @@ export default function PdfEditor({ active }) {
         </div>
       </Collapse>
 
-      {/* Adding text, find and replace: switched on and off (outlined while
-          on), a row above open / save — one group, its rows 6px apart */}
+      {/* The input and the tools (icons; add text and find switch on and
+          off, outlined while on), then save on its own row */}
       <div className="button-rows">
         <FlipRow>
+          <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Open a PDF" aria-label="Open a PDF">
+            <FileUp size={14} />
+          </button>
           <button
-            className={`btn ${adding ? 'btn-on' : ''}`}
+            className={`btn btn-icon ${adding ? 'btn-on' : ''}`}
             onClick={(e) => { if (e.detail) e.currentTarget.blur(); setAdding(a => !a); }}
             disabled={!doc}
             title="Add text: tap a spot on a page (or double-click one)"
+            aria-label="Add text"
             aria-pressed={adding}
           >
-            add text
+            <TextCursorInput size={14} />
           </button>
           <button
             ref={findBtnRef}
-            className={`btn ${findOpen ? 'btn-on' : ''}`}
+            className={`btn btn-icon ${findOpen ? 'btn-on' : ''}`}
             onClick={(e) => {
               if (e.detail) e.currentTarget.blur();
               const open = !findOpen;
@@ -2029,15 +2033,13 @@ export default function PdfEditor({ active }) {
             }}
             disabled={!doc}
             title="Find and replace (Ctrl + F)"
+            aria-label="Find and replace"
             aria-pressed={findOpen}
           >
-            find text
+            <Search size={14} />
           </button>
         </FlipRow>
         <FlipRow>
-          <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Open a PDF" aria-label="Open a PDF">
-            <FileUp size={14} />
-          </button>
           <button className={`btn ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!doc || !editCount || busy}>
             save PDF
           </button>

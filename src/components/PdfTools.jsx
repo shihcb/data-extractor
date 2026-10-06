@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, FilePlus, RotateCcw, RotateCw, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FilePlus, RotateCcw, RotateCw, Scissors, X } from 'lucide-react';
 import { zipSync } from 'fflate';
 import { closePdf, loadPdfLib, openPdf, renderPage, isPasswordError, refusedWords, whyRefused } from '../pdf';
 import { baseName, canvasToBlob, downloadBlob, isImageFile, isPdfFile, keepFocusAfterRemove, shortName, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
@@ -416,22 +416,27 @@ export default function PdfTools({ active }) {
         </div>
       </BoxRow>
 
-      <FlipRow>
-        <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Add PDFs" aria-label="Add PDFs">
-          <FilePlus size={14} />
-        </button>
-        <button className={`btn ${done.split ? 'btn-done' : ''}`} onClick={split} disabled={none || !!busy}>
-          split
-        </button>
-        <button className={`btn ${done.save ? 'btn-done' : ''}`} onClick={saveAll} disabled={none || !!busy}>
-          {/* "merged" comes and goes with the word slide (a cross-fade of the
-              whole label inside a button easing its width was choppy) */}
-          <span className="btn-label">save<SlideText show={fileCount > 1}>{'\u00a0merged'}</SlideText> PDF</span>
-        </button>
-        <button className={`btn ${done.images ? 'btn-done' : ''}`} onClick={toImages} disabled={none || !!busy}>
-          save PNG
-        </button>
-      </FlipRow>
+      {/* The input and the actions (icons), then the saves on their own row */}
+      <div className="button-rows">
+        <FlipRow>
+          <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Add PDFs" aria-label="Add PDFs">
+            <FilePlus size={14} />
+          </button>
+          <button className={`btn btn-icon ${done.split ? 'btn-done' : ''}`} onClick={split} disabled={none || !!busy} title="Split into one PDF a page" aria-label="Split into one PDF a page">
+            <Scissors size={14} />
+          </button>
+        </FlipRow>
+        <FlipRow>
+          <button className={`btn ${done.save ? 'btn-done' : ''}`} onClick={saveAll} disabled={none || !!busy}>
+            {/* "merged" comes and goes with the word slide (a cross-fade of the
+                whole label inside a button easing its width was choppy) */}
+            <span className="btn-label">save<SlideText show={fileCount > 1}>{'\u00a0merged'}</SlideText> PDF</span>
+          </button>
+          <button className={`btn ${done.images ? 'btn-done' : ''}`} onClick={toImages} disabled={none || !!busy}>
+            save PNG
+          </button>
+        </FlipRow>
+      </div>
     </div>
   );
 }

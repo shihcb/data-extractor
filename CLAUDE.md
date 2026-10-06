@@ -178,14 +178,16 @@ Which buttons go where:
   copy, convert), always there (dimmed with nothing to act on), acting on
   the whole tab (or the first item when none is picked). No button is
   filled (no black "main" button anywhere): all are the same plain button,
-  outlined only while switched on. Order: the input button first, then
-  what changes things (split), then the saves, then copy: case converter
-  and text diff paste; QR make paste (above the error level), and under
-  the code save PNG · save SVG · copy; image converter add · save PNG (its
-  format, the word swap) · copy; metadata editor add · save photos; PDF
-  tools add · split · save PDF ("save merged PDF" with several files) ·
-  save PNG; PDF editor add text · find text, then open · save PDF; QR scan
-  choose image · use camera. The case converter's buttons are fixed rows,
+  outlined only while switched on. Two rows, 6px apart (`.button-rows`):
+  first the input and the actions, all icons (input first), then the
+  saves (words) on their own row. Image converter add · copy / save PNG
+  (its format, the word swap); metadata editor add / save photo ("s"
+  slides in from the second photo, the button easing wider); PDF tools add
+  · split (scissors) / save PDF ("save merged PDF" with several files) ·
+  save PNG; PDF editor open · add text · find (switched on and off,
+  outlined while on) / save PDF; QR make copy / save PNG · save SVG (its
+  paste above the error level); case converter and text diff paste; QR
+  scan choose image · use camera. The case converter's buttons are fixed rows,
   the same on every screen (`.button-rows`): paste · lowercase · UPPERCASE /
   Title Case · Sentence case / camelCase · snake_case / kebab-case · tidy
   spaces.
@@ -196,8 +198,7 @@ Which buttons go where:
   (see the box row above).
 - No select all: tap cards to select; the trash takes the selection (or
   everything). Tools switched on and off are buttons under the box,
-  outlined while on ("keep details"; the PDF editor's add text · find text,
-  a row of their own above open · save PDF). The bottom bar is only text
+  outlined while on ("keep details"; the PDF editor's add text and find). The bottom bar is only text
   diff's swap.
 - Settings that change the result (format, size, quality, the QR error
   level, text diff's lines / words) sit in the tab's options panel (the
@@ -208,9 +209,9 @@ Which buttons go where:
   is always "save" (never "download"). Icons only where the symbol is
   universal: the input buttons (paste, add images / photos / PDFs, open a
   PDF, choose image), copy, undo / redo, the trash, text diff's swap (⇄),
-  and the corner keyboard-shortcuts button; each has a title and
-  aria-label. Everything else is words (save, split, reset, add text, find
-  text, use camera, the cases). Every save button is "save" and what
+  split (scissors), the PDF editor's add text and find (magnifier), and the
+  corner keyboard-shortcuts button; each has a title and aria-label.
+  Everything else is words (the saves, reset, use camera, the cases). Every save button is "save" and what
   it saves, never "save as": file types in capitals (save PDF, save PNG,
   save SVG, save JPG), else the thing (save photos).
 
@@ -239,8 +240,7 @@ rows, the settings row, the box row, the bottom bar, card buttons, the zoom cont
 
 Spacing down a tab, the same everywhere (measured in every tab):
 - 6px: between buttons, and between rows of one group (the case
-  converter's rows, the PDF editor's add text · find text over open · save
-  PDF, the rows inside an options panel, find and replace).
+  converter's rows, the icon row over the save row, the rows inside an options panel, find and replace).
 - 10px: under a box to what belongs to it (the box row, the box below
   it in text diff), and the description to its box; a text line under
   controls (the QR level's hint).

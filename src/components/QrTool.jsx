@@ -170,17 +170,22 @@ function MakeQr({ active }) {
         <canvas ref={canvasRef} className="qr-canvas" aria-label="QR code" />
         <FadeText k={hasCode ? '' : 'hint'} className="tool-hint">{hasCode ? null : 'your QR code shows here'}</FadeText>
       </AutoHeight>
-      <FlipRow>
-        <button className={`btn ${done.png ? 'btn-done' : ''}`} onClick={downloadPng} disabled={!hasCode}>
-          save PNG
-        </button>
-        <button className={`btn ${done.svg ? 'btn-done' : ''}`} onClick={downloadSvg} disabled={!hasCode}>
-          save SVG
-        </button>
-        <button className={`btn btn-icon ${done.copy ? 'btn-done' : ''}`} onClick={copy} disabled={!hasCode} title="Copy the QR code" aria-label="Copy the QR code">
-          <Copy size={14} />
-        </button>
-      </FlipRow>
+      {/* The action (copy, an icon), then the saves on their own row */}
+      <div className="button-rows">
+        <FlipRow>
+          <button className={`btn btn-icon ${done.copy ? 'btn-done' : ''}`} onClick={copy} disabled={!hasCode} title="Copy the QR code" aria-label="Copy the QR code">
+            <Copy size={14} />
+          </button>
+        </FlipRow>
+        <FlipRow>
+          <button className={`btn ${done.png ? 'btn-done' : ''}`} onClick={downloadPng} disabled={!hasCode}>
+            save PNG
+          </button>
+          <button className={`btn ${done.svg ? 'btn-done' : ''}`} onClick={downloadSvg} disabled={!hasCode}>
+            save SVG
+          </button>
+        </FlipRow>
+      </div>
     </div>
   );
 }

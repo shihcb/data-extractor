@@ -462,34 +462,39 @@ function ConvertImages({ active }) {
       </Collapse>
 
 
-      <FlipRow>
-        <button
-          className="btn btn-icon"
-          onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }}
-          title="Add images"
-          aria-label="Add images"
-        >
-          <ImageUp size={14} />
-        </button>
-        <button
-          className={`btn ${done.save ? 'btn-done' : ''}`}
-          onClick={(e) => save(e, items)}
-          disabled={!items.length || !!busy}
-        >
-          {/* "save" and what it makes, as every save button ("save PNG");
-              the format the word swap. No working text while it converts */}
-          <span className="btn-label">save{'\u00a0'}<SlideSwap text={fmt.label} /></span>
-        </button>
-        <button
-          className={`btn btn-icon ${done.copy ? 'btn-done' : ''}`}
-          onClick={handleCopy}
-          disabled={!selected}
-          title="Copy the selected image (or the first one) as PNG"
-          aria-label="Copy the selected image as PNG"
-        >
-          <Copy size={14} />
-        </button>
-      </FlipRow>
+      {/* The input and the actions (icons), then the saves on their own row */}
+      <div className="button-rows">
+        <FlipRow>
+          <button
+            className="btn btn-icon"
+            onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }}
+            title="Add images"
+            aria-label="Add images"
+          >
+            <ImageUp size={14} />
+          </button>
+          <button
+            className={`btn btn-icon ${done.copy ? 'btn-done' : ''}`}
+            onClick={handleCopy}
+            disabled={!selected}
+            title="Copy the selected image (or the first one) as PNG"
+            aria-label="Copy the selected image as PNG"
+          >
+            <Copy size={14} />
+          </button>
+        </FlipRow>
+        <FlipRow>
+          <button
+            className={`btn ${done.save ? 'btn-done' : ''}`}
+            onClick={(e) => save(e, items)}
+            disabled={!items.length || !!busy}
+          >
+            {/* "save" and what it makes, as every save button ("save PNG");
+                the format the word swap. No working text while it converts */}
+            <span className="btn-label">save{'\u00a0'}<SlideSwap text={fmt.label} /></span>
+          </button>
+        </FlipRow>
+      </div>
     </div>
   );
 }
