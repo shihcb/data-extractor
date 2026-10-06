@@ -11,8 +11,9 @@ import FlipRow from './FlipRow';
 // nothing to act on. `end`: the tab's own buttons just left of the trash
 // (the metadata editor's reset). The stats (`children`) go under the row.
 // `empty` (nothing in the box yet): only the input button shows — undo ·
-// redo and the trash fade out (back as soon as there's something, or
-// something to undo), and the stats close up. The case converter doesn't
+// redo and the trash fade out (back as soon as there's something; an
+// emptied box looks as it did at first, Ctrl + Z still undoing), and the
+// stats close up. The case converter doesn't
 // pass it: its row stays as it is.
 export default function BoxRow({ history, actions, children, end, onTrash, trashDisabled, trashTitle = 'Clear', held, empty = false }) {
   const ref = useRef(null);
@@ -44,7 +45,8 @@ export default function BoxRow({ history, actions, children, end, onTrash, trash
     fn();
   };
 
-  const quiet = empty && !history.canUndo && !history.canRedo;
+  // (emptied too: back as it was at first; Ctrl + Z still brings it all back)
+  const quiet = empty;
   const sides = quiet ? { 'aria-hidden': true, inert: true } : {};
   return (
     <>
