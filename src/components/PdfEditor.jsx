@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { FileUp, Search, TextCursorInput, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bold, FileUp, Italic, Minus, Plus, Search, TextCursorInput, ZoomIn, ZoomOut } from 'lucide-react';
 import { closePdf, loadPdfLib, loadPdfjs, openPdf, renderPage, isPasswordError, refusedWords, whyRefused } from '../pdf';
 import { agreedReading, inkCopy, readBlock, readLine, readPage, rereadLine, votedReading, headerLabel } from '../ocr';
 import { findIn, replaceIn } from '../findText';
@@ -9,6 +9,7 @@ import { MOTION, MOTION_MS, canAnimate, motionEase, prefersReducedMotion } from 
 import { whenStill } from '../engine';
 import { useToast } from '../toastContext';
 import { capHeightOf, cssFont, cssWidthEm, fitWidth, fontInfoOf, originalCanWrite, standardFontKey, unicodeFontOf } from '../pdfFonts';
+import AutoHeight from './AutoHeight';
 import BoxRow from './BoxRow';
 import Collapse from './Collapse';
 import Count from './Count';
@@ -16,6 +17,7 @@ import SlideText from './SlideText';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
 import MotionList from './MotionList';
+import TabSwitcher from './TabSwitcher';
 
 // Changing text in a PDF the reliable way (what browser PDF editors do):
 // the old words are covered with a patch the colour of the paper behind
@@ -365,6 +367,54 @@ function boxFor(pdf, view) {
   };
 }
 
+// A new line's own look, set in the add text panel: { font ('sans' |
+// 'serif' | 'mono'; none: like the text near it), bold, italic, size (pt),
+// move: [right, up] in pt }. The line as it's then drawn: on screen and in
+// the saved PDF alike (so they can't disagree). A font other than the
+// nearby one's, or bold / italic it doesn't have, is a standard font.
+const FONT_BASES = { sans: 'Helvetica', serif: 'Times', mono: 'Courier' };
+const FONT_TABS = [
+  { key: 'match', label: 'match' }, // (like the text near it)
+  { key: 'sans', label: 'sans' },
+  { key: 'serif', label: 'serif' },
+  { key: 'mono', label: 'mono' },
+];
+const SIZE_MIN = 4;
+const SIZE_MAX = 200;
+function styled(item, style) {
+  if (!style || !item.added) return item;
+  const pdf = { ...item.pdf };
+  if (style.size > 0) pdf.size = style.size;
+  const [right = 0, up = 0] = style.move || [];
+  if (right || up) {
+    const cos = Math.cos(pdf.angle || 0);
+    const sin = Math.sin(pdf.angle || 0);
+    pdf.x += right * cos - up * sin;
+    pdf.y += right * sin + up * cos;
+  }
+  let { font, fontKey } = item;
+  const base = FONT_BASES[style.font];
+  const bold = style.bold ?? !!font.bold;
+  const italic = style.italic ?? !!font.italic;
+  if (base || bold !== !!font.bold || italic !== !!font.italic) {
+    font = { base: base || font.base, bold, italic };
+    fontKey = null;
+  }
+  return { ...item, pdf, font, fontKey, box: boxFor(pdf, item.view) };
+}
+// (empty parts dropped, so "nothing set" is null and compares equal)
+function cleanStyle(style) {
+  if (!style) return null;
+  const out = {};
+  if (style.font && FONT_BASES[style.font]) out.font = style.font;
+  if (typeof style.bold === 'boolean') out.bold = style.bold;
+  if (typeof style.italic === 'boolean') out.italic = style.italic;
+  if (style.size > 0) out.size = Math.round(style.size * 2) / 2;
+  if (style.move && (style.move[0] || style.move[1])) out.move = [Math.round(style.move[0] * 100) / 100, Math.round(style.move[1] * 100) / 100];
+  return Object.keys(out).length ? out : null;
+}
+const sameStyle = (a, b) => JSON.stringify(cleanStyle(a)) === JSON.stringify(cleanStyle(b));
+
 // A page's items in reading order: top to bottom, and along a row left to
 // right (pictures, read lines and new lines were added at the end, so Tab
 // jumped from the body back up to an email's header)
@@ -537,7 +587,7 @@ function PicCover({ show, rect, bg }) {
 
 export default function PdfEditor({ active }) {
   const [doc, setDoc] = useState(null); // { id, name, bytes, pages: [{ key, num, url, items, width, height }] }
-  const [edits, setEdits] = useState({}); // item id -> { text, bg, ink }
+  const [edits, setEdits] = useState({}); // item id -> { text, bg, ink, style? (a new line's look) }
   // Undo / redo, one change at a time: the edits as they were before each
   // change (past) and the ones undone (future)
   const [history, setHistory] = useState({ past: [], future: [] });
@@ -564,6 +614,15 @@ export default function PdfEditor({ active }) {
   editingRef.current = editing;
   const [draft, setDraft] = useState('');
   const [draftColors, setDraftColors] = useState(null); // { bg, ink } of the text being edited
+  // The add text panel: the new line it works on (the one being typed, or
+  // the last one added or tapped), its look while being typed (saved with
+  // its words), the look the next new line starts with, and a line being
+  // dragged (where it's drawn meanwhile; one undo step once let go)
+  const [picked, setPicked] = useState(null);
+  const [draftStyle, setDraftStyle] = useState(null);
+  const [nextStyle, setNextStyle] = useState(null);
+  const [dragMove, setDragMove] = useState(null); // { id, right, up }
+  const panelPress = useRef(0); // (when the panel was last pressed: a new line's box losing focus to it isn't the end of it)
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [done, flagDone] = useDoneFlags();
@@ -992,8 +1051,15 @@ export default function PdfEditor({ active }) {
     const edit = edits[item.id];
     const colors = colorsFor(item);
     cancelled.current = false;
+    // A new line left empty (its box gave up focus to the panel) goes
+    // when another line opens
+    const was = editingRef.current && editingRef.current !== item.id
+      ? docRef.current?.pages.flatMap(p => p.items).find(q => q.id === editingRef.current) : null;
+    if (was?.added && !editsRef.current[was.id] && !inHistoryRef.current(was.id)) dropAdded(was);
     setDraftColors({ bg: colors.bg, ink: colors.ink });
     setDraft(edit?.text ?? item.str);
+    setDraftStyle(edit?.style ?? null);
+    if (item.added) setPicked(item.id);
     setEditing(item.id);
     if (item.picture && !item.read) readPicture(item);
   };
@@ -1219,6 +1285,9 @@ export default function PdfEditor({ active }) {
     }
     // Tab: already saved, and moved on to another line
     if (editingRef.current !== item.id) return;
+    // A new line with nothing in it yet, its box left for the panel (the
+    // size box, say): kept open, not dropped
+    if (item.added && !draft.trim() && performance.now() - panelPress.current < 800) return;
     setEditing(null);
     finish(item);
   };
@@ -1229,11 +1298,12 @@ export default function PdfEditor({ active }) {
       return;
     }
     const colors = draftColors;
+    const style = item.added ? cleanStyle(draftStyle) : null;
     const next = { ...edits };
     if (text === item.str) delete next[item.id];
-    else next[item.id] = { text, bg: colors.bg, ink: colors.ink };
+    else next[item.id] = { text, bg: colors.bg, ink: colors.ink, ...(style ? { style } : {}) };
     // Only a real change is a step to undo
-    if ((edits[item.id]?.text ?? null) === (next[item.id]?.text ?? null)) return;
+    if ((edits[item.id]?.text ?? null) === (next[item.id]?.text ?? null) && sameStyle(edits[item.id]?.style, next[item.id]?.style)) return;
     changeEdits(next);
   };
 
@@ -1283,9 +1353,11 @@ export default function PdfEditor({ active }) {
           // Left in: patched over
         }
       });
-      for (const item of all) {
-        const edit = edits[item.id];
+      for (const raw of all) {
+        const edit = edits[raw.id];
         if (!edit) continue;
+        // (a new line as its panel set it: font, size, place)
+        const item = styled(raw, edit.style);
         const page = pdf.getPage(item.page);
         const { x, y, size, width, ascent, descent, angle = 0 } = item.pdf;
         const cos = Math.cos(angle);
@@ -1673,9 +1745,153 @@ export default function PdfEditor({ active }) {
       ...prev,
       pages: prev.pages.map(p => (p.num !== page.num ? p : { ...p, items: [...p.items, item] })),
     }));
-    setAdding(false);
+    // (add text stays on: another tap starts another line, as in a text
+    // editor; the next line starts in the look last chosen)
     startEdit(item);
+    setDraftStyle(nextStyle ? { ...nextStyle, move: undefined } : null);
   };
+  // The add text panel's line, and its look as it is now
+  const allItems = doc ? doc.pages.flatMap(p => p.items) : [];
+  const targetId = adding ? (allItems.find(q => q.id === editing)?.added ? editing : picked) : null;
+  const target = targetId ? allItems.find(q => q.id === targetId && q.added) || null : null;
+  const typingTarget = !!target && editing === target.id;
+  const styleOfTarget = !target ? nextStyle : typingTarget ? draftStyle : edits[target.id]?.style ?? null;
+  // A line's look as drawn now (a drag under way included)
+  const styleOf = (item, edit, typing) => {
+    const st = typing ? draftStyle : edit?.style ?? null;
+    if (!dragMove || dragMove.id !== item.id) return st;
+    const [r = 0, u = 0] = st?.move || [];
+    return { ...st, move: [r + dragMove.right, u + dragMove.up] };
+  };
+  // A change to the look of `item` (or, with none, of the next new line):
+  // while it's typed, kept with its words; once saved, one step to undo
+  const setStyleFor = (item, patch) => {
+    if (!item) {
+      setNextStyle(st => cleanStyle({ ...st, ...patch, move: undefined }));
+      return;
+    }
+    const typing = editingRef.current === item.id;
+    const before = typing ? draftStyle : editsRef.current[item.id]?.style ?? null;
+    const after = cleanStyle({ ...before, ...patch });
+    // (the next line starts like this one)
+    if (!('move' in patch)) setNextStyle(cleanStyle({ ...after, move: undefined }));
+    if (typing) { setDraftStyle(after); return; }
+    const edit = editsRef.current[item.id];
+    if (!edit || sameStyle(edit.style, after)) return;
+    const { style: _drop, ...rest } = edit;
+    changeEdits({ ...editsRef.current, [item.id]: after ? { ...rest, style: after } : rest });
+  };
+  const setStyle = (patch) => setStyleFor(target, patch);
+  // What the panel shows: the line's font and size as drawn (with no line,
+  // the next one's: its size "auto", the nearby text's)
+  const shownItem = target ? styled(target, styleOfTarget) : null;
+  const shown = shownItem
+    ? { bold: !!shownItem.font.bold, italic: !!shownItem.font.italic, size: Math.round(shownItem.pdf.size * 2) / 2 }
+    : { bold: !!nextStyle?.bold, italic: !!nextStyle?.italic, size: nextStyle?.size ?? null };
+  const clampSize = (v) => Math.min(SIZE_MAX, Math.max(SIZE_MIN, Math.round(v * 2) / 2));
+  // The size box: typed freely, taken on Enter or leaving it (one undo
+  // step, not one per digit); shows the line's size otherwise
+  const sizeRef = useRef(null);
+  const [sizeText, setSizeText] = useState('');
+  useEffect(() => {
+    if (document.activeElement !== sizeRef.current) setSizeText(shown.size ? String(shown.size) : '');
+  }, [shown.size, targetId]);
+  const applySize = () => {
+    const v = parseFloat(sizeText);
+    if (Number.isFinite(v) && v > 0) {
+      const size = clampSize(v);
+      setSizeText(String(size));
+      if (size !== shown.size) setStyle({ size });
+    } else setSizeText(shown.size ? String(shown.size) : '');
+  };
+  const stepSize = (by) => {
+    const from = shown.size ?? (target ? target.pdf.size : 12);
+    setStyle({ size: clampSize((by > 0 ? Math.floor(from) : Math.ceil(from)) + by) });
+  };
+  const nudge = (item, right, up) => {
+    const [r = 0, u = 0] = (editingRef.current === item.id ? draftStyle : editsRef.current[item.id]?.style)?.move || [];
+    setStyleFor(item, { move: [r + right, u + up] });
+  };
+  // Dragging a new line (add text on): held and moved like a text box; a
+  // press that doesn't move is a tap (opens it to type)
+  const dragRef = useRef(null);
+  const dragged = useRef(false);
+  const startDrag = (item, e) => {
+    if (!adding || !item.added || e.button > 0) return;
+    const layer = e.currentTarget.closest('.pdf-text-layer');
+    const r = layer?.getBoundingClientRect();
+    if (!r?.width) return;
+    // CSS pixels → the PDF's units (the drawn page's scale, and its view's)
+    const viewScale = Math.hypot(item.view.transform[0], item.view.transform[1]) || 1;
+    const k = item.view.width / r.width / viewScale;
+    dragRef.current = { id: item.id, item, x: e.clientX, y: e.clientY, k, moved: false, pointer: e.pointerId, el: e.currentTarget };
+    dragged.current = false;
+  };
+  useEffect(() => {
+    const move = (e) => {
+      const d = dragRef.current;
+      if (!d || e.pointerId !== d.pointer) return;
+      const dx = e.clientX - d.x;
+      const dy = e.clientY - d.y;
+      if (!d.moved && Math.hypot(dx, dy) < 4) return;
+      if (!d.moved) {
+        d.moved = true;
+        try { d.el.setPointerCapture(d.pointer); } catch { /* (gone) */ }
+      }
+      e.preventDefault();
+      setDragMove({ id: d.id, right: dx * d.k, up: -dy * d.k });
+    };
+    const up = (e) => {
+      const d = dragRef.current;
+      if (!d || e.pointerId !== d.pointer) return;
+      dragRef.current = null;
+      if (!d.moved) return;
+      dragged.current = true; // (the click that follows isn't a tap)
+      setDragMove(null);
+      if (e.type === 'pointercancel') return;
+      setPicked(d.id);
+      nudgeRef.current(d.item, (e.clientX - d.x) * d.k, -(e.clientY - d.y) * d.k);
+    };
+    window.addEventListener('pointermove', move, { passive: false });
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    return () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
+  }, []);
+  const nudgeRef = useRef(nudge);
+  nudgeRef.current = nudge;
+
+  // One panel at a time: opening add text closes find first (and the
+  // other way round), then opens once it has shut
+  const swapTimer = useRef(null);
+  const [swapping, setSwapping] = useState(null); // 'add' | 'find' while the other one shuts
+  const openPanel = (which) => {
+    clearTimeout(swapTimer.current);
+    const other = which === 'add' ? findOpen : adding;
+    const open = () => {
+      setSwapping(null);
+      if (which === 'add') setAdding(true);
+      else {
+        setFindOpen(true);
+        requestAnimationFrame(() => findRef.current?.focus({ preventScroll: true }));
+      }
+    };
+    if (!other) { open(); return; }
+    if (which === 'add') setFindOpen(false); else setAdding(false);
+    setSwapping(which);
+    swapTimer.current = setTimeout(open, MOTION_MS);
+  };
+  const closePanels = () => {
+    clearTimeout(swapTimer.current);
+    setSwapping(null);
+    setAdding(false);
+    setFindOpen(false);
+  };
+  useEffect(() => () => clearTimeout(swapTimer.current), []);
+
   // A new line left empty: gone again
   const dropAdded = (item) => {
     setDoc(prev => (!prev ? prev : {
@@ -1737,7 +1953,7 @@ export default function PdfEditor({ active }) {
   // Ctrl + Z / Ctrl + Shift + Z (or Y) undo and redo, Ctrl + F finds; not
   // while typing (the text box has its own undo)
   const keys = useRef({});
-  keys.current = { undo, redo, open: () => setFindOpen(true), has: !!doc };
+  keys.current = { undo, redo, open: () => { if (!findOpen) openPanel('find'); else findRef.current?.focus({ preventScroll: true }); }, has: !!doc };
   useEffect(() => {
     if (!active) return undefined;
     const onKey = (e) => {
@@ -1760,6 +1976,7 @@ export default function PdfEditor({ active }) {
   }, [active]);
   const findRef = useRef(null);
   const findBtnRef = useRef(null);
+  const addBtnRef = useRef(null);
   // Escape in the panel: closed, and the keys go back to its button (left
   // in the closing field, they kept typing into it)
   const closeFind = () => {
@@ -1779,8 +1996,11 @@ export default function PdfEditor({ active }) {
     setDoc(null);
     resetEdits();
     setEditing(null);
-    setFindOpen(false);
-    setAdding(false);
+    closePanels();
+    setPicked(null);
+    setDraftStyle(null);
+    setDragMove(null);
+    dragRef.current = null;
     // Zoom and scroll back to the start once its pages have popped out
     // where they were (unless another PDF has opened meanwhile)
     setTimeout(() => { if (!docRef.current) resetZoom(); }, MOTION_MS + 50);
@@ -1830,11 +2050,14 @@ export default function PdfEditor({ active }) {
                   onClick={(e) => { if (adding && !leaving && e.target === e.currentTarget) addAt(p, e); }}
                   onDoubleClick={(e) => { if (!leaving && e.target === e.currentTarget) addAt(p, e); }}
                 >
-                  {readingOrder(p.items).map(item => {
+                  {readingOrder(p.items).map(raw => {
                     // (a page on its way out shows its own document's changes)
                     const gone = leaving ? leavingDoc.current : null;
-                    const edit = (gone ? gone.edits : edits)[item.id];
-                    const typing = !gone && editing === item.id && draftColors;
+                    const edit = (gone ? gone.edits : edits)[raw.id];
+                    const typing = !gone && editing === raw.id && draftColors;
+                    // (a new line as its panel set it: font, size, place, a drag included)
+                    const item = gone ? styled(raw, edit?.style) : styled(raw, styleOf(raw, edit, !!typing));
+                    const movable = !gone && adding && raw.added;
                     // (A new line with nothing in it, undone, stays drawn — empty, so
                     // nothing shows and nothing's there to tap — so its words fade
                     // out on undo and back in on redo, like any line's)
@@ -1924,18 +2147,34 @@ export default function PdfEditor({ active }) {
                       <TextItem
                         key={item.id}
                         data-item={item.id}
-                        className={`pdf-text-item ${!gone && matches.has(item.id) ? 'match' : ''}`}
+                        className={`pdf-text-item ${!gone && matches.has(item.id) ? 'match' : ''} ${movable ? 'movable' : ''} ${movable && item.id === targetId ? 'picked' : ''}`}
                         edited={!!edit}
                         // (the patch reaches a little past its box: the old words' tails
                         // and soft edges peeked out under it; a found line keeps its tint)
                         editStyle={edit ? {
                           ...pos,
-                          background: rgbCss(edit.bg),
+                          // (a new line covers nothing, on screen as in the saved
+                          // PDF: moved onto another colour, a patch showed as a box)
+                          background: raw.added ? 'transparent' : rgbCss(edit.bg),
                           color: rgbCss(edit.ink),
-                          boxShadow: `${!gone && matches.has(item.id) ? 'inset 0 0 0 100vmax rgba(250, 204, 21, 0.28), ' : ''}0 0 0 0.06em ${rgbCss(edit.bg)}`,
+                          boxShadow: `${!gone && matches.has(item.id) ? 'inset 0 0 0 100vmax rgba(250, 204, 21, 0.28), ' : ''}0 0 0 0.06em ${raw.added ? 'transparent' : rgbCss(edit.bg)}`,
                         } : null}
                         plainStyle={pos}
-                        onClick={(e) => { if (!leaving) startEdit(item, e); }}
+                        onClick={(e) => {
+                          // (the end of a drag isn't a tap)
+                          if (dragged.current) { dragged.current = false; return; }
+                          if (!leaving) startEdit(raw, e);
+                        }}
+                        onPointerDown={movable ? (e) => startDrag(raw, e) : undefined}
+                        onKeyDown={movable ? (e) => {
+                          // Arrow keys move it (Shift: 10pt), as in a text editor
+                          const by = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[e.key];
+                          if (!by) return;
+                          e.preventDefault();
+                          const k = e.shiftKey ? 10 : 1;
+                          setPicked(raw.id);
+                          nudge(raw, by[0] * k, by[1] * k);
+                        } : undefined}
                         title={edit ? `was: ${item.str || 'a picture of text'}` : item.picture ? 'Change the words in this picture' : 'Change this text'}
                         content={edit ? (
                           // The words, squeezed to the original's room, and a mark on
@@ -2021,6 +2260,82 @@ export default function PdfEditor({ active }) {
         </div>
       </Collapse>
 
+      {/* Add text: the new line's font, size and place (the panel open; one
+          panel at a time with find). Pressing its buttons keeps the line's
+          box typing (desktop), and a new line it took the keys from isn't
+          dropped for being empty */}
+      <Collapse open={!!doc && adding} className="options-collapse">
+        <div
+          className="options-panel text-panel"
+          onPointerDownCapture={() => { panelPress.current = performance.now(); }}
+          onMouseDown={(e) => { if (e.target.closest('button')) e.preventDefault(); }}
+        >
+          <FlipRow className="field-grid">
+            <TabSwitcher
+              className="tab-switcher-sm"
+              tabs={FONT_TABS}
+              active={styleOfTarget?.font || 'match'}
+              onChange={(k) => setStyle({ font: k === 'match' ? undefined : k })}
+            />
+            <button className={`btn btn-icon ${shown.bold ? 'btn-on' : ''}`} onClick={(e) => { if (e.detail) e.currentTarget.blur(); setStyle({ bold: !shown.bold }); }} title="Bold" aria-label="Bold" aria-pressed={!!shown.bold}>
+              <Bold size={14} />
+            </button>
+            <button className={`btn btn-icon ${shown.italic ? 'btn-on' : ''}`} onClick={(e) => { if (e.detail) e.currentTarget.blur(); setStyle({ italic: !shown.italic }); }} title="Italic" aria-label="Italic" aria-pressed={!!shown.italic}>
+              <Italic size={14} />
+            </button>
+          </FlipRow>
+          <FlipRow className="field-grid">
+            <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); stepSize(-1); }} disabled={!!shown.size && shown.size <= SIZE_MIN} title="Smaller" aria-label="Smaller">
+              <Minus size={14} />
+            </button>
+            <label className="field size-field">
+              <input
+                ref={sizeRef}
+                className="text-input num"
+                type="number"
+                inputMode="decimal"
+                min={SIZE_MIN}
+                max={SIZE_MAX}
+                step="0.5"
+                value={sizeText}
+                placeholder="auto"
+                onChange={(e) => setSizeText(e.target.value)}
+                onBlur={applySize}
+                onKeyDown={(e) => {
+                  if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+                  if (e.key === 'Enter') applySize();
+                  if (e.key === 'Escape') { setSizeText(shown.size ? String(shown.size) : ''); closePanels(); addBtnRef.current?.focus({ preventScroll: true }); }
+                }}
+                aria-label="Size in points"
+              />
+              pt
+            </label>
+            <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); stepSize(1); }} disabled={!!shown.size && shown.size >= SIZE_MAX} title="Bigger" aria-label="Bigger">
+              <Plus size={14} />
+            </button>
+          </FlipRow>
+          <FlipRow className="field-grid">
+            {[['left', -1, 0, ArrowLeft], ['up', 0, 1, ArrowUp], ['down', 0, -1, ArrowDown], ['right', 1, 0, ArrowRight]].map(([name, r, u, Icon]) => (
+              <button
+                key={name}
+                className="btn btn-icon"
+                onClick={(e) => { if (e.detail) e.currentTarget.blur(); const k = e.shiftKey ? 10 : 1; nudge(target, r * k, u * k); }}
+                disabled={!target}
+                title={`Move ${name} (Shift: 10pt)`}
+                aria-label={`Move ${name}`}
+              >
+                <Icon size={14} />
+              </button>
+            ))}
+          </FlipRow>
+          <AutoHeight className="tool-meta">
+            <FadeText k={target ? 'move' : 'add'}>
+              {target ? 'drag the text on the page, or use the arrows, to move it' : 'tap a spot on a page to add text'}
+            </FadeText>
+          </AutoHeight>
+        </div>
+      </Collapse>
+
       {/* The input and the tools (icons; add text and find switch on and
           off, outlined while on), then save on its own row */}
       <div className="button-rows">
@@ -2029,28 +2344,30 @@ export default function PdfEditor({ active }) {
             <FileUp size={14} />
           </button>
           <button
-            className={`btn btn-icon ${adding ? 'btn-on' : ''}`}
-            onClick={(e) => { if (e.detail) e.currentTarget.blur(); setAdding(a => !a); }}
+            ref={addBtnRef}
+            className={`btn btn-icon ${adding || swapping === 'add' ? 'btn-on' : ''}`}
+            onClick={(e) => {
+              if (e.detail) e.currentTarget.blur();
+              if (adding || swapping === 'add') closePanels(); else openPanel('add');
+            }}
             disabled={!doc}
             title="Add text: tap a spot on a page (or double-click one)"
             aria-label="Add text"
-            aria-pressed={adding}
+            aria-pressed={adding || swapping === 'add'}
           >
             <TextCursorInput size={14} />
           </button>
           <button
             ref={findBtnRef}
-            className={`btn btn-icon ${findOpen ? 'btn-on' : ''}`}
+            className={`btn btn-icon ${findOpen || swapping === 'find' ? 'btn-on' : ''}`}
             onClick={(e) => {
               if (e.detail) e.currentTarget.blur();
-              const open = !findOpen;
-              setFindOpen(open);
-              if (open) requestAnimationFrame(() => findRef.current?.focus({ preventScroll: true }));
+              if (findOpen || swapping === 'find') closePanels(); else openPanel('find');
             }}
             disabled={!doc}
             title="Find and replace (Ctrl + F)"
             aria-label="Find and replace"
-            aria-pressed={findOpen}
+            aria-pressed={findOpen || swapping === 'find'}
           >
             <Search size={14} />
           </button>

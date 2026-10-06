@@ -1899,3 +1899,25 @@ html.page-fits body {
   gap: var(--button-gap);
   width: 100%;
 }
+
+/* ── The PDF editor's add text panel ──────────────────────────── */
+
+/* A new line, with add text on: dragged to move it (not the page) */
+.pdf-text-item.movable {
+  cursor: move;
+  touch-action: none;
+}
+/* The line the panel works on */
+.pdf-text-item.movable.picked {
+  outline-color: var(--text-main);
+}
+
+.size-field .text-input.num {
+  width: 4.5em;
+}
+
+/* Its hint: 10px under the buttons, as every text line under controls
+   (the panel's rows are 6px apart) */
+.text-panel > .tool-meta {
+  margin-top: 4px;
+}

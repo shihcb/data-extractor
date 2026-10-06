@@ -133,6 +133,22 @@ Editing in the PDF editor:
   "· matches N" sliding into the stats line while it's open.
 - Double-click an empty spot (or tap one with "add text" on) to add a line,
   in the size and font of the nearest line; left empty, it goes again.
+- "add text" opens its own panel (the panel open; one panel at a time with
+  find: the open one shuts first, then the other opens, `openPanel`, Ctrl + F
+  too): font (match / sans / serif / mono, bold, italic), size (− box +,
+  taken on Enter / leaving it) and move (← ↑ ↓ →, Shift 10pt; or drag the
+  line on the page, or arrow keys on it). It works on the new line being
+  typed, or the last one added / tapped (outlined); with none, it sets the
+  look the next new line starts with (and each new line starts in the look
+  last chosen). The look is the line's `style` in its change
+  ({ font, bold, italic, size, move: [right, up] }), drawn through
+  `styled()` on screen and in the save alike, so they can't disagree; a
+  change of look is one undo step (a drag one step, once let go), kept with
+  the words while typing. Its buttons don't take the keys from the line being
+  typed (desktop); a new line that lost them to the panel while empty isn't
+  dropped. New lines cover nothing, on screen as in the PDF (moved, a patch
+  showed as a box). A font other than the nearby one's, or bold / italic it
+  hasn't, is a standard font (Times-Bold and so on).
 - Scanned / photographed pages (one picture over most of the page, no text
   of its own) are read in the background once open (`readPage` in
   `src/ocr.js`): drawn ~5000px on the long side, made black on white
