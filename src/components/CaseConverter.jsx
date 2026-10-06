@@ -67,8 +67,23 @@ export default function CaseConverter({ active }) {
         autoCapitalize="off"
         aria-label="Text to convert"
       />
-      {/* Undo · redo | the stats | clear */}
-      <BoxRow history={history} onTrash={() => history.reset('')} trashDisabled={!text} held={!!text}>
+      {/* Undo · redo | the input buttons | clear; the stats under it */}
+      <BoxRow
+        history={history}
+        onTrash={() => history.reset('')}
+        trashDisabled={!text}
+        held={!!text}
+        actions={(
+          <button
+            className={`btn btn-icon ${done.paste ? 'btn-done' : ''}`}
+            onClick={handlePaste}
+            title="Paste from clipboard"
+            aria-label="Paste from clipboard"
+          >
+            <ClipboardPaste size={14} />
+          </button>
+        )}
+      >
         <AutoHeight className="tool-meta" aria-live="polite">
           {/* Label first, so only the numbers change (they count) */}
           <span className="tool-stats">
@@ -77,21 +92,11 @@ export default function CaseConverter({ active }) {
         </AutoHeight>
       </BoxRow>
       {/* The same rows on every screen (a computer put them all on one or
-          two lines, the groups run together): paste with lower / UPPER,
-          Title / Sentence, camel / snake, kebab / tidy */}
+          two lines, the groups run together): lower / UPPER, Title /
+          Sentence, camel / snake, kebab / tidy (paste: in the box row) */}
       <div className="button-rows">
         {ROWS.map((row, i) => (
           <FlipRow key={i}>
-            {i === 0 && (
-              <button
-                className={`btn btn-icon ${done.paste ? 'btn-done' : ''}`}
-                onClick={handlePaste}
-                title="Paste from clipboard"
-                aria-label="Paste from clipboard"
-              >
-                <ClipboardPaste size={14} />
-              </button>
-            )}
             {row.map(c => (
               <button
                 key={c.key}

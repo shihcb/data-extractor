@@ -145,13 +145,17 @@ function MakeQr({ active }) {
         aria-label="Text for the QR code"
       />
       {/* Undo · redo | clear */}
-      <BoxRow history={history} onTrash={() => history.reset('')} trashDisabled={!text} held={!!text} />
-      {/* As in every tab: the box's input button first (paste), then the rest */}
-      <FlipRow>
-        <button className={`btn btn-icon ${done.paste ? 'btn-done' : ''}`} onClick={paste} title="Paste from clipboard" aria-label="Paste from clipboard">
-          <ClipboardPaste size={14} />
-        </button>
-      </FlipRow>
+      <BoxRow
+        history={history}
+        onTrash={() => history.reset('')}
+        trashDisabled={!text}
+        held={!!text}
+        actions={(
+          <button className={`btn btn-icon ${done.paste ? 'btn-done' : ''}`} onClick={paste} title="Paste from clipboard" aria-label="Paste from clipboard">
+            <ClipboardPaste size={14} />
+          </button>
+        )}
+      />
       {/* The error level: a setting, so in the options panel (as the image
           converter's), opening once there's text */}
       <Collapse open={!!text} className="options-collapse">

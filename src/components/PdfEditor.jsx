@@ -2209,8 +2209,43 @@ export default function PdfEditor({ active }) {
       />
 
       {/* The stats: always there, only the numbers change (counting from 0) */}
-      {/* Undo · redo | the stats | close (the trash) */}
+      {/* Undo · redo | the input buttons | close (the trash); the stats under it */}
       <BoxRow
+        actions={(
+          <>
+            <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Open a PDF" aria-label="Open a PDF">
+              <FileUp size={14} />
+            </button>
+            <button
+              ref={addBtnRef}
+              className={`btn btn-icon ${adding || swapping === 'add' ? 'btn-on' : ''}`}
+              onClick={(e) => {
+                if (e.detail) e.currentTarget.blur();
+                if (adding || swapping === 'add') closePanels(); else openPanel('add');
+              }}
+              disabled={!doc}
+              title="Add text: tap a spot on a page (or double-click one)"
+              aria-label="Add text"
+              aria-pressed={adding || swapping === 'add'}
+            >
+              <TextCursorInput size={14} />
+            </button>
+            <button
+              ref={findBtnRef}
+              className={`btn btn-icon ${findOpen || swapping === 'find' ? 'btn-on' : ''}`}
+              onClick={(e) => {
+                if (e.detail) e.currentTarget.blur();
+                if (findOpen || swapping === 'find') closePanels(); else openPanel('find');
+              }}
+              disabled={!doc}
+              title="Find and replace (Ctrl + F)"
+              aria-label="Find and replace"
+              aria-pressed={findOpen || swapping === 'find'}
+            >
+              <Search size={14} />
+            </button>
+          </>
+        )}
         history={{ undo, redo, canUndo: history.past.length > 0, canRedo: history.future.length > 0 }}
         onTrash={close}
         trashDisabled={!doc}
@@ -2338,46 +2373,11 @@ export default function PdfEditor({ active }) {
 
       {/* The input and the tools (icons; add text and find switch on and
           off, outlined while on), then save on its own row */}
-      <div className="button-rows">
-        <FlipRow>
-          <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Open a PDF" aria-label="Open a PDF">
-            <FileUp size={14} />
-          </button>
-          <button
-            ref={addBtnRef}
-            className={`btn btn-icon ${adding || swapping === 'add' ? 'btn-on' : ''}`}
-            onClick={(e) => {
-              if (e.detail) e.currentTarget.blur();
-              if (adding || swapping === 'add') closePanels(); else openPanel('add');
-            }}
-            disabled={!doc}
-            title="Add text: tap a spot on a page (or double-click one)"
-            aria-label="Add text"
-            aria-pressed={adding || swapping === 'add'}
-          >
-            <TextCursorInput size={14} />
-          </button>
-          <button
-            ref={findBtnRef}
-            className={`btn btn-icon ${findOpen || swapping === 'find' ? 'btn-on' : ''}`}
-            onClick={(e) => {
-              if (e.detail) e.currentTarget.blur();
-              if (findOpen || swapping === 'find') closePanels(); else openPanel('find');
-            }}
-            disabled={!doc}
-            title="Find and replace (Ctrl + F)"
-            aria-label="Find and replace"
-            aria-pressed={findOpen || swapping === 'find'}
-          >
-            <Search size={14} />
-          </button>
-        </FlipRow>
-        <FlipRow>
-          <button className={`btn ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!doc || !editCount || busy}>
-            save PDF
-          </button>
-        </FlipRow>
-      </div>
+      <FlipRow>
+        <button className={`btn ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!doc || !editCount || busy}>
+          save PDF
+        </button>
+      </FlipRow>
     </div>
   );
 }

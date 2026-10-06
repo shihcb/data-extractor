@@ -180,8 +180,18 @@ export default function TextDiff({ active }) {
           aria-label="Changed text"
         />
       </div>
-      {/* Undo · redo | the stats | clear */}
-      <BoxRow history={history} onTrash={() => history.reset({ left: '', right: '' })} trashDisabled={empty} held={!empty}>
+      {/* Undo · redo | the input buttons | clear; the stats under it */}
+      <BoxRow
+        history={history}
+        onTrash={() => history.reset({ left: '', right: '' })}
+        trashDisabled={empty}
+        held={!empty}
+        actions={(
+          <button className={`btn btn-icon ${done.paste ? 'btn-done' : ''}`} onClick={paste} title="Paste from clipboard" aria-label="Paste from clipboard">
+            <ClipboardPaste size={14} />
+          </button>
+        )}
+      >
         <AutoHeight className="tool-meta" aria-live="polite">
           <FadeText k={status === 'empty' ? 'diff' : status}>
             {status === 'slow' && (mode === 'lines' ? 'too long to compare' : 'too different to compare this way — try lines')}
@@ -207,12 +217,6 @@ export default function TextDiff({ active }) {
         </div>
       </Collapse>
 
-      {/* As in every tab: the box's input button first (paste), then the rest */}
-      <FlipRow>
-        <button className={`btn btn-icon ${done.paste ? 'btn-done' : ''}`} onClick={paste} title="Paste from clipboard" aria-label="Paste from clipboard">
-          <ClipboardPaste size={14} />
-        </button>
-      </FlipRow>
       {/* Swapping: in the bottom bar */}
       <ActionBar active={active} open={!empty} label="Texts">
         <button className="bulk-btn bulk-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); setTexts(t => ({ left: t.right, right: t.left })); }} title="Swap the two texts" aria-label="Swap the two texts">

@@ -390,8 +390,8 @@ body.has-bar .app-container {
   display: block;
   width: 100%;
   /* Fills what the screen has left under it (the case converter's
-     stats, button rows and tabs take ~340px), so the page doesn't scroll */
-  min-height: clamp(120px, calc(100dvh - 340px), 60vh);
+     stats, button rows and tabs take ~360px), so the page doesn't scroll */
+  min-height: clamp(120px, calc(100dvh - 360px), 60vh);
   resize: none;
   padding: 18px 24px;
   font-family: var(--font-body);
@@ -1821,22 +1821,15 @@ html.page-fits body {
   pointer-events: none;
 }
 
-/* ── The row under a box: undo · redo | the stats | the trash ──── */
+/* ── The row under a box: undo · redo | input buttons | the trash ── */
 
 .box-row {
   display: grid;
-  /* The middle a fixed share of the row, never sized to its words: sized to
-     them, the row re-centred on every change and the stats' text swap
-     ("added 0 · removed 0" ↔ "no differences") jumped instead of fading */
+  /* The middle a fixed share of the row, its buttons centred in it */
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--button-gap);
   width: 100%;
-  /* One height in every tab, the buttons' (26px): stats that wrap onto two
-     lines on a phone spill a little above and below without moving
-     anything (sized to them, rows came out 26 or 37px and everything under
-     shifted; held at 37, the space round the buttons looked loose) */
-  grid-template-rows: 26px;
   margin-top: -10px;
 }
 
@@ -1844,8 +1837,23 @@ html.page-fits body {
   display: flex;
   align-items: center;
   gap: var(--button-gap);
-  /* Both sides as wide as undo · redo, so the stats sit in the middle */
-  min-width: 70px;
+  /* Both sides as wide as undo · redo, so the middle's buttons sit in the
+     middle of the box */
+  min-width: calc(80px + var(--button-gap));
+}
+
+/* Every button in the row one size (icons and the metadata editor's reset
+   alike: a word button made its row taller), a little narrower than
+   elsewhere so three fit between the sides on a phone */
+.box-row .btn {
+  height: 36px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.box-row .btn-icon {
+  width: 40px;
+  padding-left: 0;
+  padding-right: 0;
 }
 
 /* A button sliding in by the trash (the word slide) brings its own gap,
@@ -1870,20 +1878,6 @@ html.page-fits body {
 
 .box-row-mid {
   min-width: 0;
-}
-
-.box-row-mid .tool-meta {
-  margin-top: 0;
-  /* (two wrapped lines spill only ~3px past the row) */
-  line-height: 1.3;
-}
-
-/* Every button in the row one height, icon or word (the metadata editor's
-   reset made its row 11px taller than the others, even while hidden) */
-.box-row .btn {
-  height: 26px;
-  padding-top: 0;
-  padding-bottom: 0;
 }
 
 /* Delete in red, as the bar's was */

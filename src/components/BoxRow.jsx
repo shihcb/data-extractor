@@ -1,13 +1,15 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { Redo2, Trash2, Undo2 } from 'lucide-react';
 import { workHeld } from '../utils';
+import FlipRow from './FlipRow';
 
-// The row right under a tab's box: undo · redo on the left, the stats in
-// the middle (`children`), and the trash on the right — clear and delete
-// in one: the selection if there is one, else everything (or, in the text
-// tabs, the text). Always there; dimmed with nothing to act on. `end`:
-// the tab's own buttons just left of the trash (the metadata editor's reset).
-export default function BoxRow({ history, children, end, onTrash, trashDisabled, trashTitle = 'Clear', held }) {
+// The row right under a tab's box: undo · redo on the left, the tab's input
+// and action buttons in the middle, centred (`actions`), and the trash on
+// the right — clear and delete in one: the selection if there is one, else
+// everything (or, in the text tabs, the text). Always there; dimmed with
+// nothing to act on. `end`: the tab's own buttons just left of the trash
+// (the metadata editor's reset). The stats (`children`) go under the row.
+export default function BoxRow({ history, actions, children, end, onTrash, trashDisabled, trashTitle = 'Clear', held }) {
   const ref = useRef(null);
   const id = useRef({});
   const lastFocus = useRef(null);
@@ -38,22 +40,25 @@ export default function BoxRow({ history, children, end, onTrash, trashDisabled,
   };
 
   return (
+    <>
     <div ref={ref} className="box-row" onFocus={(e) => { lastFocus.current = e.target.closest('button'); }}>
       <div className="box-row-side">
-        <button className="btn btn-sm btn-icon" onClick={press(() => history.undo())} disabled={!history.canUndo} title="Undo (Ctrl + Z)" aria-label="Undo">
+        <button className="btn btn-icon" onClick={press(() => history.undo())} disabled={!history.canUndo} title="Undo (Ctrl + Z)" aria-label="Undo">
           <Undo2 size={14} />
         </button>
-        <button className="btn btn-sm btn-icon" onClick={press(() => history.redo())} disabled={!history.canRedo} title="Redo (Ctrl + Shift + Z)" aria-label="Redo">
+        <button className="btn btn-icon" onClick={press(() => history.redo())} disabled={!history.canRedo} title="Redo (Ctrl + Shift + Z)" aria-label="Redo">
           <Redo2 size={14} />
         </button>
       </div>
-      <div className="box-row-mid">{children}</div>
+      <div className="box-row-mid">{actions ? <FlipRow>{actions}</FlipRow> : null}</div>
       <div className="box-row-side box-row-end">
         {end}
-        <button className="btn btn-sm btn-icon box-trash" onClick={press(onTrash)} disabled={trashDisabled} title={trashTitle} aria-label={trashTitle}>
+        <button className="btn btn-icon box-trash" onClick={press(onTrash)} disabled={trashDisabled} title={trashTitle} aria-label={trashTitle}>
           <Trash2 size={14} />
         </button>
       </div>
     </div>
+    {children}
+    </>
   );
 }

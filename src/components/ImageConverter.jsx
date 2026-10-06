@@ -399,12 +399,34 @@ function ConvertImages({ active }) {
 
       {/* The stats: always there, only the numbers change (counting from 0).
           "out" is what the selected image (or the first) comes out as. */}
-      {/* Undo · redo | the stats | delete (the selection, or every image) */}
+      {/* Undo · redo | the input buttons | delete (the selection, or every image); the stats under it */}
       <BoxRow
+        actions={(
+          <>
+            <button
+              className="btn btn-icon"
+              onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }}
+              title="Add images"
+              aria-label="Add images"
+            >
+              <ImageUp size={14} />
+            </button>
+            <button
+              className={`btn btn-icon ${done.copy ? 'btn-done' : ''}`}
+              onClick={handleCopy}
+              disabled={!selected}
+              title="Copy the selected image (or the first one) as PNG"
+              aria-label="Copy the selected image as PNG"
+            >
+              <Copy size={14} />
+            </button>
+          </>
+        )}
         history={history}
         onTrash={() => removeItems(picked.size ? new Set(picked) : new Set(items.map(i => i.id)))}
         trashDisabled={!items.length}
-        trashTitle={picked.size && picked.size < items.length ? 'Delete the selected images' : 'Delete all images'}        held={items.length > 0}
+        trashTitle={picked.size && picked.size < items.length ? 'Delete the selected images' : 'Delete all images'}
+        held={items.length > 0}
       >
         <div className="tool-meta tool-stats" aria-live="polite">
           images <Count value={items.length} /> · selected <Count value={picked.size} /> · out <Count value={out.width} format={String} /> × <Count value={out.height} format={String} /> · <Count value={outSize} format={kb} />
@@ -463,38 +485,17 @@ function ConvertImages({ active }) {
 
 
       {/* The input and the actions (icons), then the saves on their own row */}
-      <div className="button-rows">
-        <FlipRow>
-          <button
-            className="btn btn-icon"
-            onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }}
-            title="Add images"
-            aria-label="Add images"
-          >
-            <ImageUp size={14} />
-          </button>
-          <button
-            className={`btn btn-icon ${done.copy ? 'btn-done' : ''}`}
-            onClick={handleCopy}
-            disabled={!selected}
-            title="Copy the selected image (or the first one) as PNG"
-            aria-label="Copy the selected image as PNG"
-          >
-            <Copy size={14} />
-          </button>
-        </FlipRow>
-        <FlipRow>
-          <button
-            className={`btn ${done.save ? 'btn-done' : ''}`}
-            onClick={(e) => save(e, items)}
-            disabled={!items.length || !!busy}
-          >
-            {/* "save" and what it makes, as every save button ("save PNG");
-                the format the word swap. No working text while it converts */}
-            <span className="btn-label">save{'\u00a0'}<SlideSwap text={fmt.label} /></span>
-          </button>
-        </FlipRow>
-      </div>
+      <FlipRow>
+        <button
+          className={`btn ${done.save ? 'btn-done' : ''}`}
+          onClick={(e) => save(e, items)}
+          disabled={!items.length || !!busy}
+        >
+          {/* "save" and what it makes, as every save button ("save PNG");
+              the format the word swap. No working text while it converts */}
+          <span className="btn-label">save{'\u00a0'}<SlideSwap text={fmt.label} /></span>
+        </button>
+      </FlipRow>
     </div>
   );
 }

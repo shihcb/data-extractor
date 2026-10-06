@@ -404,12 +404,23 @@ export default function PdfTools({ active }) {
       </div>
 
       {/* The stats: always there, only the numbers change (counting from 0) */}
-      {/* Undo · redo | the stats | delete (the selection, or every page) */}
+      {/* Undo · redo | the input buttons | delete (the selection, or every page); the stats under it */}
       <BoxRow
+        actions={(
+          <>
+            <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Add PDFs" aria-label="Add PDFs">
+              <FilePlus size={14} />
+            </button>
+            <button className={`btn btn-icon ${done.split ? 'btn-done' : ''}`} onClick={split} disabled={none || !!busy} title="Split into one PDF a page" aria-label="Split into one PDF a page">
+              <Scissors size={14} />
+            </button>
+          </>
+        )}
         history={history}
         onTrash={() => removePages(selected.size ? new Set(selected) : new Set(pages.map(p => p.id)))}
         trashDisabled={!pages.length}
-        trashTitle={selected.size && selected.size < pages.length ? 'Delete the selected pages' : 'Delete all pages'}        held={pages.length > 0}
+        trashTitle={selected.size && selected.size < pages.length ? 'Delete the selected pages' : 'Delete all pages'}
+        held={pages.length > 0}
       >
         <div className="tool-meta tool-stats" aria-live="polite">
           pages <Count value={pages.length} /> · files <Count value={fileCount} /> · selected <Count value={selected.size} />
@@ -417,26 +428,16 @@ export default function PdfTools({ active }) {
       </BoxRow>
 
       {/* The input and the actions (icons), then the saves on their own row */}
-      <div className="button-rows">
-        <FlipRow>
-          <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Add PDFs" aria-label="Add PDFs">
-            <FilePlus size={14} />
-          </button>
-          <button className={`btn btn-icon ${done.split ? 'btn-done' : ''}`} onClick={split} disabled={none || !!busy} title="Split into one PDF a page" aria-label="Split into one PDF a page">
-            <Scissors size={14} />
-          </button>
-        </FlipRow>
-        <FlipRow>
-          <button className={`btn ${done.save ? 'btn-done' : ''}`} onClick={saveAll} disabled={none || !!busy}>
-            {/* "merged" comes and goes with the word slide (a cross-fade of the
-                whole label inside a button easing its width was choppy) */}
-            <span className="btn-label">save<SlideText show={fileCount > 1}>{'\u00a0merged'}</SlideText> PDF</span>
-          </button>
-          <button className={`btn ${done.images ? 'btn-done' : ''}`} onClick={toImages} disabled={none || !!busy}>
-            save PNG
-          </button>
-        </FlipRow>
-      </div>
+      <FlipRow>
+        <button className={`btn ${done.save ? 'btn-done' : ''}`} onClick={saveAll} disabled={none || !!busy}>
+          {/* "merged" comes and goes with the word slide (a cross-fade of the
+              whole label inside a button easing its width was choppy) */}
+          <span className="btn-label">save<SlideText show={fileCount > 1}>{'\u00a0merged'}</SlideText> PDF</span>
+        </button>
+        <button className={`btn ${done.images ? 'btn-done' : ''}`} onClick={toImages} disabled={none || !!busy}>
+          save PNG
+        </button>
+      </FlipRow>
     </div>
   );
 }
