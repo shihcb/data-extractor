@@ -2006,41 +2006,43 @@ export default function PdfEditor({ active }) {
       </Collapse>
 
       {/* Adding text, find and replace: switched on and off (outlined while
-          on), above open / save */}
-      <FlipRow>
-        <button
-          className={`btn ${adding ? 'btn-on' : ''}`}
-          onClick={(e) => { if (e.detail) e.currentTarget.blur(); setAdding(a => !a); }}
-          disabled={!doc}
-          title="Add text: tap a spot on a page (or double-click one)"
-          aria-pressed={adding}
-        >
-          add text
-        </button>
-        <button
-          ref={findBtnRef}
-          className={`btn ${findOpen ? 'btn-on' : ''}`}
-          onClick={(e) => {
-            if (e.detail) e.currentTarget.blur();
-            const open = !findOpen;
-            setFindOpen(open);
-            if (open) requestAnimationFrame(() => findRef.current?.focus({ preventScroll: true }));
-          }}
-          disabled={!doc}
-          title="Find and replace (Ctrl + F)"
-          aria-pressed={findOpen}
-        >
-          find text
-        </button>
-      </FlipRow>
-      <FlipRow>
-        <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Open a PDF" aria-label="Open a PDF">
-          <FileUp size={14} />
-        </button>
-        <button className={`btn ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!doc || !editCount || busy}>
-          save PDF
-        </button>
-      </FlipRow>
+          on), a row above open / save — one group, its rows 6px apart */}
+      <div className="button-rows">
+        <FlipRow>
+          <button
+            className={`btn ${adding ? 'btn-on' : ''}`}
+            onClick={(e) => { if (e.detail) e.currentTarget.blur(); setAdding(a => !a); }}
+            disabled={!doc}
+            title="Add text: tap a spot on a page (or double-click one)"
+            aria-pressed={adding}
+          >
+            add text
+          </button>
+          <button
+            ref={findBtnRef}
+            className={`btn ${findOpen ? 'btn-on' : ''}`}
+            onClick={(e) => {
+              if (e.detail) e.currentTarget.blur();
+              const open = !findOpen;
+              setFindOpen(open);
+              if (open) requestAnimationFrame(() => findRef.current?.focus({ preventScroll: true }));
+            }}
+            disabled={!doc}
+            title="Find and replace (Ctrl + F)"
+            aria-pressed={findOpen}
+          >
+            find text
+          </button>
+        </FlipRow>
+        <FlipRow>
+          <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Open a PDF" aria-label="Open a PDF">
+            <FileUp size={14} />
+          </button>
+          <button className={`btn ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!doc || !editCount || busy}>
+            save PDF
+          </button>
+        </FlipRow>
+      </div>
     </div>
   );
 }

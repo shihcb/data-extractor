@@ -237,6 +237,17 @@ every 95% ↔ 100% scale).
 Buttons are always `--button-gap` (6px, the instagram repo's) apart: button
 rows, the settings row, the box row, the bottom bar, card buttons, the zoom controls.
 
+Spacing down a tab, the same everywhere (measured in every tab):
+- 6px: between buttons, and between rows of one group (the case
+  converter's rows, the PDF editor's add text · find text over open · save
+  PDF, the rows inside an options panel, find and replace).
+- 10px: under a box to what belongs to it (the box row, the box below
+  it in text diff), and the description to its box; a text line under
+  controls (the QR level's hint).
+- 20px: between groups (the box row to the buttons or an options panel,
+  the panel to the buttons, the buttons to a result box). An options
+  panel keeps 2px inside for focus rings and takes it back outside.
+
 On a phone every tab fits the screen empty, without scrolling (checked
 at 375 × 667, 390 × 844 and 430 × 932): the page ends 24px under its last
 button (it kept 140px for a bottom bar on every tab and scrolled for it);

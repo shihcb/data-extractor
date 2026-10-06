@@ -890,8 +890,16 @@ body.has-bar .feature-toast {
 .options-panel {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  /* Rows of controls 6px apart, like button rows */
+  gap: var(--button-gap);
+  /* (room for the switchers' focus ring inside the panel's clip; taken
+     back outside it, so the panel sits the usual 20px from its neighbours) */
   padding: 2px 0;
+}
+
+.tool > .motion-collapse.options-collapse:has(.options-panel) {
+  margin-top: -22px;
+  margin-bottom: -2px;
 }
 
 .quality-row {
@@ -1609,7 +1617,8 @@ a.btn {
 .diff-inputs {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  /* (10px, as every box to what's right under it) */
+  gap: 10px;
   width: 100%;
 }
 
@@ -1724,10 +1733,10 @@ a.btn {
   padding-top: 20px;
 }
 .options-panel > .motion-collapse {
-  margin-top: -14px;
+  margin-top: calc(-1 * var(--button-gap));
 }
 .options-panel > .motion-collapse > .auto-height-inner {
-  padding-top: 14px;
+  padding-top: var(--button-gap);
 }
 
 .resize-field {
