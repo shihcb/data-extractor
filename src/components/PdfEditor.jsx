@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ZoomIn, ZoomOut } from 'lucide-react';
+import { FileUp, Search, ZoomIn, ZoomOut } from 'lucide-react';
 import { closePdf, loadPdfLib, loadPdfjs, openPdf, renderPage, isPasswordError, refusedWords, whyRefused } from '../pdf';
 import { agreedReading, readBlock, readLine, readPage, rereadLine } from '../ocr';
 import { removeText } from '../pdfText';
@@ -1997,8 +1997,8 @@ export default function PdfEditor({ active }) {
       </Collapse>
 
       <FlipRow>
-        <button className="btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }}>
-          open pdf
+        <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Open a PDF" aria-label="Open a PDF">
+          <FileUp size={14} />
         </button>
         <button className={`btn btn-primary ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!doc || !editCount || busy}>
           save pdf
@@ -2017,7 +2017,7 @@ export default function PdfEditor({ active }) {
         </button>
         <button
           ref={findBtnRef}
-          className={`bulk-btn ${findOpen ? 'on' : ''}`}
+          className={`bulk-btn bulk-icon ${findOpen ? 'on' : ''}`}
           onClick={(e) => {
             if (e.detail) e.currentTarget.blur();
             const open = !findOpen;
@@ -2025,9 +2025,10 @@ export default function PdfEditor({ active }) {
             if (open) requestAnimationFrame(() => findRef.current?.focus({ preventScroll: true }));
           }}
           title="Find and replace (Ctrl + F)"
+          aria-label="Find and replace"
           aria-pressed={findOpen}
         >
-          find
+          <Search size={14} />
         </button>
       </ActionBar>
     </div>

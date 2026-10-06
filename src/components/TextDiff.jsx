@@ -1,6 +1,6 @@
 import React, { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { fadeIn } from '../motion';
-import { ClipboardPaste } from 'lucide-react';
+import { ArrowLeftRight, ClipboardPaste } from 'lucide-react';
 import { useDoneFlags } from '../utils';
 import { useToast } from '../toastContext';
 import { diffChars, diffLines, diffWordsWithSpace } from 'diff';
@@ -198,8 +198,8 @@ export default function TextDiff({ active }) {
       </FlipRow>
       {/* Swapping and clearing: in the bottom bar, like every tab */}
       <ActionBar active={active} open={!empty} onClose={() => history.reset({ left: '', right: '' })} label="Texts" history={history}>
-        <button className="bulk-btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); setTexts(t => ({ left: t.right, right: t.left })); }} title="Swap the two texts">
-          swap
+        <button className="bulk-btn bulk-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); setTexts(t => ({ left: t.right, right: t.left })); }} title="Swap the two texts" aria-label="Swap the two texts">
+          <ArrowLeftRight size={14} />
         </button>
       </ActionBar>
 

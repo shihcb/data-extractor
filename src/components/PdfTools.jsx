@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, RotateCcw, RotateCw, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FilePlus, RotateCcw, RotateCw, X } from 'lucide-react';
 import { zipSync } from 'fflate';
 import { closePdf, loadPdfLib, openPdf, renderPage, isPasswordError, refusedWords, whyRefused } from '../pdf';
 import { baseName, canvasToBlob, downloadBlob, isImageFile, isPdfFile, keepFocusAfterRemove, shortName, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
@@ -414,8 +414,8 @@ export default function PdfTools({ active }) {
       </div>
 
       <FlipRow>
-        <button className="btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }}>
-          add pdfs
+        <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Add PDFs" aria-label="Add PDFs">
+          <FilePlus size={14} />
         </button>
         <button className={`btn btn-primary ${done.save ? 'btn-done' : ''}`} onClick={saveAll} disabled={none || !!busy}>
           {/* "merged" comes and goes with the word slide (a cross-fade of the

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Copy, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, ImageUp, X } from 'lucide-react';
 import { zipSync } from 'fflate';
 import { IMAGE_FORMATS, encodeImage, estimateImage, jpegsToPdf, loadImage, makeThumb, targetSize } from '../imageConvert';
 import { baseName, copyImageBlob, downloadBlob, isImageFile, isPdfFile, keepFocusAfterRemove, shortName, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
@@ -456,10 +456,12 @@ function ConvertImages({ active }) {
 
       <FlipRow>
         <button
-          className="btn"
+          className="btn btn-icon"
           onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }}
+          title="Add images"
+          aria-label="Add images"
         >
-          add images
+          <ImageUp size={14} />
         </button>
         <button
           className={`btn btn-primary ${done.save ? 'btn-done' : ''}`}

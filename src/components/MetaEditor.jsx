@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ImageUp, X } from 'lucide-react';
 import { zipSync } from 'fflate';
 import { GROUPS, applyFields, readFields, readMeta, sizeText, writeMeta, writeTiff } from '../exif';
 import { loadImage, makeThumb } from '../imageConvert';
@@ -435,8 +435,8 @@ export default function MetaEditor({ active }) {
           one fixed size that scrolls inside, so opening it slides these down
           a box's height on the shared curve, not a whole page of rows */}
       <FlipRow>
-        <button className="btn" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }}>
-          add photos
+        <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Add photos" aria-label="Add photos">
+          <ImageUp size={14} />
         </button>
         <button className={`btn btn-primary ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!items.length || busy}>
           save

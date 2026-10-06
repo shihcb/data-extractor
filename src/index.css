@@ -1003,12 +1003,21 @@ body.has-bar .feature-toast {
   box-shadow: inset 0 0 0 0.5px var(--text-main);
 }
 
+/* Just an icon (undo, redo, swap, find) */
+.bulk-btn.bulk-icon {
+  padding: 0 9px;
+}
+
 /* A phone's width: a little tighter, so a full bar fits */
 @media (max-width: 440px) {
   .bulk-btn,
   .bulk-count {
     padding: 0 8px;
     font-size: 0.74rem;
+  }
+
+  .bulk-btn.bulk-icon {
+    padding: 0 7px;
   }
 }
 
@@ -1024,13 +1033,13 @@ body.has-bar .feature-toast {
 /* Narrower screens: the count drops its word, then "select" goes (leaving
    "all" / "none"), so the whole bar, delete at its end, stays on screen
    (undo / redo are words) */
-@media (max-width: 560px) {
+@media (max-width: 490px) {
   .bulk-count-word {
     display: none;
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 350px) {
   .bulk-select-word {
     display: none;
   }
