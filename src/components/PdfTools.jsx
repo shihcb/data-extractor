@@ -9,6 +9,7 @@ import MotionList from './MotionList';
 import Count from './Count';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
+import Collapse from './Collapse';
 import SlideText from './SlideText';
 import BoxRow from './BoxRow';
 import useHistory, { useUndoKeys } from '../useHistory';
@@ -406,14 +407,17 @@ export default function PdfTools({ active }) {
       {/* The stats: always there, only the numbers change (counting from 0) */}
       {/* Undo · redo | the input buttons | delete (the selection, or every page); the stats under it */}
       <BoxRow
+        empty={!pages.length}
         actions={(
           <>
             <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Add PDFs" aria-label="Add PDFs">
               <FilePlus size={14} />
             </button>
-            <button className={`btn btn-icon ${done.split ? 'btn-done' : ''}`} onClick={split} disabled={none || !!busy} title="Split into one PDF a page" aria-label="Split into one PDF a page">
-              <Scissors size={14} />
-            </button>
+            <SlideText show={pages.length > 0}>
+              <button className={`btn btn-icon ${done.split ? 'btn-done' : ''}`} onClick={split} disabled={none || !!busy} title="Split into one PDF a page" aria-label="Split into one PDF a page">
+                <Scissors size={14} />
+              </button>
+            </SlideText>
           </>
         )}
         history={history}
@@ -427,17 +431,19 @@ export default function PdfTools({ active }) {
         </div>
       </BoxRow>
 
-      {/* The input and the actions (icons), then the saves on their own row */}
-      <FlipRow>
-        <button className={`btn ${done.save ? 'btn-done' : ''}`} onClick={saveAll} disabled={none || !!busy}>
-          {/* "merged" comes and goes with the word slide (a cross-fade of the
-              whole label inside a button easing its width was choppy) */}
-          <span className="btn-label">save<SlideText show={fileCount > 1}>{'\u00a0merged'}</SlideText> PDF</span>
-        </button>
-        <button className={`btn ${done.images ? 'btn-done' : ''}`} onClick={toImages} disabled={none || !!busy}>
-          save PNG
-        </button>
-      </FlipRow>
+      {/* The saves: there once there's something to save (the panel open) */}
+      <Collapse open={pages.length > 0}>
+        <FlipRow>
+          <button className={`btn ${done.save ? 'btn-done' : ''}`} onClick={saveAll} disabled={none || !!busy}>
+            {/* "merged" comes and goes with the word slide (a cross-fade of the
+                whole label inside a button easing its width was choppy) */}
+            <span className="btn-label">save<SlideText show={fileCount > 1}>{'\u00a0merged'}</SlideText> PDF</span>
+          </button>
+          <button className={`btn ${done.images ? 'btn-done' : ''}`} onClick={toImages} disabled={none || !!busy}>
+            save PNG
+          </button>
+        </FlipRow>
+      </Collapse>
     </div>
   );
 }

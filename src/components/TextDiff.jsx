@@ -182,6 +182,7 @@ export default function TextDiff({ active }) {
       </div>
       {/* Undo · redo | the input buttons | clear; the stats under it */}
       <BoxRow
+        empty={empty}
         history={history}
         onTrash={() => history.reset({ left: '', right: '' })}
         trashDisabled={empty}

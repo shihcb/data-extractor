@@ -1876,6 +1876,47 @@ html.page-fits body {
   justify-content: flex-end;
 }
 
+/* Nothing in the box yet: undo · redo and the trash fade out where they are
+   (the input button stays in the middle), back once there's something */
+.box-row-side {
+  transition: opacity var(--motion-duration) var(--motion-easing),
+              visibility 0s linear 0s;
+}
+.box-row-side.quiet {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--motion-duration) var(--motion-easing),
+              visibility 0s linear var(--motion-duration);
+}
+
+/* An action icon that comes and goes beside the input button (the word
+   slide): it brings its own gap, so shut it takes no room */
+.box-row-mid .tool-actions > .slide-text {
+  display: flex;
+  margin-left: calc(-1 * var(--button-gap));
+  overflow: visible;
+}
+.box-row-mid .tool-actions > .slide-text[aria-hidden="true"] {
+  overflow: hidden;
+  pointer-events: none;
+}
+.box-row-mid .tool-actions > .slide-text > .slide-text-inner {
+  display: flex;
+  padding-left: var(--button-gap);
+}
+
+/* The stats, 10px under the row, close up while the box is empty (the
+   panel open; its gap opens and shuts with it) */
+.tool > .motion-collapse.stats-collapse {
+  margin-top: -20px;
+}
+.tool > .motion-collapse.stats-collapse > .auto-height-inner {
+  padding-top: 10px;
+}
+.stats-collapse .tool-meta {
+  margin-top: 0;
+}
+
 .box-row-mid {
   min-width: 0;
 }

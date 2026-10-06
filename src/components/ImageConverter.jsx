@@ -11,6 +11,7 @@ import TabPanes from './TabPanes';
 import MetaEditor from './MetaEditor';
 import MotionList from './MotionList';
 import Collapse from './Collapse';
+import SlideText from './SlideText';
 import Count from './Count';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
@@ -401,6 +402,7 @@ function ConvertImages({ active }) {
           "out" is what the selected image (or the first) comes out as. */}
       {/* Undo · redo | the input buttons | delete (the selection, or every image); the stats under it */}
       <BoxRow
+        empty={!items.length}
         actions={(
           <>
             <button
@@ -411,15 +413,17 @@ function ConvertImages({ active }) {
             >
               <ImageUp size={14} />
             </button>
-            <button
-              className={`btn btn-icon ${done.copy ? 'btn-done' : ''}`}
-              onClick={handleCopy}
-              disabled={!selected}
-              title="Copy the selected image (or the first one) as PNG"
-              aria-label="Copy the selected image as PNG"
-            >
-              <Copy size={14} />
-            </button>
+            <SlideText show={items.length > 0}>
+              <button
+                className={`btn btn-icon ${done.copy ? 'btn-done' : ''}`}
+                onClick={handleCopy}
+                disabled={!selected}
+                title="Copy the selected image (or the first one) as PNG"
+                aria-label="Copy the selected image as PNG"
+              >
+                <Copy size={14} />
+              </button>
+            </SlideText>
           </>
         )}
         history={history}
@@ -484,18 +488,20 @@ function ConvertImages({ active }) {
       </Collapse>
 
 
-      {/* The input and the actions (icons), then the saves on their own row */}
-      <FlipRow>
-        <button
-          className={`btn ${done.save ? 'btn-done' : ''}`}
-          onClick={(e) => save(e, items)}
-          disabled={!items.length || !!busy}
-        >
-          {/* "save" and what it makes, as every save button ("save PNG");
-              the format the word swap. No working text while it converts */}
-          <span className="btn-label">save{'\u00a0'}<SlideSwap text={fmt.label} /></span>
-        </button>
-      </FlipRow>
+      {/* The saves: there once there's something to save (the panel open) */}
+      <Collapse open={items.length > 0}>
+        <FlipRow>
+          <button
+            className={`btn ${done.save ? 'btn-done' : ''}`}
+            onClick={(e) => save(e, items)}
+            disabled={!items.length || !!busy}
+          >
+            {/* "save" and what it makes, as every save button ("save PNG");
+                the format the word swap. No working text while it converts */}
+            <span className="btn-label">save{'\u00a0'}<SlideSwap text={fmt.label} /></span>
+          </button>
+        </FlipRow>
+      </Collapse>
     </div>
   );
 }

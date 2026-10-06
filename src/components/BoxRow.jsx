@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { Redo2, Trash2, Undo2 } from 'lucide-react';
 import { workHeld } from '../utils';
+import Collapse from './Collapse';
 import FlipRow from './FlipRow';
 
 // The row right under a tab's box: undo · redo on the left, the tab's input
@@ -9,7 +10,11 @@ import FlipRow from './FlipRow';
 // everything (or, in the text tabs, the text). Always there; dimmed with
 // nothing to act on. `end`: the tab's own buttons just left of the trash
 // (the metadata editor's reset). The stats (`children`) go under the row.
-export default function BoxRow({ history, actions, children, end, onTrash, trashDisabled, trashTitle = 'Clear', held }) {
+// `empty` (nothing in the box yet): only the input button shows — undo ·
+// redo and the trash fade out (back as soon as there's something, or
+// something to undo), and the stats close up. The case converter doesn't
+// pass it: its row stays as it is.
+export default function BoxRow({ history, actions, children, end, onTrash, trashDisabled, trashTitle = 'Clear', held, empty = false }) {
   const ref = useRef(null);
   const id = useRef({});
   const lastFocus = useRef(null);
@@ -39,10 +44,12 @@ export default function BoxRow({ history, actions, children, end, onTrash, trash
     fn();
   };
 
+  const quiet = empty && !history.canUndo && !history.canRedo;
+  const sides = quiet ? { 'aria-hidden': true, inert: true } : {};
   return (
     <>
     <div ref={ref} className="box-row" onFocus={(e) => { lastFocus.current = e.target.closest('button'); }}>
-      <div className="box-row-side">
+      <div className={`box-row-side ${quiet ? 'quiet' : ''}`} {...sides}>
         <button className="btn btn-icon" onClick={press(() => history.undo())} disabled={!history.canUndo} title="Undo (Ctrl + Z)" aria-label="Undo">
           <Undo2 size={14} />
         </button>
@@ -51,14 +58,14 @@ export default function BoxRow({ history, actions, children, end, onTrash, trash
         </button>
       </div>
       <div className="box-row-mid">{actions ? <FlipRow>{actions}</FlipRow> : null}</div>
-      <div className="box-row-side box-row-end">
+      <div className={`box-row-side box-row-end ${quiet ? 'quiet' : ''}`} {...sides}>
         {end}
         <button className="btn btn-icon box-trash" onClick={press(onTrash)} disabled={trashDisabled} title={trashTitle} aria-label={trashTitle}>
           <Trash2 size={14} />
         </button>
       </div>
     </div>
-    {children}
+    {children ? <Collapse open={!empty} className="stats-collapse">{children}</Collapse> : null}
     </>
   );
 }
