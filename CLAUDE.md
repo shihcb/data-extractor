@@ -117,7 +117,8 @@ Editing in the PDF editor:
   animations, not the engine (it clears a settled element's transform).
   The patch reaches 0.06em past its box; its colour is the most common in
   the whole box (the edge alone was a table cell's border).
-- Find and replace matches case unless "Aa" is switched off; its count is
+- Find and replace ignores case unless "Aa" is switched on (on by default,
+  "google" marked only the one lowercase address on a Google receipt); its count is
   "· matches N" sliding into the stats line while it's open.
 - Double-click an empty spot (or tap one with "add text" on) to add a line,
   in the size and font of the nearest line; left empty, it goes again.

@@ -1666,8 +1666,9 @@ export default function PdfEditor({ active }) {
   const [findOpen, setFindOpen] = useState(false);
   const [findText, setFindText] = useState('');
   const [replaceText, setReplaceText] = useState('');
-  // Match case: on unless switched off ("h" doesn't take the H of "Hide")
-  const [matchCase, setMatchCase] = useState(true);
+  // Match case: off unless switched on ("google" finds every "Google"; on,
+  // "google" found only the address and left the rest unmarked)
+  const [matchCase, setMatchCase] = useState(false);
   const textOf = (item) => edits[item.id]?.text ?? item.str;
   const fold = (t) => (matchCase ? t : t.toLowerCase());
   const findKey = findOpen && doc ? fold(findText) : '';
