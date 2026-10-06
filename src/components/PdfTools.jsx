@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, FilePlus, RotateCcw, RotateCw, Scissors, X } from 'lucide-react';
-import { zipSync } from 'fflate';
 import { closePdf, loadPdfLib, openPdf, renderPage, isPasswordError, refusedWords, whyRefused } from '../pdf';
-import { baseName, canvasToBlob, downloadBlob, isImageFile, isPdfFile, keepFocusAfterRemove, shortName, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
+import { baseName, canvasToBlob, isImageFile, isPdfFile, keepFocusAfterRemove, saveFiles, shortName, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
 import { MOTION_MS, fadeInOnLoad } from '../motion';
 import { useToast } from '../toastContext';
 import MotionList from './MotionList';
@@ -289,8 +288,11 @@ export default function PdfTools({ active }) {
     if (busy) return;
     try {
       setBusy(key);
-      await job();
-      flagDone(key);
+      // Made, then saved: the share sheet (or a download each), every file
+      // as itself — a page each is that many PDFs / PNGs, never a zip
+      const files = await job();
+      setBusy('');
+      if (await saveFiles(files) !== 'cancelled') flagDone(key);
     } catch (err) {
       toast(`couldn't make that file${err?.message ? `: ${err.message}` : ''}`, { warn: true });
     } finally {
@@ -299,22 +301,21 @@ export default function PdfTools({ active }) {
   };
 
   const saveAll = (e) => run(e, 'save', async () => {
-    downloadBlob(await buildPdf(pages), outName(pages, '-edited.pdf'));
+    return [{ blob: await buildPdf(pages), name: outName(pages, '-edited.pdf') }];
   });
 
   const split = (e) => run(e, 'split', async () => {
-    const files = {};
+    const files = [];
     const unique = uniqueNamer();
     const stem = outName(pages, ''); // (already without .pdf: cut again, "Invoice 2024.03" lost its ".03")
     for (let i = 0; i < pages.length; i++) {
-      const blob = await buildPdf([pages[i]]);
-      files[unique(`${stem}-page-${i + 1}.pdf`)] = new Uint8Array(await blob.arrayBuffer());
+      files.push({ blob: await buildPdf([pages[i]]), name: unique(`${stem}-page-${i + 1}.pdf`) });
     }
-    downloadBlob(new Blob([zipSync(files, { level: 6 })], { type: 'application/zip' }), `${stem}-pages.zip`);
+    return files;
   });
 
   const toImages = (e) => run(e, 'images', async () => {
-    const files = {};
+    const files = [];
     const unique = uniqueNamer();
     const stem = outName(pages, ''); // (already without .pdf: cut again, "Invoice 2024.03" lost its ".03")
     for (let i = 0; i < pages.length; i++) {
@@ -325,9 +326,9 @@ export default function PdfTools({ active }) {
       const blob = await canvasToBlob(canvas, 'image/png');
       canvas.width = canvas.height = 0;
       page.cleanup();
-      files[unique(`${stem}-page-${i + 1}.png`)] = new Uint8Array(await blob.arrayBuffer());
+      files.push({ blob, name: unique(`${stem}-page-${i + 1}.png`) });
     }
-    downloadBlob(new Blob([zipSync(files, { level: 0 })], { type: 'application/zip' }), `${stem}-images.zip`);
+    return files;
   });
 
   const fileCount = new Set(pages.map(p => p.srcId)).size;

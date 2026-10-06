@@ -4,7 +4,7 @@ import { closePdf, loadPdfLib, loadPdfjs, openPdf, renderPage, isPasswordError, 
 import { agreedReading, inkCopy, readBlock, readLine, readPage, rereadLine, votedReading, headerLabel } from '../ocr';
 import { findIn, replaceIn } from '../findText';
 import { removeText } from '../pdfText';
-import { baseName, canvasToBlob, downloadBlob, isPdfFile, loadLibrary, shortName, useDoneFlags, usePastedFiles } from '../utils';
+import { baseName, canvasToBlob, isPdfFile, loadLibrary, saveFiles, shortName, useDoneFlags, usePastedFiles } from '../utils';
 import { MOTION, MOTION_MS, canAnimate, motionEase, prefersReducedMotion } from '../motion';
 import { whenStill } from '../engine';
 import { useToast } from '../toastContext';
@@ -1458,7 +1458,8 @@ export default function PdfEditor({ active }) {
       const out = await pdf.save();
       // Closed (or another PDF opened) while saving: nothing comes of it
       if (docRef.current?.id !== doc.id) return;
-      downloadBlob(new Blob([out], { type: 'application/pdf' }), `${baseName(doc.name)}-edited.pdf`);
+      setBusy(false);
+      if (await saveFiles([{ blob: new Blob([out], { type: 'application/pdf' }), name: `${baseName(doc.name)}-edited.pdf` }]) === 'cancelled') return;
       flagDone('save');
       if (lost) toast('some characters aren\'t in the standard PDF fonts and were saved as "?"', { warn: true });
     } catch (err) {

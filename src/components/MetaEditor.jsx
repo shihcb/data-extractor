@@ -1,9 +1,8 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, ImageUp, X } from 'lucide-react';
-import { zipSync } from 'fflate';
 import { GROUPS, applyFields, readFields, readMeta, sizeText, writeMeta, writeTiff } from '../exif';
 import { loadImage, makeThumb } from '../imageConvert';
-import { downloadBlob, isImageFile, isPdfFile, keepFocusAfterRemove, shortName, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
+import { isImageFile, isPdfFile, keepFocusAfterRemove, saveFiles, shortName, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
 import { MOTION_MS, fadeInOnLoad } from '../motion';
 import { whenStill } from '../engine';
 import { useToast } from '../toastContext';
@@ -287,15 +286,11 @@ export default function MetaEditor({ active }) {
         outs.push({ it, ...out });
       }
       const nameOf = (it) => it.file.name || `photo.${it.meta.format === 'jpeg' ? 'jpg' : it.meta.format}`;
-      if (outs.length === 1) {
-        const [{ it, bytes }] = outs;
-        downloadBlob(new Blob([bytes], { type: it.file.type || 'image/jpeg' }), nameOf(it));
-      } else {
-        const unique = uniqueNamer();
-        const files = {};
-        outs.forEach(({ it, bytes }) => { files[unique(nameOf(it))] = bytes; });
-        downloadBlob(new Blob([zipSync(files, { level: 0 })], { type: 'application/zip' }), 'photos.zip');
-      }
+      // Each photo as itself (several: several files, never a zip)
+      const unique = uniqueNamer();
+      const files = outs.map(({ it, bytes }) => ({ blob: new Blob([bytes], { type: it.file.type || 'image/jpeg' }), name: unique(nameOf(it)) }));
+      setBusy(false);
+      if (await saveFiles(files) === 'cancelled') return;
       flagDone('save');
       if (outs.some(o => o.smaller)) toast('the small preview was left out to fit', { warn: true });
     } finally {

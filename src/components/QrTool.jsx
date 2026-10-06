@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ClipboardPaste, Copy, ImageUp } from 'lucide-react';
 import QRCode from 'qrcode';
 import jsQR from 'jsqr';
-import { copyImageBlob, copyText, downloadBlob, isImageFile, shortName, useDoneFlags, usePastedFiles } from '../utils';
+import { copyImageBlob, copyText, isImageFile, saveFiles, shortName, useDoneFlags, usePastedFiles } from '../utils';
 import { loadImage } from '../imageConvert';
 import { MOTION_MS, flashOutline } from '../motion';
 import { useToast } from '../toastContext';
@@ -126,14 +126,14 @@ function MakeQr({ active }) {
 
   const downloadPng = async (e) => {
     if (e.detail) e.currentTarget.blur();
-    downloadBlob(await pngBlob(), 'qr-code.png');
+    if (await saveFiles([{ blob: await pngBlob(), name: 'qr-code.png' }]) === 'cancelled') return;
     flagDone('png');
   };
 
   const downloadSvg = async (e) => {
     if (e.detail) e.currentTarget.blur();
     const svg = await QRCode.toString(text, { ...qrOptions(level), type: 'svg' });
-    downloadBlob(new Blob([svg], { type: 'image/svg+xml' }), 'qr-code.svg');
+    if (await saveFiles([{ blob: new Blob([svg], { type: 'image/svg+xml' }), name: 'qr-code.svg' }]) === 'cancelled') return;
     flagDone('svg');
   };
 

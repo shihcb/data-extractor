@@ -58,7 +58,7 @@ the last frame it was there: by then the list measures nothing), then the
 panel eases shut, and only then is the space let go (shut at once it cut the
 box off, 309px to 20 in a frame; let go as it started, it jumped first). Their ids carry the
 photo's id (both are on screen mid-swap). Save
-writes every photo with its own changes (one as itself, several in a zip);
+writes every photo with its own changes (each as itself, never a zip);
 one that can't be saved is selected and named. Its add / save buttons sit under the details,
 as in the converter; the details are one fixed-size box that scrolls inside
 (`.meta-fields-inner`), so opening it slides the buttons a box's height (a
@@ -358,6 +358,13 @@ Rules that keep it smooth (each was a real bug):
   the view are redrawn sharper; a new PDF opens at the top, at 100%.
 
 Files out and updates:
+- Every save button saves through `saveFiles` (utils.js): the share sheet
+  (Save to Files, AirDrop, any app) with every file as itself — several
+  images, photos, split pages or page PNGs are that many files, never a
+  zip; where a browser can't share files, each one is downloaded. A browser
+  opens the sheet only just after a tap: a save that took longer (several
+  images converted, a PDF built) shows a "ready to save" pop-up, and one
+  more tap opens it. Cancelled, a button doesn't turn green.
 - PDF tools: every page of one file → that file rearranged in place (forms,
   outline stay); otherwise each file's pages copied in one go (shared fonts
   and pictures once). Pages left out are never kept in the file.

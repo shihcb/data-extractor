@@ -48,6 +48,55 @@ export async function copyImageBlob(blobOrPromise) {
   }
 }
 
+// ── Saving ─────────────────────────────────────────────────────
+// Every save button: the share sheet (Save to Files, AirDrop, any app),
+// every file as itself — never a zip — or, where a browser can't share
+// files, each one downloaded. `files`: [{ blob, name }].
+//
+// A browser lets a page open the share sheet only just after a tap; a save
+// that took a while (several images converted, a PDF built) has missed
+// that moment, so the files wait in a small "ready to save" pop-up and one
+// more tap opens the sheet (App.jsx listens for "toolbox:save-ready").
+// Resolves 'shared', 'downloaded' or 'cancelled'.
+const fileOf = ({ blob, name }) => (blob instanceof File && blob.name === name
+  ? blob
+  : new File([blob], name, { type: blob.type || 'application/octet-stream' }));
+
+export function shareFiles(files) {
+  return navigator.share({ files }).then(() => 'shared', (err) => {
+    if (err?.name === 'AbortError') return 'cancelled';
+    throw err;
+  });
+}
+
+export async function saveFiles(entries) {
+  const files = entries.map(fileOf);
+  if (!files.length) return 'cancelled';
+  let canShare = false;
+  try { canShare = !!navigator.canShare?.({ files }); } catch { canShare = false; }
+  if (canShare) {
+    // The tap's moment already gone: ask for one more tap
+    if (navigator.userActivation && !navigator.userActivation.isActive) return askToSave(files);
+    try {
+      return await shareFiles(files);
+    } catch (err) {
+      if (err?.name === 'NotAllowedError') return askToSave(files);
+      // (anything else: downloaded instead)
+    }
+  }
+  for (let i = 0; i < files.length; i++) {
+    if (i) await new Promise(r => setTimeout(r, 250)); // (one after another: browsers drop a burst)
+    downloadBlob(files[i], files[i].name);
+  }
+  return 'downloaded';
+}
+
+function askToSave(files) {
+  return new Promise((resolve) => {
+    window.dispatchEvent(new CustomEvent('toolbox:save-ready', { detail: { files, resolve } }));
+  });
+}
+
 export function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Copy, ImageUp, X } from 'lucide-react';
-import { zipSync } from 'fflate';
 import { IMAGE_FORMATS, encodeImage, estimateImage, jpegsToPdf, loadImage, makeThumb, targetSize } from '../imageConvert';
-import { baseName, copyImageBlob, downloadBlob, isImageFile, isPdfFile, keepFocusAfterRemove, shortName, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
+import { baseName, copyImageBlob, isImageFile, isPdfFile, keepFocusAfterRemove, saveFiles, shortName, uniqueNamer, useDoneFlags, usePastedFiles } from '../utils';
 import { carryOver, readMeta, writeMeta } from '../exif';
 import { MOTION_MS, fadeInOnLoad } from '../motion';
 import { useToast } from '../toastContext';
@@ -253,8 +252,7 @@ function ConvertImages({ active }) {
     if (e.detail) e.currentTarget.blur();
     if (!list.length || busy) return;
     try {
-      let blob;
-      let name;
+      const outs = []; // [{ blob, name }]: each image as itself (several: several files, never a zip)
       let fellBack = false;
       let clamped = false;
       if (format === 'pdf') {
@@ -265,17 +263,8 @@ function ConvertImages({ active }) {
           clamped = clamped || pages[i].clamped;
         }
         setBusy('on');
-        blob = await jpegsToPdf(pages);
-        name = list.length === 1 ? `${baseName(list[0].file.name)}.pdf` : 'images.pdf';
-      } else if (list.length === 1) {
-        setBusy('on');
-        const out = await encodeImage(list[0].img, settings);
-        blob = keepDetails ? await withDetails(list[0], out) : out.blob;
-        fellBack = out.fellBack;
-        clamped = out.clamped;
-        name = `${baseName(list[0].file.name)}.${out.ext}`;
+        outs.push({ blob: await jpegsToPdf(pages), name: list.length === 1 ? `${baseName(list[0].file.name)}.pdf` : 'images.pdf' });
       } else {
-        const files = {};
         const unique = uniqueNamer();
         for (let i = 0; i < list.length; i++) {
           setBusy('on');
@@ -283,13 +272,12 @@ function ConvertImages({ active }) {
           fellBack = fellBack || out.fellBack;
           clamped = clamped || out.clamped;
           const b = keepDetails ? await withDetails(list[i], out) : out.blob;
-          files[unique(`${baseName(list[i].file.name)}.${out.ext}`)] = new Uint8Array(await b.arrayBuffer());
+          outs.push({ blob: b, name: unique(`${baseName(list[i].file.name)}.${out.ext}`) });
         }
-        // Images are already compressed: store them as they are
-        blob = new Blob([zipSync(files, { level: 0 })], { type: 'application/zip' });
-        name = 'images.zip';
       }
-      downloadBlob(blob, name);
+      setBusy('');
+      const how = await saveFiles(outs);
+      if (how === 'cancelled') return;
       if (list === items) flagDone('save');
       if (fellBack) toast(`this browser can't make ${fmt.label}, so it saved PNG`, { warn: true });
       // (it said nothing: an 8000 × 6000 photo came out smaller at 100%)

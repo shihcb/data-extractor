@@ -12,6 +12,7 @@ import Modal from './components/Modal';
 import { ToastProvider } from './components/Toast';
 import { MOTION_MS, motionEase, prefersReducedMotion } from './motion';
 import { heightStillToCome } from './heightMotion';
+import { downloadBlob, shareFiles } from './utils';
 
 const TABS = [
   { key: 'case',      label: 'case converter' },
@@ -49,6 +50,36 @@ export default function App() {
   const [activeTab, setActiveTab] = useState(readTab);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const closeShortcuts = useCallback(() => setShortcutsOpen(false), []);
+
+  // Files ready to save after the tap's moment passed (utils.saveFiles):
+  // one more tap opens the share sheet
+  const [ready, setReady] = useState(null); // { files, resolve }
+  useEffect(() => {
+    const onReady = (e) => setReady((prev) => {
+      prev?.resolve('cancelled');
+      return e.detail;
+    });
+    window.addEventListener('toolbox:save-ready', onReady);
+    return () => window.removeEventListener('toolbox:save-ready', onReady);
+  }, []);
+  // (the files stay for the pop-up's closing motion)
+  const [readyShown, setReadyShown] = useState(null);
+  useEffect(() => { if (ready) setReadyShown(ready); }, [ready]);
+  const closeReady = useCallback(() => setReady((prev) => {
+    prev?.resolve('cancelled');
+    return null;
+  }), []);
+  const shareReady = (e) => {
+    if (e.detail) e.currentTarget.blur();
+    const r = ready;
+    if (!r) return;
+    setReady(null);
+    shareFiles(r.files).then(r.resolve, () => {
+      // (the sheet refused them: each one downloaded instead)
+      r.files.forEach((f, i) => setTimeout(() => downloadBlob(f, f.name), i * 250));
+      r.resolve('downloaded');
+    });
+  };
 
   useEffect(() => {
     try {
@@ -310,6 +341,18 @@ export default function App() {
             <kbd>Ctrl + F</kbd>
           </li>
         </ul>
+      </Modal>
+
+      <Modal open={!!ready} onClose={closeReady} title="ready to save">
+        <p className="save-ready-names">
+          {(readyShown?.files || []).slice(0, 4).map(f => f.name).join(', ')}
+          {(readyShown?.files.length || 0) > 4 ? ` and ${readyShown.files.length - 4} more` : ''}
+        </p>
+        <div className="tool-actions">
+          <button className="btn" onClick={shareReady}>
+            save {readyShown?.files.length > 1 ? `${readyShown.files.length} files` : 'file'}
+          </button>
+        </div>
       </Modal>
     </ToastProvider>
   );

@@ -1970,3 +1970,12 @@ html.page-fits body {
 .btn-grow-word {
   padding-left: 8px;
 }
+
+/* The "ready to save" pop-up: what's waiting, then its one button */
+.save-ready-names {
+  margin: 0 0 16px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
