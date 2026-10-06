@@ -1,7 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { Redo2, Trash2, Undo2 } from 'lucide-react';
 import { workHeld } from '../utils';
-import Collapse from './Collapse';
 import FlipRow from './FlipRow';
 
 // The row right under a tab's box: undo · redo on the left, the tab's input
@@ -13,7 +12,7 @@ import FlipRow from './FlipRow';
 // `empty` (nothing in the box yet): only the input button shows — undo ·
 // redo and the trash fade out (back as soon as there's something; an
 // emptied box looks as it did at first, Ctrl + Z still undoing), and the
-// stats close up. The case converter doesn't
+// stats fade out in place. The case converter doesn't
 // pass it: its row stays as it is.
 export default function BoxRow({ history, actions, children, end, onTrash, trashDisabled, trashTitle = 'Clear', held, empty = false }) {
   const ref = useRef(null);
@@ -71,7 +70,11 @@ export default function BoxRow({ history, actions, children, end, onTrash, trash
         </button>
       </div>
     </div>
-    {children ? <Collapse open={!empty} className="stats-collapse">{children}</Collapse> : null}
+    {/* The stats keep their line and fade in / out in place (opacity alone,
+        the phone's compositor): opened as a panel — its height eased, its
+        text scaled from 96% while the numbers counted — it stuttered on a
+        phone as the first document came in */}
+    {children ? <div className={`stats-slot ${empty ? 'quiet' : ''}`} aria-hidden={empty || undefined}>{children}</div> : null}
     </>
   );
 }

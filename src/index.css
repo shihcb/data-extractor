@@ -1905,15 +1905,17 @@ html.page-fits body {
   padding-left: var(--button-gap);
 }
 
-/* The stats, 10px under the row, close up while the box is empty (the
-   panel open; its gap opens and shuts with it) */
-.tool > .motion-collapse.stats-collapse {
-  margin-top: -20px;
+/* The stats, 10px under the row: their line kept while the box is empty,
+   faded out (opacity alone: smooth on a phone; nothing below moves) */
+.stats-slot {
+  width: 100%;
+  margin-top: -10px;
+  transition: opacity var(--motion-duration) var(--motion-easing);
 }
-.tool > .motion-collapse.stats-collapse > .auto-height-inner {
-  padding-top: 10px;
+.stats-slot.quiet {
+  opacity: 0;
 }
-.stats-collapse .tool-meta {
+.stats-slot > .tool-meta {
   margin-top: 0;
 }
 
