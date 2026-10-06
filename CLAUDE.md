@@ -254,7 +254,10 @@ button (it kept 140px for a bottom bar on every tab and scrolled for it);
 text boxes take what the screen has left (the case converter's
 `calc(100dvh - 340px)`, text diff's two `clamp(120px, 25dvh, 200px)`, QR
 make's 112px, its code `--qr-size`). Only what opens below (results,
-details, options) scrolls.
+details, options) scrolls. The case converter never scrolls the page
+(`html.no-scroll` while it's open, on screens 480px+ tall: a phone on its
+side still scrolls to reach the buttons); its text scrolls inside its box,
+which goes down to 120px to fit.
 
 Rules that keep it smooth (each was a real bug):
 - The page coming back into view (another app, the tab switcher) draws with

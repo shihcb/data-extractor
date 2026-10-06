@@ -391,7 +391,7 @@ body.has-bar .app-container {
   width: 100%;
   /* Fills what the screen has left under it (the case converter's
      stats, button rows and tabs take ~340px), so the page doesn't scroll */
-  min-height: clamp(200px, calc(100dvh - 340px), 60vh);
+  min-height: clamp(120px, calc(100dvh - 340px), 60vh);
   resize: none;
   padding: 18px 24px;
   font-family: var(--font-body);
@@ -1782,11 +1782,21 @@ body,
   height: 0;
 }
 
-/* Everything fits on screen: no scrolling (or bounce) until it doesn't */
+/* Everything fits on screen: no scrolling (or bounce) until it doesn't;
+   the case converter: never */
 html.page-fits,
 html.page-fits body {
   overflow: hidden;
   overscroll-behavior: none;
+}
+/* (not on a screen too short to hold it: a phone on its side would cut its
+   buttons off) */
+@media (min-height: 480px) {
+  html.no-scroll,
+  html.no-scroll body {
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
 }
 
 /* The resize field's unit words sit side by side; only one is open */

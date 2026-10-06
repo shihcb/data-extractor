@@ -58,6 +58,14 @@ export default function App() {
     }
   }, [activeTab]);
 
+  // The case converter never scrolls the page (its box takes what the
+  // screen has left, and its text scrolls inside it)
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle('no-scroll', activeTab === 'case');
+    return () => root.classList.remove('no-scroll');
+  }, [activeTab]);
+
   // Content shrinking (a file row deleted near the bottom of the page) must
   // not pull the page down. The page always has a floor at the bottom of the
   // view — but never taller than its content, so on its own it adds nothing.
