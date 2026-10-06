@@ -259,16 +259,14 @@ export default function MetaEditor({ active }) {
   const reset = () => setItems(prev => prev.map(it => (it.id === pickedId ? { ...it, values: startValues(it.fields) } : it)));
 
   const stats = useMemo(() => {
-    let filled = 0;
     let changed = 0;
     let removed = 0;
     picked?.fields.forEach((f) => {
       const now = picked.values[f.id] ?? '';
-      if (now.trim()) filled++;
       if (f.value && !now.trim()) removed++;
       else if (now !== f.value && now.trim()) changed++;
     });
-    return { filled, changed, removed };
+    return { changed, removed };
   }, [picked]);
 
   // Every photo, each with its own changes: one as itself, several in a zip
@@ -431,7 +429,7 @@ export default function MetaEditor({ active }) {
         }
       >
         <div className="tool-meta tool-stats" aria-live="polite">
-          images <Count value={items.length} /> · details <Count value={stats.filled} /> · changed <Count value={stats.changed} /> · removed <Count value={stats.removed} />
+          images <Count value={items.length} /> · changed <Count value={stats.changed} /> · removed <Count value={stats.removed} />
         </div>
       </BoxRow>
 
