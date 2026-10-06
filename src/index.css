@@ -159,7 +159,6 @@ button:disabled {
   min-height: 100vh;
   min-height: 100dvh;
   width: 100%;
-  padding: 0 0 64px;
 }
 
 .app-container {
@@ -168,8 +167,14 @@ button:disabled {
   margin-left: auto;
   margin-right: auto;
   padding: 0 20px;
-  /* Room under the last of a tab for the bottom bar, so nothing has to
-     sit under it */
+  /* A little room under the last of a tab (it was 140px, kept for the
+     bottom bar on every tab, and the page scrolled for it); room for the
+     bar only while one shows, easing open / shut on the curve */
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  transition: padding-bottom var(--motion-duration) var(--motion-easing);
+}
+
+body.has-bar .app-container {
   padding-bottom: calc(76px + env(safe-area-inset-bottom));
 }
 
@@ -384,7 +389,9 @@ button:disabled {
 .tool-textarea {
   display: block;
   width: 100%;
-  min-height: max(320px, 60vh);
+  /* Fills what the screen has left under it (the case converter's
+     stats, button rows and tabs take ~340px), so the page doesn't scroll */
+  min-height: clamp(200px, calc(100dvh - 340px), 60vh);
   resize: none;
   padding: 18px 24px;
   font-family: var(--font-body);
@@ -408,7 +415,13 @@ button:disabled {
 }
 
 .tool-textarea.short {
-  min-height: 200px;
+  /* (smaller on short screens: two of them in text diff) */
+  min-height: clamp(120px, 25dvh, 200px);
+}
+
+/* QR make's text: usually a link, so a smaller box, leaving room for the code */
+.tool-textarea.qr-text {
+  min-height: 112px;
 }
 
 .tool-textarea::placeholder {
@@ -1524,11 +1537,14 @@ select.meta-input {
 }
 
 .qr-box {
+  /* The code's size: smaller on short screens, so it fits with the text
+     box and buttons */
+  --qr-size: clamp(160px, calc(100dvh - 600px), 280px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
-  min-height: 280px;
+  min-height: var(--qr-size);
 }
 
 /* The hint is centred in the outer box, whose height eases: in the inner
@@ -1551,7 +1567,7 @@ select.meta-input {
 }
 
 .qr-canvas {
-  width: min(100%, 280px) !important;
+  width: min(100%, var(--qr-size, 280px)) !important;
   height: auto !important;
   border-radius: 8px;
   background: #ffffff;

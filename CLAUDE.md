@@ -21,7 +21,7 @@ of restarting it. When the user names one of these, this is what they mean:
 | **the word swap** | the word slide's swap form: one word changing to another inside a line ("%" ↔ "px wide") — both share one spot, the old fading out as the new fades in, while the space eases from one word's width to the other's | `SlideSwap` |
 | **the text swap** | text that changes: the old words fade out exactly where they were while the new ones fade in (the source repo's empty-text fade) | `FadeText` |
 | **the box ease** | a box whose content changes size eases to its new height; nested boxes: only the outermost moves | `AutoHeight`, `heightMotion.js` |
-| **the bottom bar** | the instagram repo's bulk bar (plain buttons), floating at the bottom of the screen (18px up), centered; it pops in like the pages while its tab is showing and there's something to act on. Only text diff has one now (swap); every other tab's actions are in **the box row** or the buttons under it. Toasts sit above it (`body.has-bar`); the page keeps room under its end for it | `ActionBar` |
+| **the bottom bar** | the instagram repo's bulk bar (plain buttons), floating at the bottom of the screen (18px up), centered; it pops in like the pages while its tab is showing and there's something to act on. Only text diff has one now (swap); every other tab's actions are in **the box row** or the buttons under it. Toasts sit above it (`body.has-bar`); the page keeps room under its end for it only while it shows (the room eases open / shut) | `ActionBar` |
 | **the box row** | the row right under every tab's box (QR make: under its text box): **undo · redo** on the left (icons; `history` from `useHistory`), the tab's stats line in the middle (QR make: none; a fixed share of the row, never sized to its words, so a text swap there fades in place and the row doesn't re-centre), and the **trash** on the right (red icon), with the tab's own buttons sliding in just left of it (`end`: the metadata editor's **reset**, there only while the selected photo has something to put back — the word slide, as "px wide"; it brings its own gap) — clear and delete in one: the tabs with cards delete the selection, or everything when nothing is selected (an undoable step; with everything gone, Ctrl + Z still takes it back); the metadata editor the selected photo; the text tabs clear (and end the history); the PDF editor closes its PDF. Always there, dimmed with nothing to act on; a button turned off under the keys hands focus to the tab's first live button | `BoxRow` |
 | **the panel open** | a panel opens from nothing / closes to nothing: height eases, content fades in from 10px up at 96% (the quality slider, image options) | `Collapse` |
 | **the row slide** | a list row slides in from under the row above / out under it, the rows around it shifting (the source repo's list 3 rows / username boxes); grid items (the PDF pages, the image cards) pop instead | `MotionList` |
@@ -236,6 +236,14 @@ every 95% ↔ 100% scale).
 
 Buttons are always `--button-gap` (6px, the instagram repo's) apart: button
 rows, the settings row, the box row, the bottom bar, card buttons, the zoom controls.
+
+On a phone every tab fits the screen empty, without scrolling (checked
+at 375 × 667, 390 × 844 and 430 × 932): the page ends 24px under its last
+button (it kept 140px for a bottom bar on every tab and scrolled for it);
+text boxes take what the screen has left (the case converter's
+`calc(100dvh - 340px)`, text diff's two `clamp(120px, 25dvh, 200px)`, QR
+make's 112px, its code `--qr-size`). Only what opens below (results,
+details, options) scrolls.
 
 Rules that keep it smooth (each was a real bug):
 - The page coming back into view (another app, the tab switcher) draws with

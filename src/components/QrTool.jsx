@@ -137,7 +137,7 @@ function MakeQr({ active }) {
     <div className="tool">
       <textarea
         ref={textRef}
-        className="tool-textarea short"
+        className="tool-textarea short qr-text"
         value={text}
         onChange={(e) => setText(e.target.value, 'type')}
         placeholder="text or a link"
