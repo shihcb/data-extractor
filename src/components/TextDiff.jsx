@@ -10,6 +10,7 @@ import AutoHeight from './AutoHeight';
 import Collapse from './Collapse';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
+import SlideText from './SlideText';
 import ActionBar from './ActionBar';
 import BoxRow from './BoxRow';
 import useHistory, { useUndoKeys } from '../useHistory';
@@ -188,8 +189,11 @@ export default function TextDiff({ active }) {
         trashDisabled={empty}
         held={!empty}
         actions={(
-          <button className={`btn btn-icon ${done.paste ? 'btn-done' : ''}`} onClick={paste} title="Paste from clipboard" aria-label="Paste from clipboard">
+          <button className={`btn btn-icon btn-grow ${done.paste ? 'btn-done' : ''}`} onClick={paste} title="Paste from clipboard" aria-label="Paste from clipboard">
             <ClipboardPaste size={14} />
+            {/* (its word with it while the box is empty; shut to the icon once
+                there's something: the word slide) */}
+            <SlideText show={empty}><span className="btn-grow-word">paste</span></SlideText>
           </button>
         )}
       >

@@ -2214,8 +2214,11 @@ export default function PdfEditor({ active }) {
         empty={!doc}
         actions={(
           <>
-            <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Open a PDF" aria-label="Open a PDF">
+            <button className="btn btn-icon btn-grow" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Open a PDF" aria-label="Open a PDF">
               <FileUp size={14} />
+              {/* (its word with it while the box is empty; shut to the icon once
+                  there's something: the word slide) */}
+              <SlideText show={!doc}><span className="btn-grow-word">open PDF</span></SlideText>
             </button>
             <SlideText show={!!doc}>
               <button

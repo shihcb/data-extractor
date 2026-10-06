@@ -406,12 +406,15 @@ function ConvertImages({ active }) {
         actions={(
           <>
             <button
-              className="btn btn-icon"
+              className="btn btn-icon btn-grow"
               onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }}
               title="Add images"
               aria-label="Add images"
             >
               <ImageUp size={14} />
+              {/* (its word with it while the box is empty; shut to the icon once
+                  there's something: the word slide) */}
+              <SlideText show={!items.length}><span className="btn-grow-word">add images</span></SlideText>
             </button>
             <SlideText show={items.length > 0}>
               <button

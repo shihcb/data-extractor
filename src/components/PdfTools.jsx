@@ -410,8 +410,11 @@ export default function PdfTools({ active }) {
         empty={!pages.length}
         actions={(
           <>
-            <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Add PDFs" aria-label="Add PDFs">
+            <button className="btn btn-icon btn-grow" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Add PDFs" aria-label="Add PDFs">
               <FilePlus size={14} />
+              {/* (its word with it while the box is empty; shut to the icon once
+                  there's something: the word slide) */}
+              <SlideText show={!pages.length}><span className="btn-grow-word">add PDFs</span></SlideText>
             </button>
             <SlideText show={pages.length > 0}>
               <button className={`btn btn-icon ${done.split ? 'btn-done' : ''}`} onClick={split} disabled={none || !!busy} title="Split into one PDF a page" aria-label="Split into one PDF a page">

@@ -12,6 +12,7 @@ import AutoHeight from './AutoHeight';
 import Collapse from './Collapse';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
+import SlideText from './SlideText';
 import usePop from './usePop';
 import BoxRow from './BoxRow';
 import useHistory, { useUndoKeys } from '../useHistory';
@@ -152,8 +153,11 @@ function MakeQr({ active }) {
         trashDisabled={!text}
         held={!!text}
         actions={(
-          <button className={`btn btn-icon ${done.paste ? 'btn-done' : ''}`} onClick={paste} title="Paste from clipboard" aria-label="Paste from clipboard">
+          <button className={`btn btn-icon btn-grow ${done.paste ? 'btn-done' : ''}`} onClick={paste} title="Paste from clipboard" aria-label="Paste from clipboard">
             <ClipboardPaste size={14} />
+            {/* (its word with it while the box is empty; shut to the icon once
+                there's something: the word slide) */}
+            <SlideText show={!text}><span className="btn-grow-word">paste</span></SlideText>
           </button>
         )}
       />

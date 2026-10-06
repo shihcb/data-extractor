@@ -410,8 +410,11 @@ export default function MetaEditor({ active }) {
         empty={!items.length}
         actions={(
           <>
-            <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Add photos" aria-label="Add photos">
+            <button className="btn btn-icon btn-grow" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Add photos" aria-label="Add photos">
               <ImageUp size={14} />
+              {/* (its word with it while the box is empty; shut to the icon once
+                  there's something: the word slide) */}
+              <SlideText show={!items.length}><span className="btn-grow-word">add photos</span></SlideText>
             </button>
           </>
         )}
