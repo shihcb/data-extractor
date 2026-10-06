@@ -94,7 +94,14 @@ picture's background colour. A picture is read as a block of lines
 line) becomes one item per line, each covering its own band of the
 picture, and the line under the tap is the one that opens. The picture is redrawn from the PDF just for the
 read (letters ~100px tall, alone on a white margin) so tiny text reads too, and
-its colours are taken from that sharp copy, not the blurry page on screen.
+its colours are taken from that sharp copy, not the blurry page on screen. A
+picture's line Tesseract isn't sure of (< 90) is read again as close-ups
+(48, 32 and 72px letters as drawn, 48px black on white) and the readings
+vote letter by letter (`votedReading`: lined up against the one most agree
+with); then a header label one letter off is put right (`headerLabel`:
+"Ta:" → "To:"). On test headers of 8 / 9 / 10px text this took the letters
+read right from 90 / 93 / 98% to 93 / 95 / 100% (the address exact at
+10px). Drawing the picture smaller (60 or 40px) read worse.
 
 Editing in the PDF editor:
 - pdf.js's pieces of a line (each word placed alone, a ligature alone) in the
@@ -117,8 +124,12 @@ Editing in the PDF editor:
   animations, not the engine (it clears a settled element's transform).
   The patch reaches 0.06em past its box; its colour is the most common in
   the whole box (the edge alone was a table cell's border).
-- Find and replace ignores case unless "Aa" is switched on (on by default,
-  "google" marked only the one lowercase address on a Google receipt); its count is
+- Find and replace never minds case (no "Aa": "google" marked only the one
+  lowercase address on a Google receipt), nor accents, ligatures, curly
+  quotes, dashes or odd / extra spaces; in words read off a picture or a
+  scan, not Tesseract's mix-ups either (0 / O, 1 / l / I / |, rn / m, vv /
+  w, dropped spaces). `src/findText.js`: each folded letter keeps where it
+  came from, so replace all swaps exactly the matched stretch; its count is
   "· matches N" sliding into the stats line while it's open.
 - Double-click an empty spot (or tap one with "add text" on) to add a line,
   in the size and font of the nearest line; left empty, it goes again.

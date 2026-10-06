@@ -544,9 +544,9 @@ body.has-bar .app-container {
   justify-content: center;
 }
 
-.btn.match-case {
-  font-size: 0.8rem;
-  min-width: 36px;
+/* Find takes the whole first row (case never counts: no "Aa") */
+.find-grid .find-input {
+  grid-column: 1 / -1;
 }
 
 .btn-icon {

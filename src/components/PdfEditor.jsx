@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { FileUp, Search, TextCursorInput, ZoomIn, ZoomOut } from 'lucide-react';
 import { closePdf, loadPdfLib, loadPdfjs, openPdf, renderPage, isPasswordError, refusedWords, whyRefused } from '../pdf';
-import { agreedReading, readBlock, readLine, readPage, rereadLine } from '../ocr';
+import { agreedReading, inkCopy, readBlock, readLine, readPage, rereadLine, votedReading, headerLabel } from '../ocr';
+import { findIn, replaceIn } from '../findText';
 import { removeText } from '../pdfText';
 import { baseName, canvasToBlob, downloadBlob, isPdfFile, loadLibrary, shortName, useDoneFlags, usePastedFiles } from '../utils';
 import { MOTION, MOTION_MS, canAnimate, motionEase, prefersReducedMotion } from '../motion';
@@ -1101,6 +1102,30 @@ export default function PdfEditor({ active }) {
       if (!quiet) toast(err?.code === 'library' ? err.message : "couldn't read this picture — type the new words", { warn: true });
       lines = [];
     }
+    // A line Tesseract wasn't sure of is read again as close-ups at three
+    // sizes, from the picture as drawn and made black on white, and the
+    // readings vote letter by letter (votedReading): each gets different
+    // letters wrong in tiny print ("Dade", "Dale"), most get each one right
+    if (lines.some(l => (l.sure ?? 100) < 90)) {
+      let ink = null;
+      try {
+        for (const l of lines) {
+          if ((l.sure ?? 100) >= 90) continue;
+          if (!ink) ink = await inkCopy(canvas).catch(() => null);
+          const readings = [{ text: l.text, sure: l.sure }];
+          for (const [from, size] of [[canvas, 48], [ink, 48], [canvas, 32], [canvas, 72]]) {
+            if (!from) continue;
+            await whenStill();
+            readings.push(await rereadLine(from, l, size).catch(() => null));
+          }
+          const voted = votedReading(readings);
+          if (voted?.text) l.text = voted.text;
+        }
+      } finally {
+        if (ink) ink.width = ink.height = 0;
+      }
+    }
+    lines.forEach((l) => { l.text = headerLabel(l.text); });
     if (!lines.length) {
       // Nothing read: typed into as it is (its box was kept see-through
       // while it was being read)
@@ -1666,25 +1691,24 @@ export default function PdfEditor({ active }) {
   const [findOpen, setFindOpen] = useState(false);
   const [findText, setFindText] = useState('');
   const [replaceText, setReplaceText] = useState('');
-  // Match case: off unless switched on ("google" finds every "Google"; on,
-  // "google" found only the address and left the rest unmarked)
-  const [matchCase, setMatchCase] = useState(false);
+  // What counts as the same words (findText.js): never case, accents,
+  // curly quotes, dashes or odd spaces; in words read off a picture (OCR),
+  // not Tesseract's mix-ups either (0 / O, 1 / l / I, rn / m, dropped spaces)
   const textOf = (item) => edits[item.id]?.text ?? item.str;
-  const fold = (t) => (matchCase ? t : t.toLowerCase());
-  const findKey = findOpen && doc ? fold(findText) : '';
+  const ocrRead = (item) => !!(item.picture || item.scan);
+  const findKey = findOpen && doc ? findText : '';
   const matches = new Set();
-  if (findKey) {
+  if (findKey.trim()) {
     doc.pages.forEach(p => p.items.forEach((item) => {
-      if (fold(textOf(item)).includes(findKey)) matches.add(item.id);
+      if (findIn(textOf(item), findKey, { ocr: ocrRead(item) }).length) matches.add(item.id);
     }));
   }
   const replaceAll = () => {
     if (!matches.size) return;
-    const re = new RegExp(findText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), matchCase ? 'g' : 'gi');
     const next = { ...edits };
     doc.pages.forEach(p => p.items.forEach((item) => {
       if (!matches.has(item.id)) return;
-      const text = textOf(item).replace(re, () => replaceText);
+      const text = replaceIn(textOf(item), findText, replaceText, { ocr: ocrRead(item) });
       const colors = colorsFor(item);
       if (text === item.str) delete next[item.id];
       else next[item.id] = { text, bg: colors.bg, ink: colors.ink };
@@ -1964,12 +1988,12 @@ export default function PdfEditor({ active }) {
       {/* Find and replace: opens like the image options (the panel open) */}
       <Collapse open={!!doc && findOpen} className="options-collapse">
         <div className="options-panel">
-          {/* Two rows: what to find (and whether case counts), then what
-              goes in its place */}
+          {/* Two rows: what to find (the whole row; case never counts), then
+              what goes in its place */}
           <div className="find-grid">
             <input
               ref={findRef}
-              className="text-input"
+              className="text-input find-input"
               value={findText}
               onChange={(e) => setFindText(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Escape') closeFind(); }}
@@ -1977,15 +2001,6 @@ export default function PdfEditor({ active }) {
               spellCheck={false}
               aria-label="Find"
             />
-            <button
-              className={`btn btn-icon match-case ${matchCase ? 'btn-on' : ''}`}
-              onClick={(e) => { if (e.detail) e.currentTarget.blur(); setMatchCase(m => !m); }}
-              title={matchCase ? 'Match case: on' : 'Match case: off'}
-              aria-label="Match case"
-              aria-pressed={matchCase}
-            >
-              Aa
-            </button>
             <input
               className="text-input"
               value={replaceText}

@@ -117,8 +117,8 @@ export async function readLine(canvas) {
 
 // Reads a picture of a few lines of text (an email header's value that ran
 // onto a second line): each line, top to bottom, in the canvas's pixels —
-// { text, x0, x1, y0, y1 (its baseline at its ends), cap (how tall its
-// letters stand) } — or [] when nothing reads. Specks at a line's ends go.
+// { text, sure (how sure Tesseract is, 0–100), x0, x1, y0, y1 (its baseline
+// at its ends), cap (how tall its letters stand) } — or [] when nothing reads. Specks at a line's ends go.
 export async function readBlock(canvas) {
   const data = await read(canvas, '6');
   const out = [];
@@ -147,7 +147,8 @@ export async function readBlock(canvas) {
     const found = b && b.has_baseline !== false && Number.isFinite(b.y0) && b.x1 !== b.x0;
     const base = found ? baselineAt(line, x0) : bottoms[Math.floor((bottoms.length - 1) * 0.3)];
     const top = tops[Math.ceil((tops.length - 1) / 2)];
-    out.push({ text: ws.map(w => w.text).join(' '), x0, x1, y0: base, y1: base + slope * (x1 - x0), cap: Math.max(2, base - top) });
+    const sure = ws.reduce((t, w) => t + w.sure, 0) / ws.length;
+    out.push({ text: ws.map(w => w.text).join(' '), sure, x0, x1, y0: base, y1: base + slope * (x1 - x0), cap: Math.max(2, base - top) });
   }
   return out.sort((p, q) => p.y0 - q.y0);
 }
@@ -168,6 +169,16 @@ async function plainInk(canvas) {
   } catch {
     // Read as it is
   }
+}
+
+// A copy of `canvas` made plain black on white (for a second reading)
+export async function inkCopy(canvas) {
+  const copy = document.createElement('canvas');
+  copy.width = canvas.width;
+  copy.height = canvas.height;
+  copy.getContext('2d', { willReadFrequently: true }).drawImage(canvas, 0, 0);
+  await plainInk(copy);
+  return copy;
 }
 
 // Reads a whole page (a scan, a photo): its lines, in the canvas's pixels.
@@ -485,12 +496,12 @@ async function refine(canvas, l, usual) {
 }
 
 // One line of a page, read again on its own: cut from the page as it was
-// (not made black on white), its letters drawn about 48px tall, read as a
+// (not made black on white), its letters drawn about 48px tall (or `size`), read as a
 // single line. A second look from another angle: for each line, the reading
 // Tesseract is surer of is the one kept. Returns { text, sure } or null.
-export async function rereadLine(raw, l) {
+export async function rereadLine(raw, l, size = 48) {
   const cap = Math.max(4, l.cap);
-  const k = Math.max(1, Math.min(4, 48 / cap));
+  const k = Math.max(0.25, Math.min(4, size / cap));
   const top = Math.min(l.y0, l.y1) - cap * 1.6;
   const bottom = Math.max(l.y0, l.y1) + cap * 0.7;
   const x0 = Math.max(0, l.x0 - cap * 0.6);
@@ -531,4 +542,75 @@ export function agreedReading(readings) {
     if (!best || far < best.far - 1e-9 || (Math.abs(far - best.far) < 1e-9 && (r.sure ?? 0) > (best.r.sure ?? 0))) best = { r, far };
   }
   return best.r;
+}
+
+// Several readings of one line voted on letter by letter: each reading is
+// lined up against the one most agree with (agreedReading), and every
+// letter (and every gap or extra letter) goes the way most readings go.
+// Faded or tiny print gets different letters wrong in each reading
+// ("Dade", "Dale", "Date"); a whole reading picked as it stands kept its
+// own mistakes. Readings of a different line don't vote.
+export function votedReading(readings) {
+  const pivot = agreedReading(readings);
+  if (!pivot) return null;
+  const all = readings.filter(r => r && r.text && (r === pivot || alike(r.text, pivot.text) >= 0.6));
+  if (all.length < 3) return pivot;
+  const p = pivot.text;
+  // For each of the pivot's letters, and each gap before it (and the end),
+  // what each reading has there
+  const at = Array.from({ length: p.length }, () => new Map());
+  const gaps = Array.from({ length: p.length + 1 }, () => new Map());
+  const vote = (m, key) => m.set(key, (m.get(key) || 0) + 1);
+  for (const r of all) {
+    const t = r.text;
+    // Edit distance table, then walked back to line t up against p
+    const d = Array.from({ length: p.length + 1 }, () => new Uint16Array(t.length + 1));
+    for (let i = 0; i <= p.length; i++) d[i][0] = i;
+    for (let j = 0; j <= t.length; j++) d[0][j] = j;
+    for (let i = 1; i <= p.length; i++) {
+      for (let j = 1; j <= t.length; j++) {
+        d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (p[i - 1] === t[j - 1] ? 0 : 1));
+      }
+    }
+    const letter = new Array(p.length).fill('');
+    const extra = new Array(p.length + 1).fill('');
+    let i = p.length;
+    let j = t.length;
+    while (i > 0 || j > 0) {
+      if (i > 0 && j > 0 && d[i][j] === d[i - 1][j - 1] + (p[i - 1] === t[j - 1] ? 0 : 1)) {
+        letter[i - 1] = t[j - 1]; i--; j--;
+      } else if (i > 0 && d[i][j] === d[i - 1][j] + 1) {
+        letter[i - 1] = ''; i--; // (left out in this reading)
+      } else {
+        extra[i] = t[j - 1] + extra[i]; j--;
+      }
+    }
+    letter.forEach((c, k) => vote(at[k], c));
+    extra.forEach((c, k) => vote(gaps[k], c));
+  }
+  const best = (m) => [...m.entries()].sort((x, y) => y[1] - x[1])[0][0];
+  let text = best(gaps[0]);
+  for (let k = 0; k < p.length; k++) text += best(at[k]) + best(gaps[k + 1]);
+  text = tidy(text.replace(/\s+/g, ' ').trim());
+  return text ? { text, sure: pivot.sure } : pivot;
+}
+
+// An email header's label put right (pictures of text are mostly Mail's
+// printed header): a word one letter off a known label, before its colon,
+// is that label ("Ta:" → "To:", "Subgect:" → "Subject:")
+const LABELS = ['From', 'Subject', 'Date', 'To', 'Cc', 'Bcc', 'Reply-To', 'Sent'];
+const oneOff = (a, b) => {
+  if (a === b) return true;
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  const rest = (x, y) => x.slice(i + (a.length >= b.length ? 1 : 0)) === y.slice(i + (b.length >= a.length ? 1 : 0));
+  return rest(a, b);
+};
+export function headerLabel(text) {
+  const m = /^\s*([A-Za-z-]{2,9})\s*:/.exec(text);
+  if (!m) return text;
+  const word = m[1].toLowerCase();
+  const label = LABELS.find(l => l.toLowerCase() === word) || LABELS.filter(l => l.length > 2 || word.length === 2).find(l => oneOff(l.toLowerCase(), word));
+  return label ? text.replace(m[1], label) : text;
 }
