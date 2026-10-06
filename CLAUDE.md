@@ -245,8 +245,10 @@ Spacing down a tab, the same everywhere (measured in every tab):
   it in text diff), and the description to its box; a text line under
   controls (the QR level's hint).
 - 20px: between groups (the box row to the buttons or an options panel,
-  the panel to the buttons, the buttons to a result box). An options
-  panel keeps 2px inside for focus rings and takes it back outside.
+  the panel to the buttons, the buttons to a result box). Never fix a
+  gap with margins on a panel that opens: they only count while it's
+  drawn, so everything under it jumped 4px as find opened / shut (a panel
+  clips only while it moves, so it needs no room for focus rings).
 
 On a phone every tab fits the screen empty, without scrolling (checked
 at 375 × 667, 390 × 844 and 430 × 932): the page ends 24px under its last
