@@ -98,8 +98,20 @@ function clear(el, s, names) {
   if (!('height' in s.props) && !('width' in s.props)) el.style.overflow = s.hadOverflow || '';
 }
 
+// The time of the frame being drawn, from the engine's step until it's
+// painted: motion asked for later in that same frame (a ResizeObserver,
+// which runs after the step — a row of buttons gliding) starts on it too.
+// Started a frame later, a button's glide ran 16ms behind the word sliding
+// beside it, and the centred row between them wobbled.
+let frameTime = null;
+const painted = typeof MessageChannel === 'function' ? new MessageChannel() : null;
+if (painted) painted.port1.onmessage = () => { frameTime = null; };
+
 function step(now) {
   frame = null;
+  frameTime = now;
+  if (painted) painted.port2.postMessage(0);
+  else setTimeout(() => { frameTime = null; }, 0);
   const done = [];
   active.forEach((s, el) => {
     const finished = [];
@@ -136,7 +148,7 @@ function kick(el) {
   // Written now too, so the first frame already shows the starting point
   // (just the element that changed: the others are written as they stand)
   const s = active.get(el);
-  if (s) write(el, s, performance.now());
+  if (s) write(el, s, frameTime ?? performance.now());
 }
 
 // Too small a change to bother moving: half a pixel for sizes and slides,
@@ -149,7 +161,7 @@ const tiny = (name) => (name === 'scale' || name === 'opacity' ? 0.002 : 0.5);
 // `keep`: hold the target as an inline style once settled (an explicit size).
 export function animateTo(el, name, target, { from, duration = MOTION_MS, onSettle, keep = false } = {}) {
   if (!el) return;
-  const now = performance.now();
+  const now = frameTime ?? performance.now();
   const s = stateOf(el);
   const prop = s.props[name];
   const drawn = prop ? valueOf(prop, now) : (from ?? target);
@@ -170,11 +182,11 @@ export function animateTo(el, name, target, { from, duration = MOTION_MS, onSett
   }
   if (prop) {
     // Keep what's in flight; this change rides on top of it
-    prop.pieces.push({ offset: prop.target - target, start: null, duration });
+    prop.pieces.push({ offset: prop.target - target, start: frameTime, duration });
     prop.target = target;
     prop.keep = keep;
   } else {
-    s.props[name] = { target, keep, pieces: [{ offset: drawn - target, start: null, duration }] };
+    s.props[name] = { target, keep, pieces: [{ offset: drawn - target, start: frameTime, duration }] };
   }
   if (onSettle) s.settle.push(onSettle);
   kick(el);
@@ -187,7 +199,7 @@ export function shift(el, name, offset, { duration = MOTION_MS } = {}) {
   const s = stateOf(el);
   const rest = PROPS[name].rest ?? 0;
   if (!s.props[name]) s.props[name] = { target: rest, pieces: [] };
-  s.props[name].pieces.push({ offset, start: null, duration });
+  s.props[name].pieces.push({ offset, start: frameTime, duration });
   kick(el);
 }
 
@@ -249,6 +261,10 @@ export function whenStill(maxWait = 1500) {
       if (!busy || document.hidden || performance.now() - t0 > maxWait) resolve();
       else requestAnimationFrame(check);
     };
-    check();
+    // First asked a frame on: what was just changed (cards set to come in)
+    // has started moving by then — asked at once, nothing moved yet, and a
+    // PDF's first page was drawn as its card popped in
+    if (document.hidden) resolve(); // (no frames come while hidden)
+    else requestAnimationFrame(check);
   });
 }

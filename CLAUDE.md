@@ -296,7 +296,10 @@ Rules that keep it smooth (each was a real bug):
   pieces start at `null`, set by its next frame), not when it's asked for:
   the change that asks for it (cards added, a tab's buttons coming in) makes
   that frame slow, and timed from the ask the motion had run a quarter of
-  its way by the first frame shown — it jumped, then eased.
+  its way by the first frame shown — it jumped, then eased. Motion asked
+  for later in a frame the engine already stepped (a ResizeObserver: a
+  row's button glide) starts on that same frame (`frameTime`): a frame
+  behind the word sliding beside it, the centred row wobbled.
 - Nothing scans a row's whole insides per frame: "is anything in here
   easing its width?" asks the engine's few moving things (`widthMovingIn`);
   `querySelectorAll('*')` on every button every frame took ~90ms of a slide
@@ -348,9 +351,17 @@ Rules that keep it smooth (each was a real bug):
 - Every motion that can change again mid-way adds a piece on top (the
   engine; the count and the editor's zoom buttons do the same): restarted
   from where it's drawn, it stalls at zero speed, then rushes.
-- Heavy work on the page's thread (a thumbnail, a picture's colours) waits
-  for `whenStill()` (engine.js) so it can't stall a frame mid-motion; a
-  list measures everything before it moves anything.
+- Heavy work on the page's thread (a thumbnail, a picture's colours, the
+  PDF editor's sharper redraw and scan reading) waits for `whenStill()`
+  (engine.js) so it can't stall a frame mid-motion; it first looks a frame
+  on (asked at once, the cards just set to come in hadn't started, and a
+  PDF's first page was drawn as its card popped in). A list measures
+  everything before it moves anything. The PDF editor decodes its first
+  pages' pictures before showing them (decoded at first paint, that frame
+  took ~100ms as its buttons and stats came in).
+- Opacity-only fades that need no following (the box row's sides, the
+  stats) stay CSS transitions: the phone's compositor runs them through a
+  busy page thread, where an engine fade would stall.
 - Keyboard focus always shows (`:focus-visible`, 2px outline); text fields
   show theirs with their border.
 - The PDF editor's zoom keeps the point under the fingers on the same spot

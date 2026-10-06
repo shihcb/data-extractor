@@ -915,6 +915,14 @@ export default function PdfEditor({ active }) {
           // Not a font the browser takes: the stand-in it is
         }
       }));
+      // The first pages' pictures decoded before they're shown: decoded as
+      // they were first painted, that frame took ~100ms on a slowed phone,
+      // just as the buttons and stats began to come in
+      await Promise.all(pages.slice(0, 3).map(p => {
+        const img = new Image();
+        img.src = p.url;
+        return img.decode?.().catch(() => {});
+      }));
       // A file opened after this one is showing instead: this one goes
       if (ticket !== opening.current) {
         faces.forEach(f => document.fonts.delete(f));
@@ -993,6 +1001,11 @@ export default function PdfEditor({ active }) {
         const cssWidth = r.width;
         if (!cssWidth || p.maxed || p.px >= cssWidth * dpr * 0.9) continue;
         try {
+          // (drawn on the page's thread: not mid-motion — opening a PDF, its
+          // stats and buttons were still fading in at this point on a slow
+          // phone, and the drawing held up a frame for 120ms)
+          await whenStill();
+          if (stale || zooming.current) return;
           const page = await open.view.getPage(p.num);
           const { canvas } = await renderPage(page, { cssWidth });
           const url = URL.createObjectURL(await canvasToBlob(canvas, 'image/png'));
@@ -1540,6 +1553,7 @@ export default function PdfEditor({ active }) {
         const readAt = async (maxPixels) => {
           let canvas = null;
           try {
+            await whenStill();
             const page = await open.view.getPage(p.num);
             const base = page.getViewport({ scale: 1 });
             const scale = Math.min(4, 5000 / Math.max(base.width, base.height));
