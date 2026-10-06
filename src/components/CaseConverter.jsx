@@ -2,13 +2,16 @@ import React, { useDeferredValue, useMemo, useRef } from 'react';
 import { ClipboardPaste } from 'lucide-react';
 import { CASES, textStats } from '../textCase';
 import { copyText, useDoneFlags } from '../utils';
-import { flashOutline } from '../motion';
 import { useToast } from '../toastContext';
 import Count from './Count';
 import AutoHeight from './AutoHeight';
 import FlipRow from './FlipRow';
 import BoxRow from './BoxRow';
 import useHistory, { useUndoKeys } from '../useHistory';
+
+// The case buttons in their rows (see .button-rows)
+const ROWS = [['lower', 'upper'], ['title', 'sentence'], ['camel', 'snake'], ['kebab', 'tidy']]
+  .map(keys => keys.map(k => CASES.find(c => c.key === k)));
 
 export default function CaseConverter({ active }) {
   // Every change can be undone (the bottom bar, Ctrl + Z): typing is a step
@@ -30,7 +33,6 @@ export default function CaseConverter({ active }) {
       if (clip) {
         setText(clip);
         flagDone('paste');
-        flashOutline(textareaRef.current);
       }
     } catch {
       // Not allowed to read the clipboard: put the cursor in the box so a
@@ -44,7 +46,6 @@ export default function CaseConverter({ active }) {
     if (e.detail) e.currentTarget.blur();
     const converted = c.fn(text);
     setText(converted);
-    flashOutline(textareaRef.current);
     if (await copyText(converted)) {
       flagDone(c.key);
     } else {
@@ -75,27 +76,36 @@ export default function CaseConverter({ active }) {
           </span>
         </AutoHeight>
       </BoxRow>
-      <FlipRow>
-        <button
-          className={`btn btn-icon ${done.paste ? 'btn-done' : ''}`}
-          onClick={handlePaste}
-          title="Paste from clipboard"
-          aria-label="Paste from clipboard"
-        >
-          <ClipboardPaste size={14} />
-        </button>
-        {CASES.map(c => (
-          <button
-            key={c.key}
-            className={`btn ${done[c.key] ? 'btn-done' : ''}`}
-            onClick={(e) => handleConvert(e, c)}
-            disabled={!text.trim()}
-            title={`Convert to ${c.label} and copy`}
-          >
-            {c.label}
-          </button>
+      {/* The same rows on every screen (a computer put them all on one or
+          two lines, the groups run together): paste with lower / UPPER,
+          Title / Sentence, camel / snake, kebab / tidy */}
+      <div className="button-rows">
+        {ROWS.map((row, i) => (
+          <FlipRow key={i}>
+            {i === 0 && (
+              <button
+                className={`btn btn-icon ${done.paste ? 'btn-done' : ''}`}
+                onClick={handlePaste}
+                title="Paste from clipboard"
+                aria-label="Paste from clipboard"
+              >
+                <ClipboardPaste size={14} />
+              </button>
+            )}
+            {row.map(c => (
+              <button
+                key={c.key}
+                className={`btn ${done[c.key] ? 'btn-done' : ''}`}
+                onClick={(e) => handleConvert(e, c)}
+                disabled={!text.trim()}
+                title={`Convert to ${c.label} and copy`}
+              >
+                {c.label}
+              </button>
+            ))}
+          </FlipRow>
         ))}
-      </FlipRow>
+      </div>
     </div>
   );
 }

@@ -185,7 +185,13 @@ Which buttons go where:
   format, the word swap) · copy; metadata editor add · save photos; PDF
   tools add · split · save PDF ("save merged PDF" with several files) ·
   save PNG; PDF editor add text · find text, then open · save PDF; QR scan
-  choose image · use camera.
+  choose image · use camera. The case converter's buttons are fixed rows,
+  the same on every screen (`.button-rows`): paste · lowercase · UPPERCASE /
+  Title Case · Sentence case / camelCase · snake_case / kebab-case · tidy
+  spaces.
+- A button gone green (done: copied, saved) stays green under the pointer
+  (no black hover border), and nothing else flashes with it (the case
+  converter's box no longer gets the black outline flash).
 - The box row, right under the box: undo · redo | the stats | the trash
   (see the box row above).
 - No select all: tap cards to select; the trash takes the selection (or

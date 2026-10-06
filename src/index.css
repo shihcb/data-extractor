@@ -497,9 +497,10 @@ button:disabled {
               opacity var(--motion-duration) var(--motion-easing);
 }
 
-/* Only on real pointer devices: a tap on a phone would leave it stuck */
+/* Only on real pointer devices: a tap on a phone would leave it stuck.
+   Not on a green (done) one: its border drew black over the green */
 @media (hover: hover) and (pointer: fine) {
-  .btn:hover:not(:disabled) {
+  .btn:hover:not(:disabled):not(.btn-done) {
     background: var(--btn-bg-hover);
     border-color: var(--text-main);
     box-shadow: var(--shadow-btn-hover);
@@ -1842,4 +1843,13 @@ html.page-fits body {
 /* Delete in red, as the bar's was */
 .btn.box-trash:not(:disabled) {
   color: #ef4444;
+}
+
+/* Button rows that stay rows on every screen (the case converter's
+   groups); 6px apart like the buttons */
+.button-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--button-gap);
+  width: 100%;
 }
