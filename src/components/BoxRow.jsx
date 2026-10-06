@@ -37,7 +37,11 @@ export default function BoxRow({ history, actions, children, end, onTrash, trash
     lastFocus.current = null;
     const now = document.activeElement;
     if (now !== el && now !== document.body) return;
-    ref.current?.closest('.tab-pane')?.querySelector('.btn:not(:disabled)')?.focus({ preventScroll: true });
+    // (not a button hidden away: undo · redo fade out with the last image,
+    // and focus sent to one of them was dropped to the page)
+    const live = [...(ref.current?.closest('.tab-pane')?.querySelectorAll('.btn:not(:disabled)') || [])]
+      .find(b => !b.closest('[inert], [aria-hidden="true"]'));
+    live?.focus({ preventScroll: true });
   });
 
   const press = (fn) => (e) => {

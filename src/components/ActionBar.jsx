@@ -30,7 +30,8 @@ export default function ActionBar({ active, open: wanted, children, label }) {
     // Closing with the keys on one of its buttons:
     // they go to the tab's first button, not dropped to the top of the page
     if (!open && el.contains(document.activeElement)) {
-      document.querySelector('.tab-pane.active:not(.tab-pane .tab-pane) .btn:not(:disabled)')?.focus({ preventScroll: true });
+      [...document.querySelectorAll('.tab-pane.active:not(.tab-pane .tab-pane) .btn:not(:disabled)')]
+        .find(b => !b.closest('[inert], [aria-hidden="true"]'))?.focus({ preventScroll: true });
     }
     if (!canAnimate(el)) {
       // (and its starting opacity 0 gone: with reduced motion it stayed invisible)
