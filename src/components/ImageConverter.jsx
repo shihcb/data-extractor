@@ -472,12 +472,13 @@ function ConvertImages({ active }) {
           <ImageUp size={14} />
         </button>
         <button
-          className={`btn btn-primary ${done.save ? 'btn-done' : ''}`}
+          className={`btn ${done.save ? 'btn-done' : ''}`}
           onClick={(e) => save(e, items)}
           disabled={!items.length || !!busy}
         >
-          {/* Always just "save": no working text while it converts */}
-          save
+          {/* "save" and what it makes, as every save button ("save PNG");
+              the format the word swap. No working text while it converts */}
+          <span className="btn-label">save{'\u00a0'}<SlideSwap text={fmt.label} /></span>
         </button>
         <button
           className={`btn btn-icon ${done.copy ? 'btn-done' : ''}`}

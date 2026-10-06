@@ -462,8 +462,9 @@ export default function MetaEditor({ active }) {
         <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Add photos" aria-label="Add photos">
           <ImageUp size={14} />
         </button>
-        <button className={`btn btn-primary ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!items.length || busy}>
-          save
+        <button className={`btn ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!items.length || busy}>
+          {/* (each photo in its own format: "save" and what it saves) */}
+          save photos
         </button>
       </FlipRow>
       <datalist id="meta-makes">{MAKES.map(m => <option key={m} value={m} />)}</datalist>

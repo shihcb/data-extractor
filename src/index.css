@@ -22,8 +22,6 @@
   --btn-bg: #ffffff;
   --btn-bg-hover: #ffffff;
   --btn-border: #d1d5db;
-  --btn-primary-bg: #000000;
-  --btn-primary-text: #ffffff;
   --success-bg: #ecfdf5;
   --success-border: #a7f3d0;
   --success-text: #059669;
@@ -58,8 +56,6 @@
   --btn-bg: #18181b;
   --btn-bg-hover: #27272a;
   --btn-border: rgba(255, 255, 255, 0.15);
-  --btn-primary-bg: #ffffff;
-  --btn-primary-text: #000000;
   --success-bg: rgba(16, 185, 129, 0.14);
   --success-border: rgba(16, 185, 129, 0.4);
   --success-text: #34d399;
@@ -541,20 +537,6 @@ button:disabled {
 
 .btn-icon {
   padding: 8px 14px;
-}
-
-.btn-primary {
-  background: var(--btn-primary-bg);
-  border-color: var(--btn-primary-bg);
-  color: var(--btn-primary-text);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .btn-primary:hover:not(:disabled) {
-    background: var(--btn-primary-bg);
-    border-color: var(--btn-primary-bg);
-    opacity: 0.88;
-  }
 }
 
 /* Green "done" state (copied, downloaded) */

@@ -420,16 +420,16 @@ export default function PdfTools({ active }) {
         <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Add PDFs" aria-label="Add PDFs">
           <FilePlus size={14} />
         </button>
-        <button className={`btn btn-primary ${done.save ? 'btn-done' : ''}`} onClick={saveAll} disabled={none || !!busy}>
+        <button className={`btn ${done.split ? 'btn-done' : ''}`} onClick={split} disabled={none || !!busy}>
+          split
+        </button>
+        <button className={`btn ${done.save ? 'btn-done' : ''}`} onClick={saveAll} disabled={none || !!busy}>
           {/* "merged" comes and goes with the word slide (a cross-fade of the
               whole label inside a button easing its width was choppy) */}
           <span className="btn-label">save<SlideText show={fileCount > 1}>{'\u00a0merged'}</SlideText> PDF</span>
         </button>
-        <button className={`btn ${done.split ? 'btn-done' : ''}`} onClick={split} disabled={none || !!busy}>
-          split
-        </button>
         <button className={`btn ${done.images ? 'btn-done' : ''}`} onClick={toImages} disabled={none || !!busy}>
-          save as PNG
+          save PNG
         </button>
       </FlipRow>
     </div>

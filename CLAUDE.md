@@ -176,10 +176,16 @@ before a picture was drawn still shows it.
 Which buttons go where:
 - Under the box: getting things in and the result out (add / paste, save,
   copy, convert), always there (dimmed with nothing to act on), acting on
-  the whole tab (or the first item when none is picked). They start with
-  the input button, then the main action (filled), then the rest: case
-  converter and text diff paste; QR make paste (above the error level); the image tools and PDF tools
-  add; the PDF editor open; QR scan choose image · "use camera" (filled). The case converter's case buttons have no main one (none filled).
+  the whole tab (or the first item when none is picked). No button is
+  filled (no black "main" button anywhere): all are the same plain button,
+  outlined only while switched on. Order: the input button first, then
+  what changes things (split), then the saves, then copy: case converter
+  and text diff paste; QR make paste (above the error level), and under
+  the code save PNG · save SVG · copy; image converter add · save PNG (its
+  format, the word swap) · copy; metadata editor add · save photos; PDF
+  tools add · split · save PDF ("save merged PDF" with several files) ·
+  save PNG; PDF editor add text · find text, then open · save PDF; QR scan
+  choose image · use camera.
 - The box row, right under the box: undo · redo | the stats | the trash
   (see the box row above).
 - No select all: tap cards to select; the trash takes the selection (or
@@ -198,8 +204,9 @@ Which buttons go where:
   PDF, choose image), copy, undo / redo, the trash, text diff's swap (⇄),
   and the corner keyboard-shortcuts button; each has a title and
   aria-label. Everything else is words (save, split, reset, add text, find
-  text, use camera, the cases). File types in capitals: save PDF, save
-  PNG, save SVG.
+  text, use camera, the cases). Every save button is "save" and what
+  it saves, never "save as": file types in capitals (save PDF, save PNG,
+  save SVG, save JPG), else the thing (save photos).
 
 Text diff's description ("paste two texts to compare")
 sits above its boxes like every tab's; its stats line is always there

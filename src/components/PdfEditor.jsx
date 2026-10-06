@@ -2037,7 +2037,7 @@ export default function PdfEditor({ active }) {
         <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); inputRef.current?.click(); }} title="Open a PDF" aria-label="Open a PDF">
           <FileUp size={14} />
         </button>
-        <button className={`btn btn-primary ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!doc || !editCount || busy}>
+        <button className={`btn ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!doc || !editCount || busy}>
           save PDF
         </button>
       </FlipRow>

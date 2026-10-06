@@ -171,7 +171,7 @@ function MakeQr({ active }) {
         <FadeText k={hasCode ? '' : 'hint'} className="tool-hint">{hasCode ? null : 'your QR code shows here'}</FadeText>
       </AutoHeight>
       <FlipRow>
-        <button className={`btn btn-primary ${done.png ? 'btn-done' : ''}`} onClick={downloadPng} disabled={!hasCode}>
+        <button className={`btn ${done.png ? 'btn-done' : ''}`} onClick={downloadPng} disabled={!hasCode}>
           save PNG
         </button>
         <button className={`btn ${done.svg ? 'btn-done' : ''}`} onClick={downloadSvg} disabled={!hasCode}>
@@ -362,7 +362,7 @@ function ScanQr({ active }) {
         </button>
         {/* One button: its words swap (text swap) and it eases to its new width */}
         <button
-          className="btn btn-primary"
+          className="btn"
           onClick={(e) => {
             if (camera) { if (e.detail) e.currentTarget.blur(); stopCamera(); }
             else startCamera(e);
