@@ -6,6 +6,7 @@ import { useToast } from '../toastContext';
 import Count from './Count';
 import AutoHeight from './AutoHeight';
 import FlipRow from './FlipRow';
+import SlideText from './SlideText';
 import BoxRow from './BoxRow';
 import useHistory, { useUndoKeys } from '../useHistory';
 
@@ -75,12 +76,15 @@ export default function CaseConverter({ active }) {
         held={!!text}
         actions={(
           <button
-            className={`btn btn-icon ${done.paste ? 'btn-done' : ''}`}
+            className={`btn btn-icon btn-grow ${done.paste ? 'btn-done' : ''}`}
             onClick={handlePaste}
             title="Paste from clipboard"
             aria-label="Paste from clipboard"
           >
             <ClipboardPaste size={14} />
+            {/* (its word with it while the box is empty; shut to the icon once
+                there's text: the word slide, as in every tab) */}
+            <SlideText show={!text}><span className="btn-grow-word">paste</span></SlideText>
           </button>
         )}
       >
