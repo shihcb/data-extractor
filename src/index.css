@@ -1702,6 +1702,31 @@ html.page-fits body {
 .pdf-text-item.movable.picked {
   outline-color: var(--text-main);
 }
+/* The delete button just above the selected line's start (its own size
+   whatever the zoom; lifted by its spot, so the pop can move the button) */
+.pdf-line-delete-spot {
+  position: absolute;
+  z-index: 3;
+  transform: translateY(calc(-100% - 6px));
+  pointer-events: none;
+}
+.pdf-line-delete-spot .btn.pdf-line-delete {
+  pointer-events: auto;
+  width: 30px;
+  height: 30px;
+  min-height: 0;
+  padding: 0;
+  color: #ef4444;
+  background: var(--bg-card);
+  box-shadow: 0 4px 12px -6px rgba(0, 0, 0, 0.35);
+}
+
+/* Match · bold · italic: kept together when the row wraps */
+.text-look {
+  flex-wrap: nowrap;
+  width: auto;
+}
+
 /* The line last tapped: the trash deletes it */
 .pdf-text-item.selected {
   outline: 1px solid var(--text-main);

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bold, FileUp, Italic, Minus, Plus, Search, TextCursorInput, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bold, FileUp, Italic, Minus, Pipette, Plus, Search, TextCursorInput, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
 import { closePdf, loadPdfLib, loadPdfjs, openPdf, renderPage, isPasswordError, refusedWords, whyRefused } from '../pdf';
 import { agreedReading, inkCopy, readBlock, readLine, readPage, rereadLine, votedReading, headerLabel } from '../ocr';
 import { findIn, replaceIn } from '../findText';
@@ -18,6 +18,7 @@ import FadeText from './FadeText';
 import FlipRow from './FlipRow';
 import MotionList from './MotionList';
 import TabSwitcher from './TabSwitcher';
+import usePop from './usePop';
 
 // Changing text in a PDF the reliable way (what browser PDF editors do):
 // the old words are covered with a patch the colour of the paper behind
@@ -634,6 +635,35 @@ function nearestLine(items, x, y, skip = null) {
       return { item, far: Math.hypot((x - lx) * cos + (y - ly) * sin - along, up) };
     })
     .sort((p, q) => p.far - q.far)[0]?.item;
+}
+
+// The delete button over the line being changed (or last tapped): a small
+// trash just above its start, popping in and out (the pop); it keeps its
+// spot while it pops out. Pressing it keeps the keys in the line's box
+// (desktop), so the line goes in one step, not saved first.
+function LineDelete({ box, show, onDelete }) {
+  const ref = useRef(null);
+  const kept = useRef(box);
+  if (box) kept.current = box;
+  usePop(ref, !!show && !!box);
+  const at = kept.current;
+  return (
+    <div className="pdf-line-delete-spot" style={at ? { left: `${at.left}%`, top: `${at.top}%` } : { display: 'none' }}>
+      <button
+        ref={ref}
+        type="button"
+        className="btn btn-icon pdf-line-delete"
+        onPointerDown={(e) => e.preventDefault()}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={(e) => { e.stopPropagation(); if (e.detail) e.currentTarget.blur(); onDelete(); }}
+        title="Delete this text"
+        aria-label="Delete this text"
+        tabIndex={show ? 0 : -1}
+      >
+        <Trash2 size={13} />
+      </button>
+    </div>
+  );
 }
 
 let nextAdded = 1;
@@ -2467,6 +2497,12 @@ export default function PdfEditor({ active }) {
                       />
                     )];
                   })}
+                  {(() => {
+                    // The delete button over the selected line, on its page
+                    const raw = !leaving && selectedItem && selectedItem.page === p.num - 1 && !dragMove ? selectedItem : null;
+                    const box = raw ? styled(raw, styleOf(raw, edits[raw.id], editing === raw.id)).box : null;
+                    return <LineDelete box={box} show={!!raw} onDelete={deleteSelected} />;
+                  })()}
                 </div>
               </div>
             )}
@@ -2600,15 +2636,19 @@ export default function PdfEditor({ active }) {
               active={styleOfTarget?.font || 'auto'}
               onChange={(k) => setStyle({ font: k === 'auto' ? undefined : k })}
             />
+            {/* (one group: on a phone it wraps under the fonts whole, italic
+                left alone on a row of its own otherwise) */}
+            <div className="field-grid text-look">
+            <button className={`btn btn-icon ${matched ? 'btn-on' : ''}`} onClick={(e) => { if (e.detail) e.currentTarget.blur(); matchLook(target); }} title="Match the text and background around it" aria-label="Match the text and background around it" aria-pressed={matched}>
+              <Pipette size={14} />
+            </button>
             <button className={`btn btn-icon ${shown.bold ? 'btn-on' : ''}`} onClick={(e) => { if (e.detail) e.currentTarget.blur(); setStyle({ bold: !shown.bold }); }} title="Bold" aria-label="Bold" aria-pressed={!!shown.bold}>
               <Bold size={14} />
             </button>
             <button className={`btn btn-icon ${shown.italic ? 'btn-on' : ''}`} onClick={(e) => { if (e.detail) e.currentTarget.blur(); setStyle({ italic: !shown.italic }); }} title="Italic" aria-label="Italic" aria-pressed={!!shown.italic}>
               <Italic size={14} />
             </button>
-            <button className={`btn ${matched ? 'btn-on' : ''}`} onClick={(e) => { if (e.detail) e.currentTarget.blur(); matchLook(target); }} title="Match the text and background around it" aria-pressed={matched}>
-              match
-            </button>
+            </div>
           </FlipRow>
           <FlipRow className="field-grid">
             <button className="btn btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); stepSize(-1); }} disabled={!!shown.size && shown.size <= SIZE_MIN} title="Smaller" aria-label="Smaller">
