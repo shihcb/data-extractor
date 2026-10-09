@@ -204,6 +204,10 @@ function linesOf(content) {
       const [, , c, d, e, f] = item.transform;
       const size = Math.hypot(c, d);
       if (!last || Math.abs(last.size - size) > size * 0.02) return;
+      // (pdf.js puts one "space" across a column's gap too — a table's label
+      // to its value, 169pt wide: carried on over it, "Date Issued" and
+      // "Oct 2, 2026" were one line, and tapping the date changed both)
+      if ((item.width || 0) > size * 1.5) return;
       const cos = Math.cos(last.angle);
       const sin = Math.sin(last.angle);
       const along = (e - last.e) * cos + (f - last.f) * sin;
@@ -477,6 +481,85 @@ function pictureItems(pictures, texts, view, n) {
     });
   });
   return items;
+}
+
+// ── Text in annotations ───────────────────────────────────────────────
+// Words that sit on the page in an annotation, not in the page itself: a
+// filled-in form field, or a text box added in Preview / iPhone Markup.
+// pdf.js leaves them out of the page's text (a receipt's number and memo
+// typed into its fields couldn't be tapped), but reads each one's lines,
+// where they start in its box and their size. Each line becomes an item
+// like any other; saved changed, the annotation is taken off the page and
+// the new words written in its place.
+const annotFont = (name = '') => ({
+  base: /cour/i.test(name) ? 'Courier' : /ti(ro|mes)/i.test(name) ? 'Times' : 'Helvetica',
+  bold: /bold|bd/i.test(name),
+  italic: /ital|obl|it$/i.test(name),
+});
+
+function annotItems(annots, view, n) {
+  const items = [];
+  annots.forEach((a) => {
+    const text = a.subtype === 'FreeText' || (a.subtype === 'Widget' && a.fieldType === 'Tx' && !a.hidden);
+    // (hidden or not printed: not what the page shows)
+    if (!text || (a.annotationFlags & 2) || !a.rect || !Array.isArray(a.textContent)) return;
+    const lines = a.textContent.map(l => printable(String(l || ''))).filter(l => l.trim());
+    if (!lines.length) return;
+    const [x0, y0, x1, y1] = a.rect;
+    const h = Math.abs(y1 - y0);
+    // (a field sized to fit, 0: about as tall as its box allows)
+    const size = a.defaultAppearanceData?.fontSize > 0 ? a.defaultAppearanceData.fontSize : Math.max(4, Math.min(h * 0.7, 12));
+    const font = annotFont(a.defaultAppearanceData?.fontName);
+    const [tx, ty] = Array.isArray(a.textPosition) ? a.textPosition : [2, h - size];
+    const c = a.defaultAppearanceData?.fontColor;
+    lines.forEach((line, k) => {
+      const str = line.trimEnd();
+      const x = Math.min(x0, x1) + tx;
+      const y = Math.min(y0, y1) + ty - k * size * 1.15;
+      const width = Math.max(size * 0.5, cssWidthEm(cssFont(font), str) * size);
+      const pdf = { x, y, size, width, ascent: 0.8, descent: -0.2, angle: 0 };
+      items.push({
+        id: `${n}-a${a.id}-${k}`,
+        page: n - 1,
+        str,
+        annot: { id: a.id, ink: c ? [c[0], c[1], c[2]] : null },
+        pdf,
+        box: { ...boxFor(pdf, view), sample: rectFor({ x0: x, y0: y - size * 0.2, x1: x + width, y1: y + size * 0.8 }, view) },
+        fontKey: null,
+        font,
+      });
+    });
+  });
+  return items;
+}
+
+// Takes an annotation (pdf.js's id, "12R") off a page; a form field's
+// box takes its field with it (or, one of several boxes, just itself)
+function dropAnnot(pdf, page, id, PDFRef) {
+  const m = /^(\d+)R(\d*)$/.exec(id);
+  if (!m) return false;
+  const num = Number(m[1]);
+  const gen = Number(m[2] || 0);
+  const same = (ref) => ref instanceof PDFRef && ref.objectNumber === num && ref.generationNumber === gen;
+  try {
+    const form = pdf.getForm();
+    const field = form.getFields().find(f => f.acroField.getWidgets().some(w => same(pdf.context.getObjectRef(w.dict))));
+    if (field && field.acroField.getWidgets().length === 1) {
+      form.removeField(field);
+      return true;
+    }
+  } catch {
+    // No form to speak of: just the annotation
+  }
+  const annots = page.node.Annots();
+  if (!annots) return false;
+  for (let k = 0; k < annots.size(); k++) {
+    if (same(annots.get(k))) {
+      annots.remove(k);
+      return true;
+    }
+  }
+  return false;
 }
 
 let nextAdded = 1;
@@ -892,6 +975,11 @@ export default function PdfEditor({ active }) {
           scan = items.length <= 2 && pictures.some(r => (r.x1 - r.x0) * (r.y1 - r.y0) >= area * 0.5);
         } catch {
           // No pictures read: just the text
+        }
+        try {
+          items.push(...annotItems(await page.getAnnotations({ intent: 'display' }), pageView, n));
+        } catch {
+          // No annotations read: the page's own text
         }
         page.cleanup();
         pages.push({ num: n, url, px, items, scan, view: pageView, width: viewport.width, height: viewport.height });
@@ -1358,7 +1446,7 @@ export default function PdfEditor({ active }) {
       // whole gets a patch over it instead
       const gone = new Set();
       doc.pages.forEach((p) => {
-        const boxes = p.items.filter(item => edits[item.id] && !item.picture && !item.added && !item.scan).map(item => ({ id: item.id, ...item.pdf }));
+        const boxes = p.items.filter(item => edits[item.id] && !item.picture && !item.added && !item.scan && !item.annot).map(item => ({ id: item.id, ...item.pdf }));
         if (!boxes.length) return;
         try {
           removeText(lib, pdf.getPage(p.num - 1), boxes).forEach(id => gone.add(id));
@@ -1366,8 +1454,23 @@ export default function PdfEditor({ active }) {
           // Left in: patched over
         }
       });
+      // Changed words in an annotation: it comes off the page (nothing to
+      // patch over); kept on, it gets the patch like the rest
+      const { PDFRef } = await loadPdfLib();
+      const dropped = new Set();
+      all.forEach((item) => {
+        if (!edits[item.id] || !item.annot || gone.has(item.id)) return;
+        const off = dropAnnot(pdf, pdf.getPage(item.page), item.annot.id, PDFRef);
+        // (every line of it: it's gone whole)
+        if (off) {
+          dropped.add(`${item.page}:${item.annot.id}`);
+          all.forEach((q) => { if (q.annot?.id === item.annot.id && q.page === item.page) gone.add(q.id); });
+        }
+      });
       for (const raw of all) {
-        const edit = edits[raw.id];
+        // (an unchanged line of an annotation taken off: written back as it was)
+        const kept = !edits[raw.id] && raw.annot && dropped.has(`${raw.page}:${raw.annot.id}`);
+        const edit = edits[raw.id] || (kept ? { text: raw.str, ink: raw.annot.ink || [0, 0, 0], bg: [255, 255, 255] } : null);
         if (!edit) continue;
         // (a new line as its panel set it: font, size, place)
         const item = styled(raw, edit.style);

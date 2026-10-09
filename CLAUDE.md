@@ -186,7 +186,17 @@ Editing in the PDF editor:
 - Searchable scans' invisible words (`3 Tr`) are cut on save but the line
   keeps its patch: the picture's words are still there.
 - Letter-spaced words that pdf.js reads as "T r a c k e d" are joined; a
-  space placed on its own carries the line on (wide word spacing).
+  space placed on its own carries the line on (wide word spacing) — not one
+  over 1.5em wide: that's pdf.js spanning a column's gap (a table's label
+  to its value), and carried over it, label and value were one line.
+- Words in annotations are lines to change too (`annotItems`): a filled-in
+  form field, a text box added in Preview / iPhone Markup — pdf.js leaves
+  them out of the page's text (a receipt's number and memo, typed into its
+  fields, couldn't be tapped). Their lines, start and size come from
+  pdf.js's `textContent` / `textPosition` / `defaultAppearanceData`; saved
+  changed, the annotation comes off the page (`dropAnnot`; a field's only
+  box takes the field with it) and the words are written in its place, its
+  unchanged lines written back as they were.
 - Right-to-left lines (Hebrew) are written in drawn order (`visualOrder`),
   keeping their right end; Arabic needs shaping and isn't handled.
 
