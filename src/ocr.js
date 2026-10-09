@@ -148,7 +148,7 @@ export async function readBlock(canvas) {
     const base = found ? baselineAt(line, x0) : bottoms[Math.floor((bottoms.length - 1) * 0.3)];
     const top = tops[Math.ceil((tops.length - 1) / 2)];
     const sure = ws.reduce((t, w) => t + w.sure, 0) / ws.length;
-    out.push({ text: ws.map(w => w.text).join(' '), sure, x0, x1, y0: base, y1: base + slope * (x1 - x0), cap: Math.max(2, base - top) });
+    out.push({ text: tidyAddress(ws.map(w => w.text).join(' ')), sure, x0, x1, y0: base, y1: base + slope * (x1 - x0), cap: Math.max(2, base - top) });
   }
   return out.sort((p, q) => p.y0 - q.y0);
 }
@@ -233,7 +233,7 @@ export async function readPage(canvas) {
       const chars = ws.reduce((t, w) => t + w.text.length, 0);
       const sure = ws.filter(believable);
       if (!ws.length || sure.reduce((t, w) => t + w.text.length, 0) < chars * 0.5 || sure.reduce((t, w) => t + alnum(w.text), 0) < 2) continue;
-      const text = ws.map(w => w.text).join(' ');
+      const text = tidyAddress(ws.map(w => w.text).join(' '));
       const x0 = ws[0].bbox.x0;
       const x1 = ws[ws.length - 1].bbox.x1;
       // Its own baseline and height, from its words (not the whole line's:
@@ -486,7 +486,7 @@ async function refine(canvas, l, usual) {
   const x0 = cx + found.left;
   const x1 = cx + found.right;
   const base = cy + found.baseline; // (at its start)
-  l.text = found.text;
+  l.text = tidyAddress(found.text);
   l.x0 = x0;
   l.x1 = x1;
   l.y0 = base;
@@ -591,7 +591,7 @@ export function votedReading(readings) {
   const best = (m) => [...m.entries()].sort((x, y) => y[1] - x[1])[0][0];
   let text = best(gaps[0]);
   for (let k = 0; k < p.length; k++) text += best(at[k]) + best(gaps[k + 1]);
-  text = tidy(text.replace(/\s+/g, ' ').trim());
+  text = tidyAddress(tidy(text.replace(/\s+/g, ' ').trim()));
   return text ? { text, sure: pivot.sure } : pivot;
 }
 
@@ -613,4 +613,56 @@ export function headerLabel(text) {
   const word = m[1].toLowerCase();
   const label = LABELS.find(l => l.toLowerCase() === word) || LABELS.filter(l => l.length > 2 || word.length === 2).find(l => oneOff(l.toLowerCase(), word));
   return label ? text.replace(m[1], label) : text;
+}
+
+// An email address as Tesseract reads small print: the "@" comes out as
+// "gi", "fi" or "id" glued to the name, or goes missing ("norephnfi google
+// cam"), ".com" as " cam", and the mail host a letter or two off ("gmall",
+// "gaagle"). Where a known mail host stands before something that reads
+// as "com", the address is put back together: the host spelled right,
+// ".com" after it, and an "@" before it in place of what was read there (if
+// the address has none). Common names in front ("noreply") are put right
+// too. Only a known host is touched, so ordinary words stay as read.
+const MAIL_HOSTS = ['gmail', 'googlemail', 'google', 'icloud', 'yahoo', 'outlook', 'hotmail', 'proton', 'protonmail', 'apple', 'amazon', 'paypal', 'chase', 'venmo', 'microsoft', 'facebook', 'linkedin'];
+const MAIL_NAMES = ['noreply', 'no-reply', 'donotreply', 'do-not-reply', 'support', 'receipts', 'billing'];
+const distance = (a, b) => {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  }
+  return d[a.length][b.length];
+};
+// How far off a reading may be: none for short words, more for long ones
+const slack = (word) => (word.length >= 6 ? 2 : word.length >= 4 ? 1 : 0);
+const closest = (word, list) => {
+  const w = word.toLowerCase();
+  let best = null;
+  list.forEach((name) => {
+    const d = distance(w, name);
+    if (d <= slack(name) && (!best || d < best.d)) best = { name, d };
+  });
+  return best?.name || null;
+};
+const AT_READ = /(?:[gqfy]i|id|[@©®])$/;
+export function tidyAddress(text) {
+  return text.replace(/(\S*?)( ?)([A-Za-z0-9]{2,})[ .,]{0,2}(c[ao0]m|c[o0]rn|c[o0]n|cem)\b/gi, (all, before, gap, word) => {
+    // The host at the end of the word, as long a stretch of it as reads as
+    // one (anything glued in front is the end of the name and the "@")
+    for (let cut = 0; cut <= word.length - 2; cut++) {
+      const host = closest(word.slice(cut), MAIL_HOSTS);
+      if (!host) continue;
+      // ("To:" and the space after it kept: only the word itself is the address)
+      const lead = cut ? before + gap : '';
+      const name = cut ? word.slice(0, cut) : before;
+      // An "@" only where something was read in its place (glued on, or
+      // just before a space): "visit google com" stays two words
+      if (!name.includes('@') && AT_READ.test(name)) {
+        const fixed = name.replace(AT_READ, '').replace(/([A-Za-z]+)$/, (n) => closest(n, MAIL_NAMES) || n);
+        return `${lead}${fixed}@${host}.com`;
+      }
+      return `${lead}${name}${cut ? '' : gap}${host}.com`;
+    }
+    return all;
+  });
 }

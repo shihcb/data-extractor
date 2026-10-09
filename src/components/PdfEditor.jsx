@@ -325,18 +325,65 @@ const compose = (a, b) => [
 ];
 
 // Where each picture is drawn on the page, in the PDF's units
+// The same walk also notes where each run of text starts and the colour
+// it's filled with (`out.inks`): a line's ink exactly as the PDF has it,
+// not guessed from the drawn page's pixels (small or thin print came out
+// paler there, and a new line "matched" to it came out grey)
 async function picturesOf(page, OPS) {
   const list = await page.getOperatorList();
   const out = [];
+  const inks = [];
+  out.inks = inks;
   let ctm = [1, 0, 0, 1, 0, 0];
+  let fill = [0, 0, 0];
+  let mode = 0; // text drawn (3, 7: invisible — a searchable scan's words)
+  let tm = [1, 0, 0, 1, 0, 0];
+  let tlm = tm;
+  let leading = 0;
+  let fontSize = 1;
+  let charSpace = 0;
+  let wordSpace = 0;
+  let hScale = 1;
   const stack = [];
+  const hex = (h) => (typeof h === 'string' && /^#[0-9a-f]{6}$/i.test(h) ? [1, 3, 5].map(k => parseInt(h.slice(k, k + 2), 16)) : null);
+  const moveTo = (x, y) => { tlm = compose(tlm, [1, 0, 0, 1, x, y]); tm = tlm; };
+  // A run noted where it starts, then the text position moved past it (a
+  // colour changed mid-line starts its words where the last ones ended)
+  const shown = (glyphs) => {
+    if (fill && mode !== 3 && mode !== 7) {
+      const m = compose(ctm, tm);
+      inks.push({ x: m[4], y: m[5], ink: fill });
+    }
+    let tx = 0;
+    (Array.isArray(glyphs) ? glyphs : []).forEach((g) => {
+      if (typeof g === 'number') tx -= (g / 1000) * fontSize * hScale;
+      else if (g) tx += (((g.width || 0) / 1000) * fontSize + charSpace + (g.isSpace ? wordSpace : 0)) * hScale;
+    });
+    if (tx) tm = compose(tm, [1, 0, 0, 1, tx, 0]);
+  };
   list.fnArray.forEach((fn, i) => {
     const args = list.argsArray[i];
-    if (fn === OPS.save) stack.push(ctm);
-    else if (fn === OPS.restore) ctm = stack.pop() || ctm;
+    if (fn === OPS.save) stack.push({ ctm, fill, mode });
+    else if (fn === OPS.restore) ({ ctm, fill, mode } = stack.pop() || { ctm, fill, mode });
     else if (fn === OPS.transform) ctm = compose(ctm, args);
-    else if (fn === OPS.paintFormXObjectBegin) { stack.push(ctm); if (args?.[0]) ctm = compose(ctm, args[0]); }
-    else if (fn === OPS.paintFormXObjectEnd) ctm = stack.pop() || ctm;
+    else if (fn === OPS.paintFormXObjectBegin) { stack.push({ ctm, fill, mode }); if (args?.[0]) ctm = compose(ctm, args[0]); }
+    else if (fn === OPS.paintFormXObjectEnd) ({ ctm, fill, mode } = stack.pop() || { ctm, fill, mode });
+    else if (fn === OPS.setFillRGBColor) fill = hex(args?.[0]);
+    else if (fn === OPS.setFillColorN || fn === OPS.setFillColor) fill = null; // (a pattern: no one colour)
+    else if (fn === OPS.setTextRenderingMode) mode = args?.[0] ?? 0;
+    else if (fn === OPS.beginText) { tm = [1, 0, 0, 1, 0, 0]; tlm = tm; }
+    else if (fn === OPS.setTextMatrix) { const a = args?.[0] || args; tm = [a[0], a[1], a[2], a[3], a[4], a[5]]; tlm = tm; }
+    else if (fn === OPS.moveText) moveTo(args[0], args[1]);
+    else if (fn === OPS.setLeadingMoveText) { leading = -args[1]; moveTo(args[0], args[1]); }
+    else if (fn === OPS.setLeading) leading = args[0];
+    else if (fn === OPS.nextLine) moveTo(0, -leading);
+    else if (fn === OPS.setFont) fontSize = args?.[1] || fontSize;
+    else if (fn === OPS.setCharSpacing) charSpace = args?.[0] || 0;
+    else if (fn === OPS.setWordSpacing) wordSpace = args?.[0] || 0;
+    else if (fn === OPS.setHScale) hScale = (args?.[0] ?? 100) / 100;
+    else if (fn === OPS.showText || fn === OPS.showSpacedText) shown(args?.[0]);
+    else if (fn === OPS.nextLineShowText) { moveTo(0, -leading); shown(args?.[0]); }
+    else if (fn === OPS.nextLineSetSpacingShowText) { wordSpace = args?.[0] || 0; charSpace = args?.[1] || 0; moveTo(0, -leading); shown(args?.[2]); }
     else if (fn === OPS.paintImageXObject || fn === OPS.paintInlineImageXObject || fn === OPS.paintImageMaskXObject) {
       const pts = [[0, 0], [1, 0], [0, 1], [1, 1]].map(([x, y]) => applyM(ctm, x, y));
       const xs = pts.map(p => p[0]);
@@ -378,7 +425,7 @@ function boxFor(pdf, view) {
 // nearby one's, or bold / italic it doesn't have, is a standard font.
 const FONT_BASES = { sans: 'Helvetica', serif: 'Times', mono: 'Courier' };
 const FONT_TABS = [
-  { key: 'match', label: 'match' }, // (like the text near it)
+  { key: 'auto', label: 'auto' }, // (like the text near it)
   { key: 'sans', label: 'sans' },
   { key: 'serif', label: 'serif' },
   { key: 'mono', label: 'mono' },
@@ -396,7 +443,14 @@ function styled(item, style) {
     pdf.x += right * cos - up * sin;
     pdf.y += right * sin + up * cos;
   }
-  let { font, fontKey } = item;
+  // "match": in the look of the line nearest it (taken when pressed)
+  const like = style.match ? style.like : null;
+  if (like) {
+    if (!(style.size > 0)) pdf.size = like.size;
+    pdf.ascent = like.ascent;
+    pdf.descent = like.descent;
+  }
+  let { font, fontKey } = like ? { font: like.font, fontKey: like.fontKey } : item;
   const base = FONT_BASES[style.font];
   const bold = style.bold ?? !!font.bold;
   const italic = style.italic ?? !!font.italic;
@@ -414,6 +468,10 @@ function cleanStyle(style) {
   if (typeof style.bold === 'boolean') out.bold = style.bold;
   if (typeof style.italic === 'boolean') out.italic = style.italic;
   if (style.size > 0) out.size = Math.round(style.size * 2) / 2;
+  if (style.match) {
+    out.match = true;
+    if (style.like) out.like = style.like;
+  }
   if (style.move && (style.move[0] || style.move[1])) out.move = [Math.round(style.move[0] * 100) / 100, Math.round(style.move[1] * 100) / 100];
   return Object.keys(out).length ? out : null;
 }
@@ -562,6 +620,22 @@ function dropAnnot(pdf, page, id, PDFRef) {
   return false;
 }
 
+// The page's own line nearest a point (in the PDF's units): from the
+// nearest point of each line, not just its start
+function nearestLine(items, x, y, skip = null) {
+  return items
+    .filter(item => !item.picture && !item.added && item.id !== skip)
+    .map((item) => {
+      const { x: lx, y: ly, width, angle: la = 0, size: ls } = item.pdf;
+      const cos = Math.cos(la);
+      const sin = Math.sin(la);
+      const along = Math.max(0, Math.min(width, (x - lx) * cos + (y - ly) * sin));
+      const up = (y - ly) * cos - (x - lx) * sin - ls * 0.35; // from the middle of its letters
+      return { item, far: Math.hypot((x - lx) * cos + (y - ly) * sin - along, up) };
+    })
+    .sort((p, q) => p.far - q.far)[0]?.item;
+}
+
 let nextAdded = 1;
 
 // A line on the page, and its change. A change comes and goes through a
@@ -702,6 +776,9 @@ export default function PdfEditor({ active }) {
   // its words), the look the next new line starts with, and a line being
   // dragged (where it's drawn meanwhile; one undo step once let go)
   const [picked, setPicked] = useState(null);
+  // The line last tapped (any line: the PDF's own, a new one, a picture's
+  // words), outlined once it's not being typed in: the trash deletes it
+  const [selected, setSelected] = useState(null);
   const [draftStyle, setDraftStyle] = useState(null);
   const [nextStyle, setNextStyle] = useState(null);
   const [dragMove, setDragMove] = useState(null); // { id, right, up }
@@ -967,6 +1044,21 @@ export default function PdfEditor({ active }) {
         try {
           const { OPS } = await loadPdfjs();
           const pictures = await picturesOf(page, OPS);
+          // Each line's own ink: the run that starts at (or nearest before)
+          // its start, on its baseline
+          items.forEach((it) => {
+            const { x, y, size, angle = 0 } = it.pdf;
+            const cos = Math.cos(angle);
+            const sin = Math.sin(angle);
+            let best = null;
+            pictures.inks.forEach((r) => {
+              const along = (r.x - x) * cos + (r.y - y) * sin;
+              const up = -(r.x - x) * sin + (r.y - y) * cos;
+              if (Math.abs(up) > size * 0.3 || along > size * 0.5) return;
+              if (!best || along > best.along) best = { along, ink: r.ink };
+            });
+            if (best) it.ink = best.ink;
+          });
           items.push(...pictureItems(pictures, items, pageView, n));
           // A scan or photo of a page: one picture over most of it, and no
           // text of its own (a searchable scan has its words as text already)
@@ -1136,7 +1228,10 @@ export default function PdfEditor({ active }) {
     const known = edits[item.id] || item.colors;
     if (known) return known;
     try {
-      return sampleColors(imgRefs.current[`${doc.id}-${item.page + 1}`], item.box.sample || item.box);
+      const seen = sampleColors(imgRefs.current[`${doc.id}-${item.page + 1}`], item.box.sample || item.box);
+      // (the ink as the PDF fills it, when known: exact)
+      const ink = item.ink || item.annot?.ink;
+      return ink ? { ...seen, ink } : seen;
     } catch {
       return { bg: [255, 255, 255], ink: [0, 0, 0] };
     }
@@ -1161,6 +1256,7 @@ export default function PdfEditor({ active }) {
     setDraft(edit?.text ?? item.str);
     setDraftStyle(edit?.style ?? null);
     if (item.added) setPicked(item.id);
+    setSelected(item.id);
     setEditing(item.id);
     if (item.picture && !item.read) readPicture(item);
   };
@@ -1548,7 +1644,7 @@ export default function PdfEditor({ active }) {
             color: color(edit.bg),
             borderWidth: 0,
           });
-        } else if (!gone.has(item.id) && !item.added) {
+        } else if (!gone.has(item.id) && (!item.added || edit.style?.match)) {
         // The patch's corner: back along the baseline and down from it, turned with the text
         const along = Math.min(0, shift) - pad;
         const up = descent * size - pad;
@@ -1823,18 +1919,7 @@ export default function PdfEditor({ active }) {
     const y = (-b * (fx - e0) + a * (fy - f0)) / det;
     // Upright on screen: the page's own turn, undone
     const angle = Math.atan2(-b / det, d / det);
-    const near = page.items
-      .filter(item => !item.picture && !item.added)
-      .map((item) => {
-        // How far from the nearest point of its line (not just its start)
-        const { x: lx, y: ly, width, angle: la = 0, size: ls } = item.pdf;
-        const cos = Math.cos(la);
-        const sin = Math.sin(la);
-        const along = Math.max(0, Math.min(width, (x - lx) * cos + (y - ly) * sin));
-        const up = (y - ly) * cos - (x - lx) * sin - ls * 0.35; // from the middle of its letters
-        return { item, far: Math.hypot((x - lx) * cos + (y - ly) * sin - along, up) };
-      })
-      .sort((p, q) => p.far - q.far)[0]?.item;
+    const near = nearestLine(page.items, x, y);
     const size = near?.pdf.size ?? 12;
     // The tap marks the middle of the letters: the baseline a little below it
     const down = size * 0.35;
@@ -1900,6 +1985,51 @@ export default function PdfEditor({ active }) {
     changeEdits({ ...editsRef.current, [item.id]: after ? { ...rest, style: after } : rest });
   };
   const setStyle = (patch) => setStyleFor(target, patch);
+  // "match": the line takes the look of the page's own line nearest where it
+  // is (font, size, bold / italic, colour) and covers what's under it in
+  // the colour around it, so it sits in like the PDF's words (a new line
+  // otherwise covers nothing). Pressed again, it's back to its own look.
+  const matchLook = (item) => {
+    if (!item) {
+      setNextStyle(st => cleanStyle({ ...st, match: !st?.match, like: undefined }));
+      return;
+    }
+    const typing = editingRef.current === item.id;
+    const edit = editsRef.current[item.id];
+    const before = typing ? draftStyle : edit?.style ?? null;
+    if (before?.match) {
+      setStyleFor(item, { match: undefined, like: undefined });
+      return;
+    }
+    const page = doc.pages[item.page];
+    const at = styled(item, before).pdf;
+    const near = nearestLine(page.items, at.x, at.y);
+    const like = near ? { fontKey: near.fontKey, font: near.font, size: near.pdf.size, ascent: near.pdf.ascent, descent: near.pdf.descent } : null;
+    const after = cleanStyle({ ...before, font: undefined, bold: undefined, italic: undefined, size: undefined, match: true, like });
+    // The colour under it as it'll be drawn (as long as its words, or two
+    // letters), and the nearby line's ink
+    const drawn = styled(item, after);
+    const text = typing ? draft : edit?.text ?? '';
+    const { x, y, size, ascent, descent } = drawn.pdf;
+    const w = Math.max(size * 2, cssWidthEm(cssFont(drawn.font), text) * size);
+    const was = typing ? draftColors : edit || colorsFor(item);
+    let bg = was?.bg || [255, 255, 255];
+    try {
+      bg = sampleColors(imgRefs.current[`${doc.id}-${item.page + 1}`], rectFor({ x0: x, y0: y + descent * size, x1: x + w, y1: y + ascent * size }, page.view)).bg;
+    } catch {
+      // (the page not drawn yet: the colour it had)
+    }
+    const ink = near ? colorsFor(near).ink : was?.ink || [0, 0, 0];
+    setNextStyle(cleanStyle({ match: true }));
+    if (typing) {
+      setDraftStyle(after);
+      setDraftColors({ bg, ink });
+      return;
+    }
+    if (!edit) return;
+    changeEdits({ ...editsRef.current, [item.id]: { ...edit, bg, ink, style: after } });
+  };
+  const matched = !!styleOfTarget?.match;
   // What the panel shows: the line's font and size as drawn (with no line,
   // the next one's: its size "auto", the nearby text's)
   const shownItem = target ? styled(target, styleOfTarget) : null;
@@ -2105,7 +2235,34 @@ export default function PdfEditor({ active }) {
   editsRef.current = edits;
   const editCount = Object.keys(edits).length;
   const textCount = doc ? doc.pages.reduce((n, p) => n + p.items.filter(item => !item.added || edits[item.id]).length, 0) : 0;
+  // The trash: the selected line goes (a new one, or the PDF's own words
+  // covered — one step to undo); with none selected, the PDF closes
+  const selectedItem = selected ? allItems.find(q => q.id === selected && (!q.added || edits[q.id] || editing === q.id)) || null : null;
+  const deleteSelected = () => {
+    const id = selected;
+    setSelected(null);
+    setPicked(p => (p === id ? null : p));
+    const item = docRef.current?.pages.flatMap(p => p.items).find(q => q.id === id);
+    if (!item) return;
+    if (editingRef.current === id) {
+      cancelled.current = true;
+      setEditing(null);
+    }
+    const now = editsRef.current;
+    if (item.added) {
+      if (now[id]) {
+        const next = { ...now };
+        delete next[id];
+        changeEdits(next);
+      } else if (!inHistory(id)) dropAdded(item);
+      return;
+    }
+    if (now[id]?.text === '') return;
+    const colors = now[id] || colorsFor(item);
+    changeEdits({ ...now, [id]: { text: '', bg: colors.bg, ink: colors.ink } });
+  };
   const close = () => {
+    setSelected(null);
     opening.current++; // (a PDF still loading doesn't show up after it)
     leavingDoc.current = doc ? { fonts: doc.fonts, edits } : null;
     dropView();
@@ -2165,7 +2322,12 @@ export default function PdfEditor({ active }) {
                 />
                 <div
                   className="pdf-text-layer"
-                  onClick={(e) => { if (adding && !leaving && e.target === e.currentTarget) addAt(p, e); }}
+                  onClick={(e) => {
+                    if (leaving || e.target !== e.currentTarget) return;
+                    // (a tap on the page itself: nothing selected, or a new line there)
+                    setSelected(null);
+                    if (adding) addAt(p, e);
+                  }}
                   onDoubleClick={(e) => { if (!leaving && e.target === e.currentTarget) addAt(p, e); }}
                 >
                   {readingOrder(p.items).map(raw => {
@@ -2265,7 +2427,7 @@ export default function PdfEditor({ active }) {
                       <TextItem
                         key={item.id}
                         data-item={item.id}
-                        className={`pdf-text-item ${!gone && matches.has(item.id) ? 'match' : ''} ${movable ? 'movable' : ''} ${movable && item.id === targetId ? 'picked' : ''}`}
+                        className={`pdf-text-item ${!gone && matches.has(item.id) ? 'match' : ''} ${movable ? 'movable' : ''} ${movable && item.id === targetId ? 'picked' : ''} ${!gone && raw.id === selected && editing !== raw.id ? 'selected' : ''}`}
                         edited={!!edit}
                         // (the patch reaches a little past its box: the old words' tails
                         // and soft edges peeked out under it; a found line keeps its tint)
@@ -2273,9 +2435,9 @@ export default function PdfEditor({ active }) {
                           ...pos,
                           // (a new line covers nothing, on screen as in the saved
                           // PDF: moved onto another colour, a patch showed as a box)
-                          background: raw.added ? 'transparent' : rgbCss(edit.bg),
+                          background: raw.added && !edit.style?.match ? 'transparent' : rgbCss(edit.bg),
                           color: rgbCss(edit.ink),
-                          boxShadow: `${!gone && matches.has(item.id) ? 'inset 0 0 0 100vmax rgba(250, 204, 21, 0.28), ' : ''}0 0 0 0.06em ${raw.added ? 'transparent' : rgbCss(edit.bg)}`,
+                          boxShadow: `${!gone && matches.has(item.id) ? 'inset 0 0 0 100vmax rgba(250, 204, 21, 0.28), ' : ''}0 0 0 0.06em ${raw.added && !edit.style?.match ? 'transparent' : rgbCss(edit.bg)}`,
                         } : null}
                         plainStyle={pos}
                         onClick={(e) => {
@@ -2373,9 +2535,9 @@ export default function PdfEditor({ active }) {
           </>
         )}
         history={{ undo, redo, canUndo: history.past.length > 0, canRedo: history.future.length > 0 }}
-        onTrash={close}
+        onTrash={selectedItem ? deleteSelected : close}
         trashDisabled={!doc}
-        trashTitle="Close the PDF"
+        trashTitle={selectedItem ? 'Delete this text' : 'Close the PDF'}
         held={!!doc}
       >
         <div className="tool-meta tool-stats" aria-live="polite">
@@ -2435,14 +2597,17 @@ export default function PdfEditor({ active }) {
             <TabSwitcher
               className="tab-switcher-sm"
               tabs={FONT_TABS}
-              active={styleOfTarget?.font || 'match'}
-              onChange={(k) => setStyle({ font: k === 'match' ? undefined : k })}
+              active={styleOfTarget?.font || 'auto'}
+              onChange={(k) => setStyle({ font: k === 'auto' ? undefined : k })}
             />
             <button className={`btn btn-icon ${shown.bold ? 'btn-on' : ''}`} onClick={(e) => { if (e.detail) e.currentTarget.blur(); setStyle({ bold: !shown.bold }); }} title="Bold" aria-label="Bold" aria-pressed={!!shown.bold}>
               <Bold size={14} />
             </button>
             <button className={`btn btn-icon ${shown.italic ? 'btn-on' : ''}`} onClick={(e) => { if (e.detail) e.currentTarget.blur(); setStyle({ italic: !shown.italic }); }} title="Italic" aria-label="Italic" aria-pressed={!!shown.italic}>
               <Italic size={14} />
+            </button>
+            <button className={`btn ${matched ? 'btn-on' : ''}`} onClick={(e) => { if (e.detail) e.currentTarget.blur(); matchLook(target); }} title="Match the text and background around it" aria-pressed={matched}>
+              match
             </button>
           </FlipRow>
           <FlipRow className="field-grid">

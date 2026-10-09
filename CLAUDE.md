@@ -21,7 +21,7 @@ of restarting it. When the user names one of these, this is what they mean:
 | **the word swap** | the word slide's swap form: one word changing to another inside a line ("%" ↔ "px wide") — both share one spot, the old fading out as the new fades in, while the space eases from one word's width to the other's | `SlideSwap` |
 | **the text swap** | text that changes: the old words fade out exactly where they were while the new ones fade in (the source repo's empty-text fade) | `FadeText` |
 | **the box ease** | a box whose content changes size eases to its new height; nested boxes: only the outermost moves | `AutoHeight`, `heightMotion.js` |
-| **the box row** | the row right under every tab's box (QR make: under its text box): **undo · redo** on the left, the tab's **input and action icons** in the middle, centred under the box (`actions`: paste / add / open, then copy, split, add text, find), and the **trash** on the right (red icon), with the tab's own buttons sliding in just left of it (`end`: the metadata editor's **reset**, there only while the selected photo has something to put back — the word slide, as "px wide"; it brings its own gap) — clear and delete in one: the tabs with cards delete the selection, or everything when nothing is selected (an undoable step; with everything gone, Ctrl + Z still takes it back); the metadata editor the selected photo; the text tabs clear (and end the history); the PDF editor closes its PDF. The stats line goes under the row (`children`), 10px below it. Empty (`empty`: nothing uploaded / typed yet; not the case converter, which stays as it is): only the input button shows — undo · redo and the trash fade out in place (back once there's something; emptied — the last image deleted — it looks as it did at first, and Ctrl + Z still brings it all back), the action icons slide shut beside it (the word slide), the stats fade out in place, keeping their line (opacity only: opened as a panel — height eased, text scaled, numbers counting — they stuttered on a phone as the first document came in), the saves close up (the panel open) (and QR make's copy / saves until there's a code). The input button shows its word with its icon while the box is empty ("add images", "add photos", "add PDFs", "open PDF", "paste"; `btn-grow`; the case converter's "paste" keeps its word always), and the word slides shut into the 40px icon with the first upload / letter (the word slide), opening again when it empties. Always there, dimmed with nothing to act on; a button turned off under the keys hands focus to the tab's first live button. Every button in it one size (36px; icons 40px wide so three fit between the sides on a phone); both sides as wide, so the middle is the box's middle; 10px under the box | `BoxRow` |
+| **the box row** | the row right under every tab's box (QR make: under its text box): **undo · redo** on the left, the tab's **input and action icons** in the middle, centred under the box (`actions`: paste / add / open, then copy, split, add text, find), and the **trash** on the right (red icon), with the tab's own buttons sliding in just left of it (`end`: the metadata editor's **reset**, there only while the selected photo has something to put back — the word slide, as "px wide"; it brings its own gap) — clear and delete in one: the tabs with cards delete the selection, or everything when nothing is selected (an undoable step; with everything gone, Ctrl + Z still takes it back); the metadata editor the selected photo; the text tabs clear (and end the history); the PDF editor deletes the selected line (the last one tapped, outlined once it's not being typed in: a new line goes, the PDF's own words are covered — one undo step; a tap on the page itself selects nothing), and with no line selected closes its PDF. The stats line goes under the row (`children`), 10px below it. Empty (`empty`: nothing uploaded / typed yet; not the case converter, which stays as it is): only the input button shows — undo · redo and the trash fade out in place (back once there's something; emptied — the last image deleted — it looks as it did at first, and Ctrl + Z still brings it all back), the action icons slide shut beside it (the word slide), the stats fade out in place, keeping their line (opacity only: opened as a panel — height eased, text scaled, numbers counting — they stuttered on a phone as the first document came in), the saves close up (the panel open) (and QR make's copy / saves until there's a code). The input button shows its word with its icon while the box is empty ("add images", "add photos", "add PDFs", "open PDF", "paste"; `btn-grow`; the case converter's "paste" keeps its word always), and the word slides shut into the 40px icon with the first upload / letter (the word slide), opening again when it empties. Always there, dimmed with nothing to act on; a button turned off under the keys hands focus to the tab's first live button. Every button in it one size (36px; icons 40px wide so three fit between the sides on a phone); both sides as wide, so the middle is the box's middle; 10px under the box | `BoxRow` |
 | **the panel open** | a panel opens from nothing / closes to nothing: height eases, content fades in from 10px up at 96% (the quality slider, image options) | `Collapse` |
 | **the row slide** | a list row slides in from under the row above / out under it, the rows around it shifting (the source repo's list 3 rows / username boxes); grid items (the PDF pages, the image cards) pop instead | `MotionList` |
 | **the button glide** | a row of buttons/controls never snaps: a button whose label changes eases its width, the others slide along | `FlipRow` |
@@ -134,7 +134,12 @@ Editing in the PDF editor:
   in the size and font of the nearest line; left empty, it goes again.
 - "add text" opens its own panel (the panel open; one panel at a time with
   find: the open one shuts first, then the other opens, `openPanel`, Ctrl + F
-  too): font (match / sans / serif / mono, bold, italic), size (− box +,
+  too): font (auto / sans / serif / mono, bold, italic; auto is the nearby
+  line's), "match" (switched on and off, outlined while on: the line takes
+  the look of the page's own line nearest where it is — font, size, bold /
+  italic, ink — and covers what's under it in the colour around it, so it
+  sits in like the PDF's words; `style.match` with the nearby line's look
+  in `style.like`), size (− box +,
   taken on Enter / leaving it) and move (← ↑ ↓ →, Shift 10pt; or drag the
   line on the page, or arrow keys on it). It works on the new line being
   typed, or the last one added / tapped (outlined); with none, it sets the
@@ -145,8 +150,8 @@ Editing in the PDF editor:
   change of look is one undo step (a drag one step, once let go), kept with
   the words while typing. Its buttons don't take the keys from the line being
   typed (desktop); a new line that lost them to the panel while empty isn't
-  dropped. New lines cover nothing, on screen as in the PDF (moved, a patch
-  showed as a box). A font other than the nearby one's, or bold / italic it
+  dropped. New lines cover nothing unless matched, on screen as in the PDF
+  (moved, a patch showed as a box). A font other than the nearby one's, or bold / italic it
   hasn't, is a standard font (Times-Bold and so on).
 - Scanned / photographed pages (one picture over most of the page, no text
   of its own) are read in the background once open (`readPage` in
@@ -189,6 +194,18 @@ Editing in the PDF editor:
   space placed on its own carries the line on (wide word spacing) — not one
   over 1.5em wide: that's pdf.js spanning a column's gap (a table's label
   to its value), and carried over it, label and value were one line.
+- A line's ink is the PDF's own fill colour, not the drawn page's pixels
+  (`picturesOf` follows the page's text commands — where each run starts,
+  moved on by its letters' widths — and each line takes the colour of the
+  run starting at it: small print sampled paler). The background is still
+  read from the page.
+- An address read off a picture or a scan is put back together
+  (`tidyAddress` in ocr.js): a known mail host a letter or two off
+  ("gmall", "gaagle") before something read as "com" (" cam") becomes
+  "@host.com", the "@" replacing what was read in its place ("gi", "fi",
+  "id"; none added where nothing was), "noreply" put right. On the test
+  headers the letters read right went from 91 / 93 / 99% to 98 / 98 / 100%
+  (8 / 9 / 10px).
 - Words in annotations are lines to change too (`annotItems`): a filled-in
   form field, a text box added in Preview / iPhone Markup — pdf.js leaves
   them out of the page's text (a receipt's number and memo, typed into its
