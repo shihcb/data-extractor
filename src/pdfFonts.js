@@ -71,8 +71,11 @@ export function standardFontKey({ base, bold, italic }) {
   return `${base}${suffix}`;
 }
 
-export const cssFont = ({ base, bold, italic }) => ({
-  fontFamily: base === 'Times' ? '"Times New Roman", Times, serif' : base === 'Courier' ? '"Courier New", Courier, monospace' : 'Helvetica, Arial, sans-serif',
+const BASE_CSS = { Times: '"Times New Roman", Times, serif', Courier: '"Courier New", Courier, monospace' };
+// (`face`: one of the add text panel's own fonts, textFonts.js, with the
+// standard font it's closest to as the stand-in until it's loaded)
+export const cssFont = ({ base, bold, italic, face }) => ({
+  fontFamily: `${face ? `"tbx-${face}", ` : ''}${BASE_CSS[base] || 'Helvetica, Arial, sans-serif'}`,
   fontWeight: bold ? 700 : 400,
   fontStyle: italic ? 'italic' : 'normal',
 });

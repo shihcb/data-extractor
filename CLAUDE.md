@@ -134,15 +134,29 @@ Editing in the PDF editor:
   in the size and font of the nearest line; left empty, it goes again.
 - "add text" opens its own panel (the panel open; one panel at a time with
   find: the open one shuts first, then the other opens, `openPanel`, Ctrl + F
-  too): font (auto / sans / serif / mono; auto is the nearby line's), then
-  match · bold · italic as icons, kept together when the row wraps (match a
+  too): one row of the font menu · match · bold · italic. The font menu is
+  the instagram repo's import files menu (`FontMenu`): a button naming the
+  font with a chevron that turns over, and a card popping in under it (the
+  pop) listing every font in itself, grouped sans / serif / mono — auto (the
+  nearby line's), the three standard PDF fonts, and free ones kept in
+  /fonts/ (`src/textFonts.js`: Arial (Arimo), Inter, Roboto, Open Sans,
+  Lato, Montserrat, Poppins, Georgia (Gelasio), Merriweather, Lora,
+  Playfair, Garamond, Roboto Mono, Source Code; cut to Latin, ~25KB a
+  style, fetched the first time they're shown, kept by the service worker,
+  never precached). A font's file is loaded before a line takes it (never
+  measured in the stand-in); saved, it's written into the PDF (fontkit,
+  just the letters used). A tap anywhere else or Escape shuts the menu;
+  picked by a tap, the keys stay in the line being typed. Match, bold and
+  italic are icons (match a
   pipette, switched on and off, outlined while on: the line takes
   the look of the page's own line nearest where it is — font, size, bold /
   italic, ink — and covers what's under it in the colour around it, so it
   sits in like the PDF's words; `style.match` with the nearby line's look
   in `style.like`), size (− box +,
-  taken on Enter / leaving it) and move (← ↑ ↓ →, Shift 10pt; or drag the
-  line on the page, or arrow keys on it). It works on the new line being
+  taken on Enter / leaving it) and move (← ↑ ↓ →, Shift 10pt; held, an
+  arrow keeps moving the line — after 0.4s, faster the longer it's held —
+  shown as a drag is and one undo step once let go; or drag the line on
+  the page, or arrow keys on it). It works on the new line being
   typed, or the last one added / tapped (outlined); with none, it sets the
   look the next new line starts with (and each new line starts in the look
   last chosen). The look is the line's `style` in its change
@@ -154,6 +168,10 @@ Editing in the PDF editor:
   dropped. New lines cover nothing unless matched, on screen as in the PDF
   (moved, a patch showed as a box). A font other than the nearby one's, or bold / italic it
   hasn't, is a standard font (Times-Bold and so on).
+- Pictures open too (the open button and dropping / pasting take any image
+  the browser can show: JPG, PNG, WEBP, HEIC…): made a one-page PDF the
+  picture's shape, A4's long side, drawn upright (`pictureToPdf`), then
+  read as a scanned page.
 - Scanned / photographed pages (one picture over most of the page, no text
   of its own) are read in the background once open (`readPage` in
   `src/ocr.js`): drawn ~5000px on the long side, made black on white
@@ -168,9 +186,12 @@ Editing in the PDF editor:
   when its letters all take the same room. The ink colour everywhere is a
   solid stroke's (75% of the way to the darkest inked pixel), not the
   darkest speck. Lines Tesseract wasn't sure of (mean confidence < 90) are
-  then read twice more as close-ups (the page as drawn, and black on white)
-  and the reading most of the three agree on is kept (`rereadLine`,
-  `agreedReading`), updating the line in place unless it's being changed.
+  then read again as close-ups (the page as drawn at 48, 32 and 72px
+  letters, and black on white at 48) and the five readings vote letter by
+  letter (`rereadLine`, `votedReading`, as for pictures), updating the line
+  in place unless it's being changed. On a blurred, tilted, grey photo of a
+  receipt this took the lines read exactly from 6 of 9 (the best whole
+  reading kept "Cappuccing", "4.235", "JIE" for 1.18) to 9 of 9.
   A read line lying on the page's own text (a searchable scan) isn't added.
   A read line's colours come from the sharp scan it was read from, not the
   page on screen (small print's ink came out grey); a line already changed

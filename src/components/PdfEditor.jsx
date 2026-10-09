@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bold, FileUp, Italic, Minus, Pipette, Plus, Search, TextCursorInput, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bold, Check, ChevronDown, FileUp, Italic, Minus, Pipette, Plus, Search, TextCursorInput, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
 import { closePdf, loadPdfLib, loadPdfjs, openPdf, renderPage, isPasswordError, refusedWords, whyRefused } from '../pdf';
-import { agreedReading, inkCopy, readBlock, readLine, readPage, rereadLine, votedReading, headerLabel } from '../ocr';
+import { inkCopy, readBlock, readLine, readPage, rereadLine, votedReading, headerLabel } from '../ocr';
 import { findIn, replaceIn } from '../findText';
 import { removeText } from '../pdfText';
 import { baseName, canvasToBlob, isPdfFile, loadLibrary, saveFiles, shortName, useDoneFlags, usePastedFiles } from '../utils';
@@ -17,8 +17,8 @@ import SlideText from './SlideText';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
 import MotionList from './MotionList';
-import TabSwitcher from './TabSwitcher';
 import usePop from './usePop';
+import { FONT_BASES, TEXT_FONTS, fontOf, loadTextFont } from '../textFonts';
 
 // Changing text in a PDF the reliable way (what browser PDF editors do):
 // the old words are covered with a patch the colour of the paper behind
@@ -133,7 +133,14 @@ const rgbCss = (c) => `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
 function encodable(font, text) {
   let out = '';
   let lost = false;
+  // (a font file of ours writes a letter it hasn't as a blank: asked first)
+  const kit = font.embedder?.font;
   for (const ch of text) {
+    if (kit?.hasGlyphForCodePoint && ch.trim() && !kit.hasGlyphForCodePoint(ch.codePointAt(0))) {
+      out += '?';
+      lost = true;
+      continue;
+    }
     try {
       font.encodeText(ch);
       out += ch;
@@ -424,13 +431,6 @@ function boxFor(pdf, view) {
 // move: [right, up] in pt }. The line as it's then drawn: on screen and in
 // the saved PDF alike (so they can't disagree). A font other than the
 // nearby one's, or bold / italic it doesn't have, is a standard font.
-const FONT_BASES = { sans: 'Helvetica', serif: 'Times', mono: 'Courier' };
-const FONT_TABS = [
-  { key: 'auto', label: 'auto' }, // (like the text near it)
-  { key: 'sans', label: 'sans' },
-  { key: 'serif', label: 'serif' },
-  { key: 'mono', label: 'mono' },
-];
 const SIZE_MIN = 4;
 const SIZE_MAX = 200;
 function styled(item, style) {
@@ -452,11 +452,15 @@ function styled(item, style) {
     pdf.descent = like.descent;
   }
   let { font, fontKey } = like ? { font: like.font, fontKey: like.fontKey } : item;
-  const base = FONT_BASES[style.font];
+  // (a font from the menu: a standard one, or one of ours with the
+  // standard font closest to it as its stand-in)
+  const picked = fontOf(style.font);
+  const base = FONT_BASES[style.font] || picked?.base;
+  const face = picked?.file ? picked.key : undefined;
   const bold = style.bold ?? !!font.bold;
   const italic = style.italic ?? !!font.italic;
   if (base || bold !== !!font.bold || italic !== !!font.italic) {
-    font = { base: base || font.base, bold, italic };
+    font = { base: base || font.base, bold, italic, ...(face ? { face } : {}) };
     fontKey = null;
   }
   return { ...item, pdf, font, fontKey, box: boxFor(pdf, item.view) };
@@ -465,7 +469,7 @@ function styled(item, style) {
 function cleanStyle(style) {
   if (!style) return null;
   const out = {};
-  if (style.font && FONT_BASES[style.font]) out.font = style.font;
+  if (style.font && style.font !== 'auto' && fontOf(style.font)) out.font = style.font;
   if (typeof style.bold === 'boolean') out.bold = style.bold;
   if (typeof style.italic === 'boolean') out.italic = style.italic;
   if (style.size > 0) out.size = Math.round(style.size * 2) / 2;
@@ -664,6 +668,137 @@ function LineDelete({ box, show, onDelete }) {
       </button>
     </div>
   );
+}
+
+// The font menu (the instagram repo's import files menu): a button with the
+// font's name and a chevron that turns over, and under it a card that pops
+// in (the pop) holding every font, each written in itself (their files
+// fetched as it opens). A tap picks one and shuts it; a tap anywhere else,
+// or Escape, shuts it; the arrow keys go up and down it.
+function FontMenu({ value, onPick }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+  const menuRef = useRef(null);
+  const btnRef = useRef(null);
+  usePop(menuRef, open);
+  const current = fontOf(value) || TEXT_FONTS[0];
+  useEffect(() => {
+    if (!open) return undefined;
+    // (each font's own look, to choose by: fetched once)
+    TEXT_FONTS.forEach(f => { if (f.file) loadTextFont(f.key); });
+    const away = (e) => { if (!wrapRef.current?.contains(e.target)) setOpen(false); };
+    document.addEventListener('pointerdown', away);
+    return () => document.removeEventListener('pointerdown', away);
+  }, [open]);
+  const keys = (e) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      setOpen(false);
+      btnRef.current?.focus({ preventScroll: true });
+      return;
+    }
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    e.preventDefault();
+    const items = [...(menuRef.current?.querySelectorAll('.font-menu-item') || [])];
+    const at = items.indexOf(document.activeElement);
+    const next = items[(at + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length];
+    next?.focus({ preventScroll: true });
+  };
+  let group = null;
+  return (
+    <div ref={wrapRef} className="font-menu" onKeyDown={keys}>
+      <button
+        ref={btnRef}
+        type="button"
+        className={`btn font-menu-btn ${open ? 'active' : ''}`}
+        onClick={(e) => { if (e.detail) e.currentTarget.blur(); setOpen(o => !o); }}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title="Font"
+      >
+        <span className="font-menu-name">{current.label}</span>
+        <ChevronDown size={14} className="font-menu-chevron" />
+      </button>
+      <div ref={menuRef} className="font-menu-card" role="menu" aria-label="Fonts">
+        {TEXT_FONTS.map((f) => {
+          const head = f.group && f.group !== group ? f.group : null;
+          group = f.group;
+          return (
+            <React.Fragment key={f.key}>
+              {head ? <div className="font-menu-group" aria-hidden="true">{head}</div> : null}
+              <button
+                type="button"
+                role="menuitemradio"
+                aria-checked={f.key === current.key}
+                className={`font-menu-item ${f.key === current.key ? 'on' : ''}`}
+                tabIndex={open ? 0 : -1}
+                style={f.base ? cssFont({ base: f.base, bold: false, italic: false, face: f.file ? f.key : undefined }) : undefined}
+                onClick={(e) => {
+                  setOpen(false);
+                  onPick(f.key);
+                  // (by keys: back to the menu's button; by a tap, the keys
+                  // stay in the line being typed)
+                  if (!e.detail) btnRef.current?.focus({ preventScroll: true });
+                }}
+              >
+                <span>{f.label}</span>
+                {f.key === current.key ? <Check size={13} /> : null}
+              </button>
+            </React.Fragment>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// A picture opened in the editor (any the browser can show: JPG, PNG, WEBP,
+// HEIC on an iPhone or Mac…): one page the shape of the picture, A4's long
+// side, the picture drawn upright (a phone's turn applied) at its full size.
+// With no text of its own it's read like a scanned page.
+const isPicture = (f) => !!f && ((f.type || '').startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|heic|heif|tiff?|avif)$/i.test(f.name || ''));
+async function pictureToPdf(file) {
+  let src = null;
+  let url = null;
+  try {
+    src = await createImageBitmap(file, { imageOrientation: 'from-image' });
+  } catch {
+    // (a picture createImageBitmap won't take: through an <img>)
+    url = URL.createObjectURL(file);
+    const img = new Image();
+    img.src = url;
+    await img.decode().catch(() => { throw new Error('not a picture'); });
+    src = img;
+  }
+  try {
+    const w = src.width || src.naturalWidth;
+    const h = src.height || src.naturalHeight;
+    if (!w || !h) throw new Error('not a picture');
+    const k = Math.min(1, 6000 / Math.max(w, h)); // (a phone's memory)
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(w * k);
+    canvas.height = Math.round(h * k);
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff'; // (see-through parts: on white, as printed)
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(src, 0, 0, canvas.width, canvas.height);
+    // A PNG stays sharp-edged; a photo is a JPG
+    const png = /png|gif|bmp/i.test(file.type || file.name || '');
+    const blob = await canvasToBlob(canvas, png ? 'image/png' : 'image/jpeg', 0.92);
+    canvas.width = canvas.height = 0;
+    const { PDFDocument } = await loadPdfLib();
+    const pdf = await PDFDocument.create();
+    const data = new Uint8Array(await blob.arrayBuffer());
+    const pic = png ? await pdf.embedPng(data) : await pdf.embedJpg(data);
+    const scale = 842 / Math.max(w, h);
+    const page = pdf.addPage([w * scale, h * scale]);
+    page.drawImage(pic, { x: 0, y: 0, width: w * scale, height: h * scale });
+    const out = await pdf.save();
+    return out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength);
+  } finally {
+    src?.close?.();
+    if (url) URL.revokeObjectURL(url);
+  }
 }
 
 let nextAdded = 1;
@@ -1036,7 +1171,7 @@ export default function PdfEditor({ active }) {
 
   const opening = useRef(0); // the latest file being opened (an older one finishing later is dropped)
   const openFile = useCallback(async (files) => {
-    const file = [...files].find(isPdfFile);
+    const file = [...files].find(f => isPdfFile(f) || isPicture(f));
     if (!file) return;
     // (the ticket is taken once it's known to be a PDF: a bad file picked
     // just after a good one threw the good one away)
@@ -1044,7 +1179,9 @@ export default function PdfEditor({ active }) {
     let view = null;
     let made = [];
     try {
-      const bytes = await file.arrayBuffer();
+      // A picture (a photo, a screenshot): made a one-page PDF, then read
+      // like a scanned page
+      const bytes = isPdfFile(file) ? await file.arrayBuffer() : await pictureToPdf(file);
       const { PDFDocument } = await loadPdfLib();
       try {
         await PDFDocument.load(bytes);
@@ -1174,7 +1311,7 @@ export default function PdfEditor({ active }) {
     }
   }, [toast]);
 
-  usePastedFiles(active, isPdfFile, openFile);
+  usePastedFiles(active, (f) => isPdfFile(f) || isPicture(f), openFile);
 
   // Zoomed in, the pages in view (and a screen's worth either side) are
   // drawn again at the size they're shown, once the zoom or the scrolling
@@ -1549,6 +1686,27 @@ export default function PdfEditor({ active }) {
         return fonts.get(key);
       };
       let fontkit = null;
+      // A font picked from the add text menu: its file written in (just the
+      // letters used)
+      const faces = new Map();
+      const getFace = async ({ face, bold, italic }) => {
+        const id = `${face}-${bold ? 'b' : 'r'}${italic ? 'i' : ''}`;
+        if (!faces.has(id)) {
+          let font = null;
+          try {
+            const bytes = await loadTextFont(face, bold, italic);
+            if (bytes) {
+              fontkit = fontkit || (await loadLibrary(() => import('@pdf-lib/fontkit'), { reload: false })).default;
+              pdf.registerFontkit(fontkit);
+              font = await pdf.embedFont(bytes, { subset: true });
+            }
+          } catch {
+            font = null;
+          }
+          faces.set(id, font);
+        }
+        return faces.get(id);
+      };
       const originals = new Map();
       const getOriginal = async (key) => {
         if (!originals.has(key)) {
@@ -1637,7 +1795,7 @@ export default function PdfEditor({ active }) {
           flush();
         } else {
           // Else the closest standard font, squeezed to the original's room
-          font = await getFont(standardFontKey(item.font));
+          font = (item.font.face && await getFace(item.font)) || await getFont(standardFontKey(item.font));
           const safe = encodable(font, drawnText);
           lost = lost || safe.lost;
           // (the old words measured in the stand-in too: any letter it can't
@@ -1703,7 +1861,7 @@ export default function PdfEditor({ active }) {
       setBusy(false);
       if (await saveFiles([{ blob: new Blob([out], { type: 'application/pdf' }), name: `${baseName(doc.name)}-edited.pdf` }]) === 'cancelled') return;
       flagDone('save');
-      if (lost) toast('some characters aren\'t in the standard PDF fonts and were saved as "?"', { warn: true });
+      if (lost) toast('some characters aren\'t in the font and were saved as "?"', { warn: true });
     } catch (err) {
       toast(`couldn't save${err?.message ? `: ${err.message}` : ''}`, { warn: true });
     } finally {
@@ -1895,17 +2053,23 @@ export default function PdfEditor({ active }) {
           ...prev,
           pages: prev.pages.map(q => (q.num !== p.num ? q : { ...q, scan: false, items: [...q.items, ...fresh] })),
         }));
-        // Then each line it wasn't sure of, read twice more on its own (a
-        // close-up of the page as it was, and of it made black on white):
-        // the reading most of the three agree on is kept, the line's words
+        // Then each line it wasn't sure of, read again on its own (close-ups
+        // of the page as it was, and of it made black on white): the
+        // readings vote letter by letter, the line's words
         // updating in place (unless it's being changed, or has been)
         try {
           for (let k = 0; k < lines.length; k++) {
             if (stop || viewRef.current !== open) break;
             if ((lines[k].sure ?? 0) >= 90 || !fresh.includes(items[k])) continue;
-            const fromRaw = await rereadLine(raw, lines[k]).catch(() => null);
-            const fromInk = await rereadLine(ink, lines[k]).catch(() => null);
-            const agreed = agreedReading([{ text: lines[k].text, sure: lines[k].sure }, fromRaw, fromInk]);
+            // (as a picture's lines are: close-ups at three sizes and in
+            // black on white, voted on letter by letter — on a blurred,
+            // tilted photo the best whole reading kept "Cappuccing")
+            const readings = [{ text: lines[k].text, sure: lines[k].sure }];
+            for (const [from, size] of [[raw, 48], [ink, 48], [raw, 32], [raw, 72]]) {
+              if (stop || viewRef.current !== open) break;
+              readings.push(await rereadLine(from, lines[k], size).catch(() => null));
+            }
+            const agreed = votedReading(readings);
             if (stop || viewRef.current !== open || !agreed || agreed.text === lines[k].text) continue;
             const id = items[k].id;
             // (a line already changed keeps the words it was changed from:
@@ -2015,6 +2179,16 @@ export default function PdfEditor({ active }) {
     changeEdits({ ...editsRef.current, [item.id]: after ? { ...rest, style: after } : rest });
   };
   const setStyle = (patch) => setStyleFor(target, patch);
+  // A font from the menu (or bold / italic on one): its file loaded first,
+  // so the line is never measured or drawn in the stand-in
+  const setStyleRef = useRef(setStyle);
+  setStyleRef.current = setStyle;
+  const setLook = async (patch) => {
+    const key = 'font' in patch ? patch.font : styleOfTarget?.font;
+    if (fontOf(key)?.file) await loadTextFont(key, patch.bold ?? shown.bold, patch.italic ?? shown.italic);
+    setStyleRef.current(patch);
+  };
+  const pickFont = (key) => setLook({ font: key === 'auto' ? undefined : key });
   // "match": the line takes the look of the page's own line nearest where it
   // is (font, size, bold / italic, colour) and covers what's under it in
   // the colour around it, so it sits in like the PDF's words (a new line
@@ -2141,6 +2315,37 @@ export default function PdfEditor({ active }) {
   }, []);
   const nudgeRef = useRef(nudge);
   nudgeRef.current = nudge;
+  // An arrow held down: the line keeps moving (a step at once, then on its
+  // own after 0.4s, faster the longer it's held), shown as a drag is, and is one
+  // step to undo once let go
+  const holdRef = useRef(null);
+  const startHold = (r, u, e) => {
+    if (!target || e.button > 0) return;
+    const k = e.shiftKey ? 10 : 1;
+    const h = { item: target, r: r * k, u: u * k, right: 0, up: 0, ticks: 0, timer: null };
+    const step = (times) => {
+      h.right += h.r * times;
+      h.up += h.u * times;
+      setDragMove({ id: h.item.id, right: h.right, up: h.up });
+    };
+    holdRef.current = h;
+    step(1);
+    const tick = () => {
+      h.ticks++;
+      step(h.ticks > 40 ? 6 : h.ticks > 15 ? 3 : 1);
+      h.timer = setTimeout(tick, 35);
+    };
+    h.timer = setTimeout(tick, 400);
+  };
+  const endHold = () => {
+    const h = holdRef.current;
+    if (!h) return;
+    holdRef.current = null;
+    clearTimeout(h.timer);
+    setDragMove(null);
+    nudgeRef.current(h.item, h.right, h.up);
+  };
+  useEffect(() => () => clearTimeout(holdRef.current?.timer), []);
 
   // One panel at a time: opening add text closes find first (and the
   // other way round), then opens once it has shut
@@ -2519,7 +2724,7 @@ export default function PdfEditor({ active }) {
       <input
         ref={inputRef}
         type="file"
-        accept="application/pdf,.pdf"
+        accept="application/pdf,.pdf,image/*,.heic,.heif"
         hidden
         onChange={(e) => { openFile(e.target.files || []); e.target.value = ''; }}
       />
@@ -2630,22 +2835,17 @@ export default function PdfEditor({ active }) {
           onMouseDown={(e) => { if (e.target.closest('button')) e.preventDefault(); }}
         >
           <FlipRow className="field-grid">
-            <TabSwitcher
-              className="tab-switcher-sm"
-              tabs={FONT_TABS}
-              active={styleOfTarget?.font || 'auto'}
-              onChange={(k) => setStyle({ font: k === 'auto' ? undefined : k })}
-            />
+            <FontMenu value={styleOfTarget?.font || 'auto'} onPick={pickFont} />
             {/* (one group: on a phone it wraps under the fonts whole, italic
                 left alone on a row of its own otherwise) */}
             <div className="field-grid text-look">
             <button className={`btn btn-icon ${matched ? 'btn-on' : ''}`} onClick={(e) => { if (e.detail) e.currentTarget.blur(); matchLook(target); }} title="Match the text and background around it" aria-label="Match the text and background around it" aria-pressed={matched}>
               <Pipette size={14} />
             </button>
-            <button className={`btn btn-icon ${shown.bold ? 'btn-on' : ''}`} onClick={(e) => { if (e.detail) e.currentTarget.blur(); setStyle({ bold: !shown.bold }); }} title="Bold" aria-label="Bold" aria-pressed={!!shown.bold}>
+            <button className={`btn btn-icon ${shown.bold ? 'btn-on' : ''}`} onClick={(e) => { if (e.detail) e.currentTarget.blur(); setLook({ bold: !shown.bold }); }} title="Bold" aria-label="Bold" aria-pressed={!!shown.bold}>
               <Bold size={14} />
             </button>
-            <button className={`btn btn-icon ${shown.italic ? 'btn-on' : ''}`} onClick={(e) => { if (e.detail) e.currentTarget.blur(); setStyle({ italic: !shown.italic }); }} title="Italic" aria-label="Italic" aria-pressed={!!shown.italic}>
+            <button className={`btn btn-icon ${shown.italic ? 'btn-on' : ''}`} onClick={(e) => { if (e.detail) e.currentTarget.blur(); setLook({ italic: !shown.italic }); }} title="Italic" aria-label="Italic" aria-pressed={!!shown.italic}>
               <Italic size={14} />
             </button>
             </div>
@@ -2685,7 +2885,13 @@ export default function PdfEditor({ active }) {
               <button
                 key={name}
                 className="btn btn-icon"
-                onClick={(e) => { if (e.detail) e.currentTarget.blur(); const k = e.shiftKey ? 10 : 1; nudge(target, r * k, u * k); }}
+                // (held: it keeps moving; a tap or a key press moves it once)
+                onPointerDown={(e) => startHold(r, u, e)}
+                onPointerUp={endHold}
+                onPointerLeave={endHold}
+                onPointerCancel={endHold}
+                onContextMenu={(e) => e.preventDefault()}
+                onClick={(e) => { if (e.detail) { e.currentTarget.blur(); return; } const k = e.shiftKey ? 10 : 1; nudge(target, r * k, u * k); }}
                 disabled={!target}
                 title={`Move ${name} (Shift: 10pt)`}
                 aria-label={`Move ${name}`}

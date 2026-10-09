@@ -86,7 +86,8 @@ function serviceWorker() {
         // needed: kept as they're used, not up front)
         .filter(f => !f.startsWith('pdfjs/cmaps/') && !f.startsWith('ocr/') && !f.endsWith('.map'))
         .map(f => `/${f}`)
-      const publicFiles = fs.readdirSync('public').filter(f => f !== 'sw.js').map(f => `/${f}`)
+      // (files only: /fonts/ is fetched the first time a font is picked)
+      const publicFiles = fs.readdirSync('public').filter(f => f !== 'sw.js' && fs.statSync(`public/${f}`).isFile()).map(f => `/${f}`)
       const precache = ['/', ...publicFiles, ...files]
       const version = crypto.createHash('sha256').update(Object.keys(bundle).sort().join('|')).digest('hex').slice(0, 12)
       const template = fs.readFileSync(path.resolve('sw.template.js'), 'utf8')

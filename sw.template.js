@@ -42,7 +42,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-const isRuntime = (path) => path.startsWith('/pdfjs/cmaps/') || path.startsWith('/ocr/');
+const isRuntime = (path) => path.startsWith('/pdfjs/cmaps/') || path.startsWith('/ocr/') || path.startsWith('/fonts/');
 // A good answer: found, and not a web page standing in for a file
 const good = (req, res) => res.ok && (req.mode === 'navigate' || !(res.headers.get('content-type') || '').includes('text/html') || req.destination === 'document');
 

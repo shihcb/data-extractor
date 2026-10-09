@@ -1,0 +1,4 @@
+Fonts from Google Fonts, cut down to Latin letters (pyftsubset):
+Inter, Open Sans, Lato, Montserrat, Poppins, Gelasio, Merriweather, Lora,
+Playfair Display, EB Garamond, Source Code Pro — SIL Open Font License 1.1.
+Roboto, Roboto Mono, Arimo — Apache License 2.0.

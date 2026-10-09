@@ -1721,6 +1721,87 @@ html.page-fits body {
   box-shadow: 0 4px 12px -6px rgba(0, 0, 0, 0.35);
 }
 
+/* The font menu (instagram-follower-checker's import files menu): the
+   button names the font, its chevron turning over while open; the card
+   pops in under it (the pop, from 14px down at 95%, from its top left) */
+.font-menu {
+  position: relative;
+}
+.font-menu-btn {
+  /* (as tall as the icon buttons beside it) */
+  height: 32px;
+  padding-top: 0;
+  padding-bottom: 0;
+  gap: 6px;
+  min-width: 112px;
+  justify-content: space-between;
+}
+.font-menu-name {
+  max-width: 9em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.font-menu-chevron {
+  flex-shrink: 0;
+  transition: transform var(--motion-duration) var(--motion-easing);
+}
+.font-menu-btn.active .font-menu-chevron {
+  transform: rotate(180deg);
+}
+.font-menu-card {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 100;
+  min-width: 190px;
+  max-height: min(320px, 50vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform-origin: top left;
+  text-align: left;
+}
+.font-menu-group {
+  padding: 8px 12px 2px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+}
+.font-menu-item {
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text-main);
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background-color var(--motion-duration) var(--motion-easing);
+}
+.font-menu-item.on {
+  font-weight: 700;
+}
+@media (hover: hover) {
+  .font-menu-item:hover {
+    background: rgba(127, 127, 127, 0.1);
+  }
+}
+
 /* Match · bold · italic: kept together when the row wraps */
 .text-look {
   flex-wrap: nowrap;
