@@ -1712,6 +1712,10 @@ html.page-fits body {
 }
 .pdf-line-delete-spot .btn.pdf-line-delete {
   pointer-events: auto;
+  /* (its pop is the motion's alone: the button's own eased opacity chased
+     each frame of it, so it barely faded, then vanished) */
+  transition: color var(--motion-duration) var(--motion-easing),
+              border-color var(--motion-duration) var(--motion-easing);
   width: 30px;
   height: 30px;
   min-height: 0;
@@ -1806,6 +1810,21 @@ html.page-fits body {
 .text-look {
   flex-wrap: nowrap;
   width: auto;
+}
+
+/* The words being typed, deleted: a copy fades out where they were */
+.pdf-text-ghost {
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* The move arrows: held down, they keep moving the line — no long-press
+   menu, text selection or scroll on a phone */
+.hold-btn {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* The line last tapped: the trash deletes it */

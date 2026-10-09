@@ -2480,6 +2480,19 @@ export default function PdfEditor({ active }) {
     const item = docRef.current?.pages.flatMap(p => p.items).find(q => q.id === id);
     if (!item) return;
     if (editingRef.current === id) {
+      // The words being typed fade out where they are (the box itself goes
+      // at once): a copy of it, gone once faded
+      const input = dropBox.current?.querySelector('.pdf-text-input');
+      if (input?.value && canAnimate(input)) {
+        const ghost = document.createElement('div');
+        ghost.className = 'pdf-text-input pdf-text-ghost';
+        ghost.style.cssText = input.style.cssText;
+        ghost.textContent = input.value;
+        ghost.setAttribute('aria-hidden', 'true');
+        input.parentElement.appendChild(ghost);
+        const fade = ghost.animate([{ opacity: 1 }, { opacity: 0 }], { ...MOTION, fill: 'forwards' });
+        fade.onfinish = fade.oncancel = () => ghost.remove();
+      }
       cancelled.current = true;
       setEditing(null);
     }
@@ -2884,9 +2897,14 @@ export default function PdfEditor({ active }) {
             {[['left', -1, 0, ArrowLeft], ['up', 0, 1, ArrowUp], ['down', 0, -1, ArrowDown], ['right', 1, 0, ArrowRight]].map(([name, r, u, Icon]) => (
               <button
                 key={name}
-                className="btn btn-icon"
+                className="btn btn-icon hold-btn"
                 // (held: it keeps moving; a tap or a key press moves it once)
-                onPointerDown={(e) => startHold(r, u, e)}
+                onPointerDown={(e) => {
+                  // (the finger kept: a phone's own long press — its menu,
+                  // a scroll — would otherwise cancel the hold)
+                  try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* (gone) */ }
+                  startHold(r, u, e);
+                }}
                 onPointerUp={endHold}
                 onPointerLeave={endHold}
                 onPointerCancel={endHold}
@@ -2910,8 +2928,9 @@ export default function PdfEditor({ active }) {
 
       {/* The input and the tools (icons; add text and find switch on and
           off, outlined while on), then save on its own row */}
-      {/* The saves: there once there's something to save (the panel open) */}
-      <Collapse open={!!doc}>
+      {/* The save: there once there's a change to save, gone again when
+          there's none (the panel open) */}
+      <Collapse open={!!doc && (editCount > 0 || busy)}>
         <FlipRow>
           <button className={`btn ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!doc || !editCount || busy}>
             save PDF
