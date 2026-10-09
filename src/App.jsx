@@ -5,7 +5,6 @@ import ImageConverter from './components/ImageConverter';
 import PdfTools from './components/PdfTools';
 import PdfEditor from './components/PdfEditor';
 import QrTool from './components/QrTool';
-import TextDiff from './components/TextDiff';
 import TabSwitcher from './components/TabSwitcher';
 import TabPanes from './components/TabPanes';
 import Modal from './components/Modal';
@@ -20,7 +19,6 @@ const TABS = [
   { key: 'pdf',       label: 'pdf tools' },
   { key: 'pdfedit',   label: 'pdf editor' },
   { key: 'qr',        label: 'qr code' },
-  { key: 'diff',      label: 'text diff' },
 ];
 
 // A file dropped anywhere outside a drop box must not open in the browser
@@ -257,7 +255,7 @@ export default function App() {
     tabGlide.current?.();
   }, [activeTab]);
 
-  // Shift+1..6 switch tabs, ? shows the shortcuts (not while typing)
+  // Shift+1..5 switch tabs, ? shows the shortcuts (not while typing)
   useEffect(() => {
     const onKey = (e) => {
       if (e.ctrlKey || e.metaKey || e.altKey || isTyping()) return;
@@ -294,7 +292,6 @@ export default function App() {
             <PdfTools active={activeTab === 'pdf'} />
             <PdfEditor active={activeTab === 'pdfedit'} />
             <QrTool active={activeTab === 'qr'} />
-            <TextDiff active={activeTab === 'diff'} />
           </TabPanes>
         </div>
       </div>

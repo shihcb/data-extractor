@@ -3,14 +3,13 @@
 Quick tools that run entirely in the browser — nothing is uploaded.
 
 - **case converter** — lowercase, UPPERCASE, Title Case, Sentence case, camelCase, snake_case, kebab-case, tidy spaces; live character / word / line count
-- **image converter** — PNG, JPG, WEBP or PDF; resize by % or width; quality; several images at once (zip or one multi-page PDF); copy to clipboard; keeps the photo's details (camera, date, place)
+- **image converter** — PNG, JPG, WEBP or PDF; resize by % or width; quality; several images at once (each saved as itself, or one multi-page PDF); copy to clipboard; keeps the photo's details (camera, date, place)
   - **metadata editor** — change or remove a photo's details (EXIF: camera, lens, dates, location, author…) without touching the picture
 - **pdf tools** — merge, split, reorder, rotate, delete pages, pages to PNG
 - **pdf editor** — change text by covering it and retyping it in a matching standard font
 - **qr code** — make (PNG / SVG) and scan (image or camera)
-- **text diff** — compare by lines, words or characters
 
-Shift+1…6 switch tabs, `?` lists the shortcuts. Light/dark follows the device. Installable and works offline (the service worker is generated at build time from `sw.template.js`).
+Shift+1…5 switch tabs, `?` lists the shortcuts. Light/dark follows the device. Installable and works offline (the service worker is generated at build time from `sw.template.js`).
 
 ## Motion
 

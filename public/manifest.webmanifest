@@ -1,7 +1,7 @@
 {
   "name": "toolbox",
   "short_name": "toolbox",
-  "description": "Quick tools that run in your browser: case converter, image converter, PDF tools and editor, QR codes and text diff.",
+  "description": "Quick tools that run in your browser: case converter, image converter, PDF tools and editor, and QR codes.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

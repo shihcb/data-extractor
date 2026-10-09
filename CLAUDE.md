@@ -21,14 +21,13 @@ of restarting it. When the user names one of these, this is what they mean:
 | **the word swap** | the word slide's swap form: one word changing to another inside a line ("%" ↔ "px wide") — both share one spot, the old fading out as the new fades in, while the space eases from one word's width to the other's | `SlideSwap` |
 | **the text swap** | text that changes: the old words fade out exactly where they were while the new ones fade in (the source repo's empty-text fade) | `FadeText` |
 | **the box ease** | a box whose content changes size eases to its new height; nested boxes: only the outermost moves | `AutoHeight`, `heightMotion.js` |
-| **the bottom bar** | the instagram repo's bulk bar (plain buttons), floating at the bottom of the screen (18px up), centered; it pops in like the pages while its tab is showing and there's something to act on. Only text diff has one now (swap); every other tab's actions are in **the box row** or the buttons under it. Toasts sit above it (`body.has-bar`); the page keeps room under its end for it only while it shows (the room eases open / shut) | `ActionBar` |
 | **the box row** | the row right under every tab's box (QR make: under its text box): **undo · redo** on the left, the tab's **input and action icons** in the middle, centred under the box (`actions`: paste / add / open, then copy, split, add text, find), and the **trash** on the right (red icon), with the tab's own buttons sliding in just left of it (`end`: the metadata editor's **reset**, there only while the selected photo has something to put back — the word slide, as "px wide"; it brings its own gap) — clear and delete in one: the tabs with cards delete the selection, or everything when nothing is selected (an undoable step; with everything gone, Ctrl + Z still takes it back); the metadata editor the selected photo; the text tabs clear (and end the history); the PDF editor closes its PDF. The stats line goes under the row (`children`), 10px below it. Empty (`empty`: nothing uploaded / typed yet; not the case converter, which stays as it is): only the input button shows — undo · redo and the trash fade out in place (back once there's something; emptied — the last image deleted — it looks as it did at first, and Ctrl + Z still brings it all back), the action icons slide shut beside it (the word slide), the stats fade out in place, keeping their line (opacity only: opened as a panel — height eased, text scaled, numbers counting — they stuttered on a phone as the first document came in), the saves close up (the panel open) (and QR make's copy / saves until there's a code). The input button shows its word with its icon while the box is empty ("add images", "add photos", "add PDFs", "open PDF", "paste"; `btn-grow`; the case converter's "paste" keeps its word always), and the word slides shut into the 40px icon with the first upload / letter (the word slide), opening again when it empties. Always there, dimmed with nothing to act on; a button turned off under the keys hands focus to the tab's first live button. Every button in it one size (36px; icons 40px wide so three fit between the sides on a phone); both sides as wide, so the middle is the box's middle; 10px under the box | `BoxRow` |
 | **the panel open** | a panel opens from nothing / closes to nothing: height eases, content fades in from 10px up at 96% (the quality slider, image options) | `Collapse` |
 | **the row slide** | a list row slides in from under the row above / out under it, the rows around it shifting (the source repo's list 3 rows / username boxes); grid items (the PDF pages, the image cards) pop instead | `MotionList` |
 | **the button glide** | a row of buttons/controls never snaps: a button whose label changes eases its width, the others slide along | `FlipRow` |
 | **the count** | numbers count to their new value (and up from 0 when they appear), their width easing | `Count` |
 | **the tab push** | switching tabs: the old pane slides out sideways as the new one slides in (always 450ms, an interrupted slide too), the area easing to the new height; the tab outline slides along | `TabPanes`, `TabSwitcher` |
-| **the pop** | pop-ups and toasts come in from 14px down at 95% scale and leave the same way; so do the PDF pages, the image cards, the bottom bar, the QR code and the camera picture | `Modal`, `Toast`, `MotionList`, `usePop` |
+| **the pop** | pop-ups and toasts come in from 14px down at 95% scale and leave the same way; so do the PDF pages, the image cards, the QR code and the camera picture | `Modal`, `Toast`, `MotionList`, `usePop` |
 | **the glide to top** | a box easing shut: the page's bottom follows the content's bottom frame by frame, so no blank room opens below (a sudden shrink glides up instead); when everything fits on screen again it glides back to the top and stops scrolling until it needs to | `App.jsx` |
 | **the clear** | the last PDF pages / images leaving (or the PDF editor closing its PDF, or the metadata editor its photo): they pop out in place while the box's content holds its height, then the box goes back to empty | `PdfTools.jsx`, `ImageConverter.jsx`, `PdfEditor.jsx` |
 
@@ -215,7 +214,7 @@ Which buttons go where:
   add · split (scissors), then save PDF ("save merged PDF" with several
   files) · save PNG; PDF editor open · add text · find (switched on and
   off, outlined while on), then save PDF; QR make paste, and under the code
-  copy / save PNG · save SVG; case converter and text diff paste; QR scan
+  copy / save PNG · save SVG; case converter paste; QR scan
   (no box row) choose image · use camera. The case converter's buttons are fixed rows,
   the same on every screen (`.button-rows`): lowercase · UPPERCASE /
   Title Case · Sentence case / camelCase · snake_case / kebab-case · tidy
@@ -227,10 +226,10 @@ Which buttons go where:
   icons | the trash, the stats under it (see the box row above).
 - No select all: tap cards to select; the trash takes the selection (or
   everything). Tools switched on and off are buttons under the box,
-  outlined while on ("keep details"; the PDF editor's add text and find). The bottom bar is only text
-  diff's swap.
+  outlined while on ("keep details"; the PDF editor's add text and find). There's no bottom bar
+  (text diff, the last tab with one, was removed).
 - Settings that change the result (format, size, quality, the QR error
-  level, text diff's lines / words) sit in the tab's options panel (the
+  level) sit in the tab's options panel (the
   panel open, opening once there's something in the box), above the buttons.
 - A picture's own controls stay on it as symbols: the card buttons
   (‹ › ⟲ ⟳ ×) and the PDF editor's zoom − / +.
@@ -238,16 +237,12 @@ Which buttons go where:
   while its box is empty: icon and word, shutting to the icon); the getting-file verb
   is always "save" (never "download"). Icons only where the symbol is
   universal: the input buttons (paste, add images / photos / PDFs, open a
-  PDF, choose image), copy, undo / redo, the trash, text diff's swap (⇄),
+  PDF, choose image), copy, undo / redo, the trash,
   split (scissors), the PDF editor's add text and find (magnifier), and the
   corner keyboard-shortcuts button; each has a title and aria-label.
   Everything else is words (the saves, reset, use camera, the cases). Every save button is "save" and what
   it saves, never "save as": file types in capitals (save PDF, save PNG,
   save SVG, save JPG), else the thing (save photos).
-
-Text diff's description ("paste two texts to compare")
-sits above its boxes like every tab's; its stats line is always there
-("added 0 · removed 0").
 
 A tab switch starts one glide of the page on the curve from its first
 frame (`tabGlide` in App.jsx), to where the page belongs once the new tab's
@@ -258,21 +253,20 @@ The selected outline is the instagram repo's selected row: 1px border and
 a 1px ring in the text colour (pure white in the dark), easing in and out
 over 450ms.
 
-Every stats line in the app is label first ("characters 3 · words 1", "added 2 ·
-removed 1") so only the numbers change, counting.
+Every stats line in the app is label first ("characters 3 · words 1", "pages 0 ·
+files 0") so only the numbers change, counting.
 
 The engine's "too small to move" cut-off is per kind of value: half a pixel for
 sizes and slides, 0.002 for scale and opacity (a half-unit cut-off skipped
 every 95% ↔ 100% scale).
 
 Buttons are always `--button-gap` (6px, the instagram repo's) apart: button
-rows, the settings row, the box row, the bottom bar, card buttons, the zoom controls.
+rows, the settings row, the box row, card buttons, the zoom controls.
 
 Spacing down a tab, the same everywhere (measured in every tab):
 - 6px: between buttons, and between rows of one group (the case
   converter's rows, the icon row over the save row, the rows inside an options panel, find and replace).
-- 10px: under a box to what belongs to it (the box row, the box below
-  it in text diff), and the description to its box; a text line under
+- 10px: under a box to what belongs to it (the box row), and the description to its box; a text line under
   controls (the QR level's hint).
 - 20px: between groups (the box row to the buttons or an options panel,
   the panel to the buttons, the buttons to a result box). Never fix a
@@ -284,7 +278,7 @@ On a phone every tab fits the screen empty, without scrolling (checked
 at 375 × 667, 390 × 844 and 430 × 932): the page ends 24px under its last
 button (it kept 140px for a bottom bar on every tab and scrolled for it);
 text boxes take what the screen has left (the case converter's
-`calc(100dvh - 360px)`, text diff's two `clamp(120px, 25dvh, 200px)`, QR
+`calc(100dvh - 360px)`, QR
 make's 112px, its code `--qr-size`). Only what opens below (results,
 details, options) scrolls. The case converter never scrolls the page
 (`html.no-scroll` while it's open, on screens 480px+ tall: a phone on its

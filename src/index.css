@@ -26,10 +26,6 @@
   --success-border: #a7f3d0;
   --success-text: #059669;
   --warn-bg: #d97706;
-  --diff-add-bg: rgba(16, 185, 129, 0.16);
-  --diff-add-text: #047857;
-  --diff-del-bg: rgba(239, 68, 68, 0.14);
-  --diff-del-text: #b91c1c;
   --shadow-card: 0 4px 12px -2px rgba(15, 23, 42, 0.03), 0 1px 3px rgba(15, 23, 42, 0.01);
   --shadow-btn: 0 1px 3px rgba(0, 0, 0, 0.04);
   --shadow-btn-hover: 0 2px 6px rgba(0, 0, 0, 0.08);
@@ -59,10 +55,6 @@
   --success-bg: rgba(16, 185, 129, 0.14);
   --success-border: rgba(16, 185, 129, 0.4);
   --success-text: #34d399;
-  --diff-add-bg: rgba(16, 185, 129, 0.2);
-  --diff-add-text: #6ee7b7;
-  --diff-del-bg: rgba(239, 68, 68, 0.2);
-  --diff-del-text: #fca5a5;
   --shadow-card: 0 20px 40px -15px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.04);
   --shadow-btn: none;
   --shadow-btn-hover: none;
@@ -167,15 +159,9 @@ button:disabled {
   margin-left: auto;
   margin-right: auto;
   padding: 0 20px;
-  /* A little room under the last of a tab (it was 140px, kept for the
-     bottom bar on every tab, and the page scrolled for it); room for the
-     bar only while one shows, easing open / shut on the curve */
+  /* A little room under the last of a tab (it was 140px, kept for a
+     bottom bar on every tab, and the page scrolled for it) */
   padding-bottom: calc(24px + env(safe-area-inset-bottom));
-  transition: padding-bottom var(--motion-duration) var(--motion-easing);
-}
-
-body.has-bar .app-container {
-  padding-bottom: calc(76px + env(safe-area-inset-bottom));
 }
 
 @media (max-width: 480px) {
@@ -415,7 +401,6 @@ body.has-bar .app-container {
 }
 
 .tool-textarea.short {
-  /* (smaller on short screens: two of them in text diff) */
   min-height: clamp(120px, 25dvh, 200px);
 }
 
@@ -792,13 +777,6 @@ kbd {
               bottom var(--motion-duration) var(--motion-easing);
 }
 
-/* A narrow window: above the bottom bar while one shows (beside it, they met) */
-@media (max-width: 640px) {
-  body.has-bar .btn.shortcuts-btn {
-    bottom: calc(18px + 52px + env(safe-area-inset-bottom));
-  }
-}
-
 /* Shortcuts need a keyboard: no button on touch screens */
 @media (hover: none), (pointer: coarse) {
   .shortcuts-btn {
@@ -820,11 +798,6 @@ kbd {
 }
 
 /* ── Toast (instagram-follower-checker's .feature-toast) ──────── */
-
-/* Above the bottom bar while one shows */
-body.has-bar .feature-toast {
-  bottom: calc(18px + 52px + env(safe-area-inset-bottom));
-}
 
 .feature-toast {
   position: fixed;
@@ -913,7 +886,7 @@ body.has-bar .feature-toast {
   width: 100%;
   cursor: pointer;
   /* A fixed size that fills the screen below the tabs, above the meta line
-     and buttons, and the floating bulk bar below them (about 410px together, with the description above the box): the page stays still and the pages
+     and buttons below them (about 410px together, with the description above the box): the page stays still and the pages
      scroll inside the box */
   height: calc(100vh - var(--box-room, 410px));
   height: calc(100dvh - var(--box-room, 410px));
@@ -922,134 +895,6 @@ body.has-bar .feature-toast {
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-}
-
-/* The bulk bar (instagram-follower-checker's .row-select-bar): one bar,
-   the count outlined, the buttons plain text; centered under clear */
-/* Where the instagram repo's bar sits: floating at the bottom of the
-   screen, centered */
-.bulk-dock {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: calc(18px + env(safe-area-inset-bottom));
-  z-index: 900;
-  display: flex;
-  justify-content: center;
-  padding: 0 12px;
-  pointer-events: none;
-}
-
-.bulk-bar {
-  display: flex;
-  align-items: center;
-  gap: var(--button-gap);
-  width: max-content;
-  max-width: 100%;
-  pointer-events: auto;
-  padding: 4px;
-  border-radius: var(--radius);
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  box-shadow: 0 6px 18px -10px rgba(0, 0, 0, 0.22);
-}
-
-.bulk-count,
-.bulk-btn {
-  height: 32px;
-  display: inline-flex;
-  align-items: center;
-  line-height: 1;
-  white-space: nowrap;
-  font-size: 0.78rem;
-  font-weight: 600;
-  /* The bar's radius minus its 4px padding and 1px border, so the corners
-     run parallel to the bar's (as in the instagram repo) */
-  border-radius: calc(var(--radius) - 5px);
-}
-
-/* (its word's leading space kept: as a flex item it was trimmed, "2selected") */
-.bulk-count-word {
-  white-space: pre;
-}
-
-.bulk-count {
-  padding: 0 11.5px;
-  color: var(--text-main);
-  border: 1.5px solid var(--text-main);
-  font-variant-numeric: tabular-nums;
-  flex-shrink: 0;
-}
-
-.bulk-btn {
-  padding: 0 12px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: color var(--motion-duration) var(--motion-easing),
-              opacity var(--motion-duration) var(--motion-easing),
-              background-color var(--motion-duration) var(--motion-easing),
-              border-color var(--motion-duration) var(--motion-easing),
-              box-shadow var(--motion-duration) var(--motion-easing);
-}
-
-.bulk-btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-/* A bar button that's switched on (the PDF editor's find, add text):
-   outlined like the count */
-.bulk-btn.on {
-  color: var(--text-main);
-  border-color: var(--text-main);
-  box-shadow: inset 0 0 0 0.5px var(--text-main);
-}
-
-/* Just an icon (swap, find) */
-.bulk-btn.bulk-icon {
-  padding: 0 9px;
-}
-
-/* A phone's width: a little tighter, so a full bar fits */
-@media (max-width: 440px) {
-  .bulk-btn,
-  .bulk-count {
-    padding: 0 8px;
-    font-size: 0.74rem;
-  }
-
-  .bulk-btn.bulk-icon {
-    padding: 0 7px;
-  }
-}
-
-/* The narrowest phones: smaller still */
-@media (max-width: 380px) {
-  .bulk-btn,
-  .bulk-count {
-    padding: 0 6px;
-    font-size: 0.72rem;
-  }
-
-  .bulk-count-word {
-    display: none;
-  }
-}
-
-.bulk-btn svg {
-  flex-shrink: 0;
-}
-
-.bulk-btn {
-  gap: 5px;
-}
-
-@media (hover: hover) {
-  .bulk-btn:not(:disabled):hover {
-    background: rgba(127, 127, 127, 0.1);
-  }
 }
 
 /* Empty, the hint sits in the middle of the whole box */
@@ -1605,97 +1450,6 @@ select.meta-input {
 
 a.btn {
   text-decoration: none;
-}
-
-/* ── Text diff ────────────────────────────────────────────────── */
-
-.diff-inputs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  /* (10px, as every box to what's right under it) */
-  gap: 10px;
-  width: 100%;
-}
-
-@media (max-width: 640px) {
-  .diff-inputs {
-    grid-template-columns: 1fr;
-  }
-}
-
-.diff-output {
-  padding: 16px 20px;
-  font-size: 0.9rem;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.diff-output-lines {
-  padding: 10px 0;
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
-}
-
-/* "… 12 unchanged lines": a long unchanged stretch, folded */
-.diff-line-fold {
-  color: var(--text-muted);
-  font-style: italic;
-}
-
-.diff-line {
-  display: flex;
-  padding: 0 16px 0 8px;
-}
-
-.diff-gutter {
-  width: 1.5em;
-  flex-shrink: 0;
-  text-align: center;
-  color: var(--text-faint);
-  user-select: none;
-}
-
-.diff-text {
-  min-width: 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.diff-line-add {
-  background: var(--diff-add-bg);
-}
-
-.diff-line-add .diff-gutter,
-.diff-count-add {
-  color: var(--diff-add-text);
-}
-
-.diff-line-del {
-  background: var(--diff-del-bg);
-}
-
-.diff-line-del .diff-gutter,
-.diff-count-del {
-  color: var(--diff-del-text);
-}
-
-.diff-ins,
-.diff-del {
-  border-radius: 3px;
-  text-decoration: none;
-}
-
-.diff-ins {
-  background: var(--diff-add-bg);
-  color: var(--diff-add-text);
-}
-
-.diff-del {
-  background: var(--diff-del-bg);
-  color: var(--diff-del-text);
-  text-decoration: line-through;
-  text-decoration-color: currentColor;
 }
 
 /* ── Changing text (instagram-follower-checker's empty-text fade) ── */
