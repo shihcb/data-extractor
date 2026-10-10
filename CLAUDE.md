@@ -142,11 +142,16 @@ Editing in the PDF editor:
   /fonts/ (`src/textFonts.js`: Arial (Arimo), Inter, Roboto, Open Sans,
   Lato, Montserrat, Poppins, Georgia (Gelasio), Merriweather, Lora,
   Playfair, Garamond, Roboto Mono, Source Code; cut to Latin, ~25KB a
-  style, kept by the service worker, never precached; their plain styles
-  fetched once add text has opened and all is still, added to the page in
-  one go and laid out once out of sight (`preloadTextFonts`) — fetched and
-  added one by one as the menu popped open, each restyled the whole page:
-  frames of 130–180ms on a slowed phone). A font's file is loaded before a line takes it (never
+  style, kept by the service worker, never precached). The menu shows each
+  name as a drawing of it in its font (`src/fontNames.js`, SVG paths made by
+  `node scripts/font-names.mjs` — run it after changing the fonts — fetched
+  as its own file once add text opens), so no font is loaded until one is
+  picked: fetching and adding all 14 to the page restyled it (~300ms on a
+  slowed phone, just as the menu was reached for). The card is laid out
+  (see-through, on its own layer) once add text has opened and all is still,
+  and pops in and out as a CSS transition the compositor runs alone (shown
+  from nothing, its layout and paint came first, ~130ms, while the engine's
+  pop waited). A font's file is loaded before a line takes it (never
   measured in the stand-in); saved, it's written into the PDF (fontkit,
   just the letters used). A tap anywhere else or Escape shuts the menu;
   picked by a tap, the keys stay in the line being typed. Match, bold and
@@ -410,7 +415,7 @@ Rules that keep it smooth (each was a real bug):
   pages' pictures before showing them (decoded at first paint, that frame
   took ~100ms as its buttons and stats came in).
 - Opacity-only fades that need no following (the box row's sides, the
-  stats) stay CSS transitions: the phone's compositor runs them through a
+  stats, the font menu's pop) stay CSS transitions: the phone's compositor runs them through a
   busy page thread, where an engine fade would stall.
 - Keyboard focus always shows (`:focus-visible`, 2px outline); text fields
   show theirs with their border.

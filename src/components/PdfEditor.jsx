@@ -18,7 +18,7 @@ import FadeText from './FadeText';
 import FlipRow from './FlipRow';
 import MotionList from './MotionList';
 import usePop from './usePop';
-import { FONT_BASES, TEXT_FONTS, fontOf, loadTextFont, preloadTextFonts } from '../textFonts';
+import { FONT_BASES, TEXT_FONTS, fontOf, loadTextFont } from '../textFonts';
 
 // Changing text in a PDF the reliable way (what browser PDF editors do):
 // the old words are covered with a patch the colour of the paper behind
@@ -675,18 +675,43 @@ function LineDelete({ box, show, onDelete }) {
 // in (the pop) holding every font, each written in itself (their files
 // fetched as it opens). A tap picks one and shuts it; a tap anywhere else,
 // or Escape, shuts it; the arrow keys go up and down it.
-function FontMenu({ value, onPick }) {
+// Each name is shown in its font as a drawing of it (fontNames.js, made by
+// scripts/font-names.mjs, fetched once add text opens): no font is loaded
+// until one is picked (fetching and adding all 14 to the page restyled it,
+// ~300ms on a slowed phone, just as the menu was reached for).
+let namesLoad = null;
+function FontMenu({ value, onPick, ready }) {
   const [open, setOpen] = useState(false);
+  const [names, setNames] = useState(null);
+  // The card laid out (still see-through) once add text has opened and all
+  // is still: laid out with the panel, it made the panel's opening slow
+  const [laid, setLaid] = useState(false);
+  useEffect(() => {
+    if (!ready || laid) return undefined;
+    let off = false;
+    whenStill().then(() => { if (!off) setLaid(true); });
+    return () => { off = true; };
+  }, [ready, laid]);
+  // (opened before that: laid out first, then opened a frame on, so the
+  // pop still runs from its start)
+  const toggle = () => {
+    if (open || laid) { setOpen(o => !o); return; }
+    setLaid(true);
+    requestAnimationFrame(() => requestAnimationFrame(() => setOpen(true)));
+  };
+  useEffect(() => {
+    if (!ready || names) return undefined;
+    let off = false;
+    namesLoad = namesLoad || import('../fontNames').then(m => m.default).catch(() => { namesLoad = null; return null; });
+    namesLoad.then((n) => { if (!off && n) setNames(n); });
+    return () => { off = true; };
+  }, [ready, names]);
   const wrapRef = useRef(null);
   const menuRef = useRef(null);
   const btnRef = useRef(null);
-  usePop(menuRef, open);
   const current = fontOf(value) || TEXT_FONTS[0];
   useEffect(() => {
     if (!open) return undefined;
-    // (each font's own look, to choose by: ready by now, normally — the
-    // panel fetched them once it had opened)
-    preloadTextFonts();
     const away = (e) => { if (!wrapRef.current?.contains(e.target)) setOpen(false); };
     document.addEventListener('pointerdown', away);
     return () => document.removeEventListener('pointerdown', away);
@@ -712,7 +737,7 @@ function FontMenu({ value, onPick }) {
         ref={btnRef}
         type="button"
         className={`btn font-menu-btn ${open ? 'active' : ''}`}
-        onClick={(e) => { if (e.detail) e.currentTarget.blur(); setOpen(o => !o); }}
+        onClick={(e) => { if (e.detail) e.currentTarget.blur(); toggle(); }}
         aria-haspopup="menu"
         aria-expanded={open}
         title="Font"
@@ -720,7 +745,11 @@ function FontMenu({ value, onPick }) {
         <span className="font-menu-name">{current.label}</span>
         <ChevronDown size={14} className="font-menu-chevron" />
       </button>
-      <div ref={menuRef} className="font-menu-card" role="menu" aria-label="Fonts">
+      {/* (always laid out, on its own layer and see-through while shut:
+          opening is the pop as a CSS transition the phone's compositor runs
+          alone — shown from nothing, it was laid out and painted first, a
+          frame of ~130ms on a slowed phone, while the engine's pop waited) */}
+      <div ref={menuRef} className={`font-menu-card ${laid ? '' : 'unlaid'} ${open ? 'show' : ''}`} role="menu" aria-label="Fonts" aria-hidden={!open} inert={!open}>
         {TEXT_FONTS.map((f) => {
           const head = f.group && f.group !== group ? f.group : null;
           group = f.group;
@@ -733,7 +762,7 @@ function FontMenu({ value, onPick }) {
                 aria-checked={f.key === current.key}
                 className={`font-menu-item ${f.key === current.key ? 'on' : ''}`}
                 tabIndex={open ? 0 : -1}
-                style={f.base ? cssFont({ base: f.base, bold: false, italic: false, face: f.file ? f.key : undefined }) : undefined}
+                style={f.base && !f.file ? cssFont({ base: f.base, bold: false, italic: false }) : undefined}
                 onClick={(e) => {
                   setOpen(false);
                   onPick(f.key);
@@ -742,7 +771,14 @@ function FontMenu({ value, onPick }) {
                   if (!e.detail) btnRef.current?.focus({ preventScroll: true });
                 }}
               >
-                <span>{f.label}</span>
+                {f.file && names?.[f.key] ? (
+                  <span className="font-name">
+                    <svg viewBox={`0 ${-names[f.key].a} ${names[f.key].w} ${names[f.key].h}`} style={{ width: `${names[f.key].w / 100}em`, height: `${names[f.key].h / 100}em` }} aria-hidden="true" focusable="false">
+                      <path d={names[f.key].d} fill="currentColor" />
+                    </svg>
+                    <span className="sr-only">{f.label}</span>
+                  </span>
+                ) : <span>{f.label}</span>}
                 {f.key === current.key ? <Check size={13} /> : null}
               </button>
             </React.Fragment>
@@ -2101,14 +2137,6 @@ export default function PdfEditor({ active }) {
   // a new line starts there, in the size and font of the nearest text,
   // upright on screen. Left empty, it goes again.
   const [adding, setAdding] = useState(false);
-  // The font menu's fonts, fetched once add text has opened and everything's
-  // still: ready before the menu is first opened, so it pops in smoothly
-  useEffect(() => {
-    if (!adding) return undefined;
-    let off = false;
-    whenStill().then(() => { if (!off) preloadTextFonts(); });
-    return () => { off = true; };
-  }, [adding]);
   const addAt = (page, e) => {
     const view = page.view;
     if (!view || !doc) return;
@@ -2857,7 +2885,7 @@ export default function PdfEditor({ active }) {
           onMouseDown={(e) => { if (e.target.closest('button')) e.preventDefault(); }}
         >
           <FlipRow className="field-grid">
-            <FontMenu value={styleOfTarget?.font || 'auto'} onPick={pickFont} />
+            <FontMenu value={styleOfTarget?.font || 'auto'} onPick={pickFont} ready={adding} />
             {/* (one group: on a phone it wraps under the fonts whole, italic
                 left alone on a row of its own otherwise) */}
             <div className="field-grid text-look">

@@ -1773,6 +1773,22 @@ html.page-fits body {
   box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.08);
   transform-origin: bottom left;
   text-align: left;
+  /* The pop, shut: see-through, 14px down at 95% — kept laid out and on
+     its own layer, so opening only moves that layer */
+  opacity: 0;
+  transform: translateY(14px) scale(0.95);
+  pointer-events: none;
+  will-change: opacity, transform;
+  transition: opacity var(--motion-duration) var(--motion-easing),
+              transform var(--motion-duration) var(--motion-easing);
+}
+.font-menu-card.unlaid {
+  display: none;
+}
+.font-menu-card.show {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
 }
 .font-menu-group {
   padding: 8px 12px 2px;
@@ -1783,6 +1799,8 @@ html.page-fits body {
   letter-spacing: 0.02em;
 }
 .font-menu-item {
+  /* (every row one height: a drawn name is as tall as its font's letters) */
+  min-height: 36px;
   white-space: nowrap;
   display: flex;
   align-items: center;
@@ -1801,6 +1819,15 @@ html.page-fits body {
 }
 .font-menu-item.on {
   font-weight: 700;
+}
+/* A font's name drawn in it (fontNames.js), sitting on the text's baseline */
+.font-name {
+  display: inline-flex;
+  align-items: center;
+}
+.font-name svg {
+  display: block;
+  overflow: visible;
 }
 @media (hover: hover) {
   .font-menu-item:hover {
