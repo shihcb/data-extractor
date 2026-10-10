@@ -132,6 +132,10 @@ Editing in the PDF editor:
   "· matches N" sliding into the stats line while it's open.
 - Double-click an empty spot (or tap one with "add text" on) to add a line,
   in the size and font of the nearest line; left empty, it goes again.
+- A line of yours (one added): the first tap selects it (outlined, its
+  trash above it, the add text panel opened on it — font, match, bold,
+  italic, size, the arrows and dragging all work on it, `selectLine`), the
+  next tap types in it. The PDF's own lines open to type on the first tap.
 - "add text" opens its own panel (the panel open; one panel at a time with
   find: the open one shuts first, then the other opens, `openPanel`, Ctrl + F
   too): one row of the font menu · match · bold · italic. The font menu is

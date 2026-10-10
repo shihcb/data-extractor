@@ -2413,6 +2413,13 @@ export default function PdfEditor({ active }) {
   useEffect(() => () => clearTimeout(swapTimer.current), []);
 
   // A new line left empty: gone again
+  // A line of yours, selected (not typed in): outlined, with its trash, the
+  // add text panel open on it
+  const selectLine = (item) => {
+    setSelected(item.id);
+    setPicked(item.id);
+    if (!adding) openPanel('add');
+  };
   const dropAdded = (item) => {
     setDoc(prev => (!prev ? prev : {
       ...prev,
@@ -2728,7 +2735,12 @@ export default function PdfEditor({ active }) {
                         onClick={(e) => {
                           // (the end of a drag isn't a tap)
                           if (dragged.current) { dragged.current = false; return; }
-                          if (!leaving) startEdit(raw, e);
+                          if (leaving) return;
+                          // A line of yours: the first tap selects it (add
+                          // text opens on it: font, match, size, the arrows,
+                          // a drag), the next one types in it
+                          if (raw.added && selected !== raw.id) { selectLine(raw); return; }
+                          startEdit(raw, e);
                         }}
                         onPointerDown={movable ? (e) => startDrag(raw, e) : undefined}
                         onKeyDown={movable ? (e) => {
