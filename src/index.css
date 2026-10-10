@@ -1727,7 +1727,7 @@ html.page-fits body {
 
 /* The font menu (instagram-follower-checker's import files menu): the
    button names the font, its chevron turning over while open; the card
-   pops in under it (the pop, from 14px down at 95%, from its top left) */
+   pops in above it (the pop, from 14px down at 95%, from its bottom left) */
 .font-menu {
   position: relative;
 }
@@ -1755,7 +1755,9 @@ html.page-fits body {
 }
 .font-menu-card {
   position: absolute;
-  top: calc(100% + 8px);
+  /* (above its button: under it, it ran off the bottom of a phone's
+     screen past the panel's last rows) */
+  bottom: calc(100% + 8px);
   left: 0;
   z-index: 100;
   min-width: 190px;
@@ -1769,7 +1771,7 @@ html.page-fits body {
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
   box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.08);
-  transform-origin: top left;
+  transform-origin: bottom left;
   text-align: left;
 }
 .font-menu-group {

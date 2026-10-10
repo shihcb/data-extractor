@@ -136,7 +136,7 @@ Editing in the PDF editor:
   find: the open one shuts first, then the other opens, `openPanel`, Ctrl + F
   too): one row of the font menu · match · bold · italic. The font menu is
   the instagram repo's import files menu (`FontMenu`): a button naming the
-  font with a chevron that turns over, and a card popping in under it (the
+  font with a chevron that turns over, and a card popping in above it (the
   pop) listing every font in itself, grouped sans / serif / mono — auto (the
   nearby line's), the three standard PDF fonts, and free ones kept in
   /fonts/ (`src/textFonts.js`: Arial (Arimo), Inter, Roboto, Open Sans,
