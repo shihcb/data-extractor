@@ -33,6 +33,49 @@ export const faceFamily = (key) => `tbx-${key}`;
 const variant = (bold, italic) => `${bold ? 'b' : 'r'}${italic ? 'i' : ''}`;
 const loads = new Map(); // `${key}-${variant}` -> Promise<ArrayBuffer | null>
 
+// Every font's plain style, for the menu to show each one in itself: fetched
+// and read off the page's way, then added to the page all at once (added
+// one by one as the menu popped open, each made the whole page restyle —
+// three frames of 130–180ms on a slowed phone). Asked for once.
+let preloading = null;
+export function preloadTextFonts() {
+  if (preloading) return preloading;
+  const todo = TEXT_FONTS.filter(f => f.file && !loads.has(`${f.key}-r`));
+  preloading = Promise.all(todo.map(async (f) => {
+    try {
+      const res = await fetch(`${import.meta.env.BASE_URL}fonts/${f.file}-r.ttf`);
+      if (!res.ok) return null;
+      const bytes = await res.arrayBuffer();
+      const face = typeof FontFace === 'function' ? new FontFace(faceFamily(f.key), bytes.slice(0), { weight: '400', style: 'normal' }) : null;
+      await face?.load();
+      return { f, bytes, face };
+    } catch {
+      return null;
+    }
+  })).then((got) => {
+    got.forEach((g) => {
+      if (!g || loads.has(`${g.f.key}-r`)) return;
+      if (g.face) document.fonts.add(g.face);
+      loads.set(`${g.f.key}-r`, Promise.resolve(g.bytes));
+    });
+    // Each name laid out once in its font, out of sight: the menu's first
+    // open had that to do (a frame of ~70ms), now done while all is still
+    const warm = document.createElement('div');
+    warm.setAttribute('aria-hidden', 'true');
+    warm.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;white-space:nowrap;font-size:0.85rem';
+    TEXT_FONTS.filter(f => f.file).forEach((f) => {
+      const line = document.createElement('div');
+      line.style.fontFamily = `"${faceFamily(f.key)}"`;
+      line.textContent = f.label;
+      warm.appendChild(line);
+    });
+    document.body.appendChild(warm);
+    void warm.offsetWidth;
+    warm.remove();
+  });
+  return preloading;
+}
+
 // A font's file for one style, its face added to the page once (shown in it
 // from then on); null when it can't be had (offline before first use)
 export function loadTextFont(key, bold = false, italic = false) {

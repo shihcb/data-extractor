@@ -142,8 +142,11 @@ Editing in the PDF editor:
   /fonts/ (`src/textFonts.js`: Arial (Arimo), Inter, Roboto, Open Sans,
   Lato, Montserrat, Poppins, Georgia (Gelasio), Merriweather, Lora,
   Playfair, Garamond, Roboto Mono, Source Code; cut to Latin, ~25KB a
-  style, fetched the first time they're shown, kept by the service worker,
-  never precached). A font's file is loaded before a line takes it (never
+  style, kept by the service worker, never precached; their plain styles
+  fetched once add text has opened and all is still, added to the page in
+  one go and laid out once out of sight (`preloadTextFonts`) — fetched and
+  added one by one as the menu popped open, each restyled the whole page:
+  frames of 130–180ms on a slowed phone). A font's file is loaded before a line takes it (never
   measured in the stand-in); saved, it's written into the PDF (fontkit,
   just the letters used). A tap anywhere else or Escape shuts the menu;
   picked by a tap, the keys stay in the line being typed. Match, bold and

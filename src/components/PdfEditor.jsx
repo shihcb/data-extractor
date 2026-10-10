@@ -18,7 +18,7 @@ import FadeText from './FadeText';
 import FlipRow from './FlipRow';
 import MotionList from './MotionList';
 import usePop from './usePop';
-import { FONT_BASES, TEXT_FONTS, fontOf, loadTextFont } from '../textFonts';
+import { FONT_BASES, TEXT_FONTS, fontOf, loadTextFont, preloadTextFonts } from '../textFonts';
 
 // Changing text in a PDF the reliable way (what browser PDF editors do):
 // the old words are covered with a patch the colour of the paper behind
@@ -684,8 +684,9 @@ function FontMenu({ value, onPick }) {
   const current = fontOf(value) || TEXT_FONTS[0];
   useEffect(() => {
     if (!open) return undefined;
-    // (each font's own look, to choose by: fetched once)
-    TEXT_FONTS.forEach(f => { if (f.file) loadTextFont(f.key); });
+    // (each font's own look, to choose by: ready by now, normally — the
+    // panel fetched them once it had opened)
+    preloadTextFonts();
     const away = (e) => { if (!wrapRef.current?.contains(e.target)) setOpen(false); };
     document.addEventListener('pointerdown', away);
     return () => document.removeEventListener('pointerdown', away);
@@ -2100,6 +2101,14 @@ export default function PdfEditor({ active }) {
   // a new line starts there, in the size and font of the nearest text,
   // upright on screen. Left empty, it goes again.
   const [adding, setAdding] = useState(false);
+  // The font menu's fonts, fetched once add text has opened and everything's
+  // still: ready before the menu is first opened, so it pops in smoothly
+  useEffect(() => {
+    if (!adding) return undefined;
+    let off = false;
+    whenStill().then(() => { if (!off) preloadTextFonts(); });
+    return () => { off = true; };
+  }, [adding]);
   const addAt = (page, e) => {
     const view = page.view;
     if (!view || !doc) return;
