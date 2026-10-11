@@ -6,7 +6,7 @@
     <title>toolbox</title>
     <meta name="description" content="Quick tools that run in your browser: case converter, image converter, PDF tools and editor, and QR codes." />
     <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#f4f5f3" />
+    <meta name="theme-color" content="#faf9f6" />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="apple-touch-icon" href="/icon-maskable-512.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
@@ -41,7 +41,7 @@
           if (root.hasAttribute('data-theme')) quiet();
           root.setAttribute('data-theme', theme);
           var meta = document.querySelector('meta[name="theme-color"]');
-          if (meta) meta.setAttribute('content', dark ? '#111513' : '#f4f5f3');
+          if (meta) meta.setAttribute('content', dark ? '#09090b' : '#faf9f6');
         };
         apply();
         if (media) {
