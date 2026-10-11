@@ -1,7 +1,7 @@
 import React, { useDeferredValue, useMemo, useRef } from 'react';
 import { ClipboardPaste } from 'lucide-react';
 import { CASES, textStats } from '../textCase';
-import { copyText, useDoneFlags } from '../utils';
+import { copyText, keepFocus, readClipboard, touchFirst, useDoneFlags } from '../utils';
 import { useToast } from '../toastContext';
 import Count from './Count';
 import AutoHeight from './AutoHeight';
@@ -28,17 +28,20 @@ export default function CaseConverter({ active }) {
 
   const handlePaste = async (e) => {
     if (e.detail) e.currentTarget.blur();
-    try {
-      const clip = await navigator.clipboard.readText();
-      if (clip) {
-        setText(clip);
-        flagDone('paste');
-      }
-    } catch {
-      // Not allowed to read the clipboard: put the cursor in the box so a
-      // long-press / Ctrl+V paste goes straight in
+    const got = await readClipboard();
+    if (got.text) {
+      setText(got.text);
+      flagDone('paste');
+    } else if (got.empty) {
+      toast('nothing to paste: the clipboard has no text', { warn: true });
+    } else if (touchFirst()) {
+      // (the keyboard isn't opened for it: the page would move under the
+      // next tap)
+      toast('tap "Paste" in the bubble, or long-press in the box');
+    } else {
+      // Put the cursor in the box so Ctrl+V goes straight in
       textareaRef.current?.focus();
-      toast('paste with ctrl+v or a long-press in the box');
+      toast('paste with ctrl+v in the box');
     }
   };
 
@@ -77,6 +80,7 @@ export default function CaseConverter({ active }) {
           <button
             className={`btn btn-icon btn-grow ${done.paste ? 'btn-done' : ''}`}
             onClick={handlePaste}
+            onMouseDown={keepFocus}
             title="Paste from clipboard"
             aria-label="Paste from clipboard"
           >

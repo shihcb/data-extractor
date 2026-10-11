@@ -2,6 +2,26 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 // Copies text; falls back to a hidden textarea where the async clipboard
 // API isn't allowed (older Safari, non-secure origins).
+// The clipboard's text for a paste button: { text } — or { empty: true }
+// (nothing, or no text: a picture), or { denied: true } (not allowed, or the
+// iPhone's own "Paste" bubble dismissed). Read at once, in the tap: a wait
+// before it and the browser no longer counts it as the tap's.
+export async function readClipboard() {
+  try {
+    const text = await navigator.clipboard.readText();
+    return text ? { text } : { empty: true };
+  } catch {
+    return { denied: true };
+  }
+}
+
+// A paste button pressed while a text box has the keys keeps them there: on
+// a phone, losing them shut the keyboard, the page moved up under the finger
+// and the tap missed the button (it took several)
+export const keepFocus = (e) => e.preventDefault();
+
+export const touchFirst = () => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+
 export async function copyText(text) {
   try {
     await navigator.clipboard.writeText(text);

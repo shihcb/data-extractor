@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ClipboardPaste, Copy, ImageUp } from 'lucide-react';
 import QRCode from 'qrcode';
 import jsQR from 'jsqr';
-import { copyImageBlob, copyText, isImageFile, saveFiles, shortName, useDoneFlags, usePastedFiles } from '../utils';
+import { copyImageBlob, copyText, isImageFile, keepFocus, readClipboard, saveFiles, shortName, touchFirst, useDoneFlags, usePastedFiles } from '../utils';
 import { loadImage } from '../imageConvert';
 import { MOTION_MS, flashOutline } from '../motion';
 import { useToast } from '../toastContext';
@@ -99,15 +99,20 @@ function MakeQr({ active }) {
   const textRef = useRef(null);
   const paste = async (e) => {
     if (e.detail) e.currentTarget.blur();
-    try {
-      const clip = await navigator.clipboard.readText();
-      if (clip) {
-        setText(clip);
-        flagDone('paste');
-      }
-    } catch {
+    const got = await readClipboard();
+    if (got.text) {
+      setText(got.text);
+      flagDone('paste');
+    } else if (got.empty) {
+      toast('nothing to paste: the clipboard has no text', { warn: true });
+    } else if (touchFirst()) {
+      // (the keyboard isn't opened for it: the page would move under the
+      // next tap)
+      toast('tap "Paste" in the bubble, or long-press in the box');
+    } else {
+      // Put the cursor in the box so Ctrl+V goes straight in
       textRef.current?.focus();
-      toast('paste with ctrl+v or a long-press in the box');
+      toast('paste with ctrl+v in the box');
     }
   };
 
@@ -166,7 +171,7 @@ function MakeQr({ active }) {
         trashDisabled={!text}
         held={!!text}
         actions={(
-          <button className={`btn btn-icon btn-grow ${done.paste ? 'btn-done' : ''}`} onClick={paste} title="Paste from clipboard" aria-label="Paste from clipboard">
+          <button className={`btn btn-icon btn-grow ${done.paste ? 'btn-done' : ''}`} onClick={paste} onMouseDown={keepFocus} title="Paste from clipboard" aria-label="Paste from clipboard">
             <ClipboardPaste size={14} />
             {/* (its word with it while the box is empty; shut to the icon once
                 there's something: the word slide) */}

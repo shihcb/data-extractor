@@ -421,6 +421,14 @@ Rules that keep it smooth (each was a real bug):
 - Opacity-only fades that need no following (the box row's sides, the
   stats, the font menu's pop) stay CSS transitions: the phone's compositor runs them through a
   busy page thread, where an engine fade would stall.
+- A paste button (`readClipboard`, utils.js) reads the clipboard at once in
+  the tap, and keeps the keys where they were (`keepFocus` on mousedown):
+  pressed while its box had the keys, a phone's keyboard shut, the page
+  moved up under the finger and the tap missed — it took several. Refused
+  (the iPhone's own "Paste" bubble dismissed), it says so without opening
+  the keyboard on a phone; an empty clipboard (or a picture) is said, not
+  silently ignored. The iPhone's bubble itself can't be skipped: Safari asks
+  every time a page reads the clipboard.
 - Keyboard focus always shows (`:focus-visible`, 2px outline); text fields
   show theirs with their border.
 - The PDF editor's zoom keeps the point under the fingers on the same spot
