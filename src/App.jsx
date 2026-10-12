@@ -16,9 +16,9 @@ import { downloadBlob, shareFiles } from './utils';
 const TABS = [
   { key: 'case',      label: 'case converter' },
   { key: 'image',     label: 'image converter' },
-  { key: 'pdf',       label: 'pdf tools' },
-  { key: 'pdfedit',   label: 'pdf editor' },
-  { key: 'qr',        label: 'qr code' },
+  { key: 'pdf',       label: 'PDF tools' },
+  { key: 'pdfedit',   label: 'PDF editor' },
+  { key: 'qr',        label: 'QR code' },
 ];
 
 // A file dropped anywhere outside a drop box must not open in the browser
@@ -322,7 +322,7 @@ export default function App() {
             <kbd>Esc</kbd>
           </li>
           <li>
-            <span>pdf editor: next text</span>
+            <span>PDF editor: next text</span>
             <kbd>Tab</kbd>
           </li>
           <li>
@@ -334,7 +334,7 @@ export default function App() {
             <kbd>Ctrl + Shift + Z</kbd>
           </li>
           <li>
-            <span>pdf editor: find and replace</span>
+            <span>PDF editor: find and replace</span>
             <kbd>Ctrl + F</kbd>
           </li>
         </ul>

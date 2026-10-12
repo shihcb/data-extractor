@@ -364,12 +364,12 @@ function ConvertImages({ active }) {
                   </button>
                   <div className="page-label">
                     <span className="page-src page-name">{name}</span>
-                    <span>{item.w}×{item.h}</span>
+                    <span>{item.w} × {item.h}</span>
                   </div>
                   <div className="page-buttons">
                     <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); move(item.id, -1); }} disabled={n <= 0} title="Move earlier" aria-label="Move earlier"><ChevronLeft size={12} /></button>
                     <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); move(item.id, 1); }} disabled={n < 0 || n >= items.length - 1} title="Move later" aria-label="Move later"><ChevronRight size={12} /></button>
-                    <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); else keepFocusAfterRemove(e.currentTarget); removeItems(new Set([item.id])); }} title="Remove" aria-label={`Remove ${name}`}><X size={12} /></button>
+                    <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); else keepFocusAfterRemove(e.currentTarget); removeItems(new Set([item.id])); }} title="Remove image" aria-label={`Remove ${name}`}><X size={12} /></button>
                   </div>
                 </div>
               );
@@ -424,7 +424,7 @@ function ConvertImages({ active }) {
         held={items.length > 0}
       >
         <div className="tool-meta tool-stats" aria-live="polite">
-          images <Count value={items.length} /> · selected <Count value={picked.size} /> · out <Count value={out.width} format={String} /> × <Count value={out.height} format={String} /> · <Count value={outSize} format={kb} />
+          images <Count value={items.length} /> · selected <Count value={picked.size} /> · out <Count value={out.width} format={String} /> × <Count value={out.height} format={String} /> · size <Count value={outSize} format={kb} />
         </div>
       </BoxRow>
 

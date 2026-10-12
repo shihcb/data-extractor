@@ -12,9 +12,11 @@ export default function Modal({ open, onClose, title, children }) {
   useEffect(() => {
     if (open) {
       setMounted(true);
-      // Hidden state committed first, then shown (Safari otherwise skips the fade)
-      const t = setTimeout(() => setShown(true), 20);
-      return () => clearTimeout(t);
+      // Hidden state drawn first, then shown (Safari otherwise skips the
+      // fade): two frames on, as the toast does (a 20ms timer could land
+      // before the hidden frame was drawn)
+      let f = requestAnimationFrame(() => { f = requestAnimationFrame(() => setShown(true)); });
+      return () => cancelAnimationFrame(f);
     }
     setShown(false);
     const t = setTimeout(() => setMounted(false), MOTION_MS + 50);

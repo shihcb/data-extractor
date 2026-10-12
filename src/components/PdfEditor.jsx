@@ -2534,7 +2534,8 @@ export default function PdfEditor({ active }) {
         ghost.textContent = input.value;
         ghost.setAttribute('aria-hidden', 'true');
         input.parentElement.appendChild(ghost);
-        const fade = ghost.animate([{ opacity: 1 }, { opacity: 0 }], { ...MOTION, fill: 'forwards' });
+        // (from the strength it's drawn at, as every ghost: never from 1)
+        const fade = ghost.animate([{ opacity: +getComputedStyle(input).opacity || 1 }, { opacity: 0 }], { ...MOTION, fill: 'forwards' });
         fade.onfinish = fade.oncancel = () => ghost.remove();
       }
       cancelled.current = true;
@@ -2575,7 +2576,7 @@ export default function PdfEditor({ active }) {
 
   return (
     <div className="tool">
-      <p className="tool-desc">click any text in a PDF to change it</p>
+      <p className="tool-desc">tap any text in a PDF to change it</p>
       {/* The same box as PDF tools: a fixed size that scrolls inside (the
           page stays still); the pages pop in and out like PDF tools' cards */}
       <div

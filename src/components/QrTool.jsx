@@ -112,7 +112,7 @@ function MakeQr({ active }) {
     } else {
       // Put the cursor in the box so Ctrl+V goes straight in
       textRef.current?.focus();
-      toast('paste with ctrl+v in the box');
+      toast('paste with Ctrl + V in the box');
     }
   };
 

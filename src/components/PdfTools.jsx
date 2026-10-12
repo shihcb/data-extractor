@@ -128,7 +128,7 @@ export default function PdfTools({ active }) {
       }
     }
     // Said once (one after another, only the last showed)
-    if (failed.length) toast(failed.length === 1 ? failed[0] : `couldn't open ${failed.length} of the files`, { warn: true });
+    if (failed.length) toast(failed.length === 1 ? failed[0] : `couldn't open ${failed.length} PDFs`, { warn: true });
     loadingCount.current -= 1;
     if (!loadingCount.current) setLoading('');
   }, [toast, setPages]);
@@ -387,8 +387,8 @@ export default function PdfTools({ active }) {
                   <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); rotate(p.id, -90); }} title="Rotate left" aria-label="Rotate left"><RotateCcw size={12} /></button>
                   <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); rotate(p.id, 90); }} title="Rotate right" aria-label="Rotate right"><RotateCw size={12} /></button>
                   <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); move(p.id, -1); }} disabled={n <= 0} title="Move earlier" aria-label="Move earlier"><ChevronLeft size={12} /></button>
-                  <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); move(p.id, 1); }} disabled={n >= pages.length - 1} title="Move later" aria-label="Move later"><ChevronRight size={12} /></button>
-                  <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); else keepFocusAfterRemove(e.currentTarget); removePages(new Set([p.id])); }} title="Delete page" aria-label="Delete page"><X size={12} /></button>
+                  <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); move(p.id, 1); }} disabled={n < 0 || n >= pages.length - 1} title="Move later" aria-label="Move later"><ChevronRight size={12} /></button>
+                  <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); else keepFocusAfterRemove(e.currentTarget); removePages(new Set([p.id])); }} title="Remove page" aria-label={`Remove page ${label.num}`}><X size={12} /></button>
                 </div>
               </div>
             );

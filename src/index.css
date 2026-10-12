@@ -1280,11 +1280,11 @@ kbd {
   gap: var(--button-gap);
 }
 .meta-group-title {
+  /* (lowercase like every other label: the font menu's groups, the stats) */
   font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
   margin-bottom: 2px;
 }
 /* label | value | remove */

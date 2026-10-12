@@ -376,12 +376,12 @@ export default function MetaEditor({ active }) {
                   </button>
                   <div className="page-label">
                     <span className="page-src page-name">{name}</span>
-                    <span>{it.w}×{it.h}</span>
+                    <span>{it.w} × {it.h}</span>
                   </div>
                   <div className="page-buttons">
                     <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); move(it.id, -1); }} disabled={n <= 0} title="Move earlier" aria-label="Move earlier"><ChevronLeft size={12} /></button>
                     <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); move(it.id, 1); }} disabled={n < 0 || n >= items.length - 1} title="Move later" aria-label="Move later"><ChevronRight size={12} /></button>
-                    <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); else keepFocusAfterRemove(e.currentTarget); removeItems(new Set([it.id])); }} title="Remove" aria-label={`Remove ${name}`}><X size={12} /></button>
+                    <button className="btn btn-sm btn-icon" onClick={(e) => { if (e.detail) e.currentTarget.blur(); else keepFocusAfterRemove(e.currentTarget); removeItems(new Set([it.id])); }} title="Remove photo" aria-label={`Remove ${name}`}><X size={12} /></button>
                   </div>
                 </div>
               );
@@ -435,7 +435,7 @@ export default function MetaEditor({ active }) {
         }
       >
         <div className="tool-meta tool-stats" aria-live="polite">
-          images <Count value={items.length} /> · changed <Count value={stats.changed} /> · removed <Count value={stats.removed} />
+          photos <Count value={items.length} /> · changed <Count value={stats.changed} /> · removed <Count value={stats.removed} />
         </div>
       </BoxRow>
 
