@@ -713,16 +713,24 @@ function FontMenu({ value, onPick, ready }) {
   useEffect(() => {
     if (!open) return undefined;
     const away = (e) => { if (!wrapRef.current?.contains(e.target)) setOpen(false); };
+    // Escape shuts it wherever the keys are (opened by a tap or a click,
+    // the button lets go of them: Escape went to the page and the menu
+    // stayed), and only it: not the line being typed too
+    const esc = (e) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      e.preventDefault();
+      setOpen(false);
+      if (wrapRef.current?.contains(document.activeElement)) btnRef.current?.focus({ preventScroll: true });
+    };
     document.addEventListener('pointerdown', away);
-    return () => document.removeEventListener('pointerdown', away);
+    window.addEventListener('keydown', esc, true);
+    return () => {
+      document.removeEventListener('pointerdown', away);
+      window.removeEventListener('keydown', esc, true);
+    };
   }, [open]);
   const keys = (e) => {
-    if (e.key === 'Escape') {
-      e.stopPropagation();
-      setOpen(false);
-      btnRef.current?.focus({ preventScroll: true });
-      return;
-    }
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
     e.preventDefault();
     const items = [...(menuRef.current?.querySelectorAll('.font-menu-item') || [])];
