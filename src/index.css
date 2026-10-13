@@ -700,6 +700,21 @@ button:disabled {
   pointer-events: auto;
 }
 
+/* The top edge's strip (Modal.jsx): Safari's top bar takes its colour
+   from it as soon as a pop-up opens. Deeper than 10px and full width (or
+   Safari skips it), over the overlay, with no fade of its own. */
+.modal-edge {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 12px;
+  z-index: 10001;
+  background-color: var(--overlay-bg);
+  opacity: 0.1;
+  transition: none;
+}
+
 .modal-card {
   width: 90%;
   max-width: 380px;

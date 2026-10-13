@@ -57,17 +57,25 @@ export default function Modal({ open, onClose, title, children }) {
   if (!mounted) return null;
 
   return (
-    <div
-      className={`modal-overlay ${shown ? 'show' : ''}`}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div ref={cardRef} className="modal-card" role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}>
-        {title && <h3 className="modal-title">{title}</h3>}
-        {children}
-        <div className="modal-actions">
-          <button className="btn" onClick={onClose}>close</button>
+    <>
+      {/* iPhone Safari tints its top bar from the sticky tab bar, and kept
+          that colour for a second as the pop-up dimmed the page: a strip
+          in the dim colour along the top edge, there at once while it's
+          open, hands the bar over straight away (Safari takes its full
+          colour at 10% opacity, so on the page it's barely there) */}
+      {shown && <div className="modal-edge" aria-hidden="true" onClick={onClose} />}
+      <div
+        className={`modal-overlay ${shown ? 'show' : ''}`}
+        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      >
+        <div ref={cardRef} className="modal-card" role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}>
+          {title && <h3 className="modal-title">{title}</h3>}
+          {children}
+          <div className="modal-actions">
+            <button className="btn" onClick={onClose}>close</button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
