@@ -263,7 +263,8 @@ export default function App() {
       if (e.key !== '?' && document.body.classList.contains('modal-open')) return;
       if (e.key === '?') {
         e.preventDefault();
-        setShortcutsOpen(open => !open);
+        // (closes the shortcuts; never opens them over another pop-up)
+        setShortcutsOpen(open => (open || !document.body.classList.contains('modal-open') ? !open : open));
         return;
       }
       if (!e.shiftKey) return;
