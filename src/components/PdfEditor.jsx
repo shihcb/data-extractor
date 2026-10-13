@@ -1342,6 +1342,8 @@ export default function PdfEditor({ active }) {
         toast(err.message, { warn: true });
         return;
       }
+      // (a picture that wouldn't draw isn't "not a PDF")
+      if (!isPdfFile(file)) { toast(`couldn't open ${shortName(file.name)}`, { warn: true }); return; }
       toast(`${shortName(file.name)} ${refusedWords(isPasswordError(err) ? 'password' : err?.message)}`, { warn: true });
     } finally {
       closePdf(view);
