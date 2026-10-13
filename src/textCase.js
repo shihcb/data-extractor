@@ -24,7 +24,17 @@ export const toUpper = (text) => text.toUpperCase();
 // Every word capitalized ("well-known" → "Well-Known"); not after an
 // apostrophe ("don't" → "Don't").
 export const toTitle = (text) =>
-  text.toLowerCase().replace(/(^|[\s\-–—/([{"“‘«])(\p{L})/gu, (_, before, letter) => before + letter.toUpperCase());
+  text.toLowerCase().replace(/(^|[\s\-–—/([{"“‘«])(\p{L})/gu, (_, before, letter) => before + titleLetter(letter));
+
+// A word's first letter in title case: a ligature or ß whose capital is two
+// letters keeps the second small ("ﬁle" → "File", not "FIle"); the
+// two-letter Slavic ones have their own title forms ("ǆ" → "ǅ")
+const TITLE = { 'ǆ': 'ǅ', 'Ǆ': 'ǅ', 'ǉ': 'ǈ', 'Ǉ': 'ǈ', 'ǌ': 'ǋ', 'Ǌ': 'ǋ', 'ǳ': 'ǲ', 'Ǳ': 'ǲ' };
+function titleLetter(letter) {
+  if (TITLE[letter]) return TITLE[letter];
+  const up = letter.toUpperCase();
+  return up.length > 1 ? up[0] + up.slice(1).toLowerCase() : up;
+}
 
 // First letter of each sentence (and line) capitalized; a lone "i" too.
 export const toSentence = (text) =>
@@ -32,7 +42,7 @@ export const toSentence = (text) =>
     .toLowerCase()
     // (after leading spaces and opening quotes or brackets too: '"hello"')
     // (not after an abbreviation: "i.e. this", "e.g. that", "Dr. Smith"; "etc." often ends one)
-    .replace(/(^|(?<!\b(?:i\.e|e\.g|vs|mr|mrs|ms|dr))[.!?]\s+|\n)([\s"“‘'«([¿¡]*)(\p{L})/gu, (_, before, open, letter) => before + open + letter.toUpperCase())
+    .replace(/(^|(?<!\b(?:i\.e|e\.g|vs|mr|mrs|ms|dr))[.!?]\s+|\n)([\s"“‘'«([¿¡]*)(\p{L})/gu, (_, before, open, letter) => before + open + titleLetter(letter))
     // (not "i.e.", but "so do i." yes)
     .replace(/(^|[^\p{L}\p{N}'’.])i(?=$|[^\p{L}\p{N}.]|\.(?!\p{L}))/gu, '$1I');
 
