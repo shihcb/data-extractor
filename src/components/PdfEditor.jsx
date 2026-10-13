@@ -1766,11 +1766,13 @@ export default function PdfEditor({ active }) {
       // and what's drawn behind them are right); a line that can't come out
       // whole gets a patch over it instead
       const gone = new Set();
+      // (with the standard fonts' widths, which files using them leave out)
+      const textLib = { ...lib, standardFonts: await import('@pdf-lib/standard-fonts').catch(() => null) };
       doc.pages.forEach((p) => {
         const boxes = p.items.filter(item => edits[item.id] && !item.picture && !item.added && !item.scan && !item.annot).map(item => ({ id: item.id, ...item.pdf }));
         if (!boxes.length) return;
         try {
-          removeText(lib, pdf.getPage(p.num - 1), boxes).forEach(id => gone.add(id));
+          removeText(textLib, pdf.getPage(p.num - 1), boxes).forEach(id => gone.add(id));
         } catch {
           // Left in: patched over
         }

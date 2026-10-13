@@ -157,11 +157,52 @@ function metricsOf(lib, context, fontDict) {
   }
   if (subtype === '/Type3') return null; // its own glyph space
   const widthsArr = get(fontDict, 'Widths');
-  if (!(widthsArr instanceof PDFArray)) return null; // a standard font: widths not in the file
+  // A standard font: its widths aren't in the file, but they're known
+  if (!(widthsArr instanceof PDFArray)) return standardMetrics(lib, context, fontDict);
   const first = num(get(fontDict, 'FirstChar')) ?? 0;
   const list = widthsArr.asArray().map(v => num(context.lookup(v)) ?? 0);
   const missing = num(get(get(fontDict, 'FontDescriptor'), 'MissingWidth')) ?? 0;
   return { bytes: 1, width: (code) => (code >= first && code < first + list.length ? list[code - first] : missing) };
+}
+
+// The 14 standard fonts' widths (pdf-lib's copies of Adobe's metrics), for
+// a font that names one and leaves its widths out (pdf-lib's own
+// StandardFonts, ReportLab…): only WinAnsiEncoding, by far the usual one,
+// and none with Differences; a code outside it is unknown (null).
+const STANDARD = {
+  Arial: 'Helvetica', ArialMT: 'Helvetica', 'Arial-BoldMT': 'Helvetica-Bold', 'Arial-ItalicMT': 'Helvetica-Oblique',
+  'Arial-BoldItalicMT': 'Helvetica-BoldOblique', 'Arial,Bold': 'Helvetica-Bold', 'Arial,Italic': 'Helvetica-Oblique',
+  'Arial,BoldItalic': 'Helvetica-BoldOblique', 'Helvetica-Italic': 'Helvetica-Oblique', 'Helvetica-BoldItalic': 'Helvetica-BoldOblique',
+  TimesNewRoman: 'Times-Roman', TimesNewRomanPSMT: 'Times-Roman', 'TimesNewRoman,Bold': 'Times-Bold',
+  'TimesNewRomanPS-BoldMT': 'Times-Bold', 'TimesNewRoman,Italic': 'Times-Italic', 'TimesNewRomanPS-ItalicMT': 'Times-Italic',
+  'TimesNewRoman,BoldItalic': 'Times-BoldItalic', 'TimesNewRomanPS-BoldItalicMT': 'Times-BoldItalic',
+  CourierNew: 'Courier', CourierNewPSMT: 'Courier', 'CourierNew,Bold': 'Courier-Bold', 'CourierNewPS-BoldMT': 'Courier-Bold',
+  'Courier-Italic': 'Courier-Oblique', 'Courier-BoldItalic': 'Courier-BoldOblique',
+};
+const LATIN = new Set(['Courier', 'Courier-Bold', 'Courier-Oblique', 'Courier-BoldOblique', 'Helvetica', 'Helvetica-Bold',
+  'Helvetica-Oblique', 'Helvetica-BoldOblique', 'Times-Roman', 'Times-Bold', 'Times-Italic', 'Times-BoldItalic']);
+let winAnsiNames = null; // code → glyph name
+function standardMetrics(lib, context, fontDict) {
+  const { PDFName, PDFDict } = lib;
+  const get = (d, k) => (d ? context.lookup(d.get(PDFName.of(k))) : undefined);
+  const base = get(fontDict, 'BaseFont')?.decodeText?.() ?? get(fontDict, 'BaseFont')?.toString().slice(1);
+  if (!base) return null;
+  const plain = base.replace(/^[A-Z]{6}\+/, '');
+  const name = STANDARD[plain] || plain;
+  if (!LATIN.has(name)) return null;
+  let enc = get(fontDict, 'Encoding');
+  if (enc instanceof PDFDict) {
+    if (enc.get(PDFName.of('Differences'))) return null;
+    enc = get(enc, 'BaseEncoding');
+  }
+  if (enc?.toString() !== '/WinAnsiEncoding' || !lib.standardFonts) return null;
+  const { Font, Encodings } = lib.standardFonts;
+  if (!winAnsiNames) {
+    winAnsiNames = new Map();
+    Object.values(Encodings.WinAnsi.unicodeMappings).forEach(([code, glyph]) => { if (!winAnsiNames.has(code)) winAnsiNames.set(code, glyph); });
+  }
+  const font = Font.load(name);
+  return { bytes: 1, width: (code) => { const g = winAnsiNames.get(code); return g ? font.getWidthOfGlyph(g) ?? null : null; } };
 }
 
 const fmt = (v) => (Math.abs(v) < 1e-6 ? '0' : String(Math.round(v * 1000) / 1000));
@@ -242,7 +283,9 @@ export function removeText(lib, page, boxes) {
       for (let k = 0; k + m.bytes <= s.length; k += m.bytes) {
         const code = m.bytes === 2 ? (s[k] << 8) | s[k + 1] : s[k];
         const space = m.bytes === 1 && code === 32 ? ts.Tw : 0;
-        tx += ((m.width(code) / 1000) * ts.size + ts.Tc + space) * ts.Th;
+        const w = m.width(code);
+        if (w == null) return null;
+        tx += ((w / 1000) * ts.size + ts.Tc + space) * ts.Th;
       }
     }
     return tx;
