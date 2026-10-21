@@ -318,6 +318,15 @@ frame (`tabGlide` in App.jsx), to where the page belongs once the new tab's
 height lands; followed frame by frame from the resizes, it jittered on
 iPhone and seemed to scroll up before the tabs moved.
 
+Text is centred in its buttons by the font itself: 'Jakarta Centered'
+(`src/assets/fonts/jakarta-centered.woff2`, first in `--font-body`) is Plus
+Jakarta Sans with its letters drawn 0.09em higher in their line, line heights
+and baselines unchanged — as it comes, the lowercase words sat ~1px under the
+middle of every button, tab and pill (measured in pixels: now within ¼px).
+Never nudge words with uneven padding or `top: 1px`; a new font gets raised
+the same way (its glyphs, not its ascent/descent, which round per size and
+change line heights). OFL: `src/assets/fonts/OFL.txt`.
+
 The selected outline is the instagram repo's selected row: 1px border and
 a 1px ring in the text colour (pure white in the dark), easing in and out
 over 450ms.
