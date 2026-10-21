@@ -10,6 +10,7 @@ import Collapse from './Collapse';
 import Count from './Count';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
+import WorkSpin from './WorkSpin';
 import BoxRow from './BoxRow';
 import MotionList from './MotionList';
 import SlideText from './SlideText';
@@ -465,10 +466,11 @@ export default function MetaEditor({ active }) {
       {/* The saves: there once there's something to save (the panel open) */}
       <Collapse open={items.length > 0}>
         <FlipRow>
-          <button className={`btn ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!items.length || busy}>
+          <button className={`btn ${done.save ? 'btn-done' : ''} ${busy ? 'at-work' : ''}`} onClick={save} disabled={!items.length || busy}>
             {/* (each photo in its own format: "save" and what it saves; "s"
                 slides in from the second photo, the button easing wider) */}
             <span className="btn-label">save photo<SlideText show={items.length > 1}>s</SlideText></span>
+            <WorkSpin on={busy} />
           </button>
         </FlipRow>
       </Collapse>

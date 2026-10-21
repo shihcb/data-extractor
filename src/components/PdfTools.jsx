@@ -8,6 +8,7 @@ import MotionList from './MotionList';
 import Count from './Count';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
+import WorkSpin from './WorkSpin';
 import Collapse from './Collapse';
 import SlideText from './SlideText';
 import BoxRow from './BoxRow';
@@ -438,13 +439,15 @@ export default function PdfTools({ active }) {
       {/* The saves: there once there's something to save (the panel open) */}
       <Collapse open={pages.length > 0}>
         <FlipRow>
-          <button className={`btn ${done.save ? 'btn-done' : ''}`} onClick={saveAll} disabled={none || !!busy}>
+          <button className={`btn ${done.save ? 'btn-done' : ''} ${busy === 'save' ? 'at-work' : ''}`} onClick={saveAll} disabled={none || !!busy}>
             {/* "merged" comes and goes with the word slide (a cross-fade of the
                 whole label inside a button easing its width was choppy) */}
             <span className="btn-label">save<SlideText show={fileCount > 1}>{'\u00a0merged'}</SlideText> PDF</span>
+            <WorkSpin on={busy === 'save'} />
           </button>
-          <button className={`btn ${done.images ? 'btn-done' : ''}`} onClick={toImages} disabled={none || !!busy}>
+          <button className={`btn ${done.images ? 'btn-done' : ''} ${busy === 'images' ? 'at-work' : ''}`} onClick={toImages} disabled={none || !!busy}>
             save PNG
+            <WorkSpin on={busy === 'images'} />
           </button>
         </FlipRow>
       </Collapse>

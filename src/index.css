@@ -869,6 +869,42 @@ kbd {
   to { transform: rotate(360deg); }
 }
 
+/* The button at work (WorkSpin, financial-dashboard's workButton): its words
+   stay, dimmed a little — not as far as a button with nothing to act on — and
+   a spinner's room (18px, the button's own 8px gap taken back) eases open after
+   them; the spinner sits at its right end */
+.btn.at-work:disabled {
+  opacity: 0.8;
+}
+
+.work-spin {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: 18px;
+  height: 1em;
+  margin-left: -8px;
+  overflow: hidden;
+}
+
+.work-spin-swoop {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  margin-top: -6px;
+}
+
+.work-spin .spinner {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-width: 2px;
+  border-color: color-mix(in srgb, currentColor 25%, transparent);
+  border-top-color: currentColor;
+}
+
 /* ── Image converter ──────────────────────────────────────────── */
 
 .options-collapse {

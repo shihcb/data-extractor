@@ -14,6 +14,7 @@ import SlideText from './SlideText';
 import Count from './Count';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
+import WorkSpin from './WorkSpin';
 import BoxRow from './BoxRow';
 import SlideSwap from './SlideSwap';
 import useHistory, { useUndoKeys } from '../useHistory';
@@ -483,13 +484,15 @@ function ConvertImages({ active }) {
       <Collapse open={items.length > 0}>
         <FlipRow>
           <button
-            className={`btn ${done.save ? 'btn-done' : ''}`}
+            className={`btn ${done.save ? 'btn-done' : ''} ${busy ? 'at-work' : ''}`}
             onClick={(e) => save(e, items)}
             disabled={!items.length || !!busy}
           >
             {/* "save" and what it makes, as every save button ("save PNG");
-                the format the word swap. No working text while it converts */}
+                the format the word swap. No working text while it converts:
+                a spinner swoops in after the words (WorkSpin) */}
             <span className="btn-label">save{'\u00a0'}<SlideSwap text={fmt.label} /></span>
+            <WorkSpin on={!!busy} />
           </button>
         </FlipRow>
       </Collapse>

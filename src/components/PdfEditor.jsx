@@ -16,6 +16,7 @@ import Count from './Count';
 import SlideText from './SlideText';
 import FadeText from './FadeText';
 import FlipRow from './FlipRow';
+import WorkSpin from './WorkSpin';
 import MotionList from './MotionList';
 import usePop from './usePop';
 import { FONT_BASES, TEXT_FONTS, fontOf, loadTextFont } from '../textFonts';
@@ -2994,8 +2995,9 @@ export default function PdfEditor({ active }) {
           there's none (the panel open) */}
       <Collapse open={!!doc && (editCount > 0 || busy)}>
         <FlipRow>
-          <button className={`btn ${done.save ? 'btn-done' : ''}`} onClick={save} disabled={!doc || !editCount || busy}>
+          <button className={`btn ${done.save ? 'btn-done' : ''} ${busy ? 'at-work' : ''}`} onClick={save} disabled={!doc || !editCount || busy}>
             save PDF
+            <WorkSpin on={busy} />
           </button>
         </FlipRow>
       </Collapse>
